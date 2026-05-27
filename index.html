@@ -350,7 +350,29 @@
     overflow:hidden;}
   .cal-block .cb-mem b{font-weight:700;}
 
-  /* 곡별 안 되는 시간 상세 */
+  /* 상세 탭 — 곡별 멤버 가능 캘린더 */
+  table.gantt th.gnt-sub.dtl-sub{min-width:32px;padding:8px 4px 6px;}
+  table.gantt th.gnt-sub.dtl-sub::before{display:none;}
+  table.gantt td.gnt-cell.dtl-cell{width:32px;height:30px;cursor:default;}
+  table.gantt td.gnt-cell.dtl-cell.dtl-yes{background:var(--ok-soft);}
+  table.gantt td.gnt-cell.dtl-cell.dtl-yes-all{background:rgba(45,117,73,.38);}
+  table.gantt td.gnt-cell.dtl-cell.dtl-no{background:var(--accent);}
+  table.gantt td.gnt-cell.dtl-cell.out{
+    background:repeating-linear-gradient(135deg,
+      var(--surface) 0 4px,rgba(26,24,20,.025) 4px 8px) !important;cursor:default;}
+
+  .dtl-mlist{margin-top:8px;}
+  .dtl-mbar{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px;}
+  .dtl-mn{flex:0 0 100px;font-weight:600;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dtl-mb{flex:1;height:8px;background:var(--paper);border-radius:999px;
+    border:1px solid var(--line);overflow:hidden;}
+  .dtl-mf{height:100%;background:var(--accent);border-radius:999px;
+    transition:width .2s ease;}
+  .dtl-mc{flex:0 0 96px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;
+    font-size:11px;text-align:right;}
+
+  /* 곡별 안 되는 시간 상세 (legacy, kept for compat) */
   .blk-list{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
   .blk-song{border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);overflow:hidden;}
@@ -561,7 +583,7 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'' };
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -921,7 +943,7 @@ function renderHeader(){
       +'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="8" height="9" rx="1.2"/><path d="M3 11V3.5A1 1 0 014 2.5h7"/></svg>'
       +state.pid+'</button></div>';
     h+='<div class="tabs">';
-    [['setup','설정'],['participate','입력'],['results','결과']].forEach(([k,l])=>{
+    [['setup','설정'],['participate','입력'],['results','결과'],['detail','상세']].forEach(([k,l])=>{
       h+='<button class="tab '+(state.tab===k?'on':'')+'" data-act="tab" data-tab="'+k+'">'+l+'</button>';
     });
     h+='</div>';
@@ -939,6 +961,7 @@ function renderBody(){
     if(!state.config){ app.innerHTML=viewMissing(); return; }
     if(state.tab==='setup') app.innerHTML=viewSetup();
     else if(state.tab==='participate') app.innerHTML=viewParticipate();
+    else if(state.tab==='detail') app.innerHTML=viewResultsDetail();
     else app.innerHTML=viewResults();
   }
 }
@@ -1449,76 +1472,143 @@ function viewResults(){
     </div>
   </div>`;
 
-  // 곡별 안 되는 시간 상세
-  const blockerCard=renderBlockerCard();
+  return gridCard + finalCard;
+}
 
-  return gridCard + finalCard + blockerCard;
+/* ---- 상세 탭: 곡별 멤버 가능 캘린더 ---- */
+function viewResultsDetail(){
+  const c=state.config;
+  if(!c) return '<div class="card"><div class="empty">프로젝트를 먼저 만드세요.</div></div>';
+  const sIds=sortedIds(c.songs||{});
+  const activeSongs=sIds.filter(s=>songMembers(s).length>0);
+  if(!activeSongs.length){
+    return `<div class="card"><div class="empty">담당표에서 멤버가 지정된 곡이 없습니다.</div></div>`;
+  }
 
-  function renderBlockerCard(){
-    if(!activeSongs.length) return '';
-    const sm=c.slotMinutes||60;
-    const songRows=activeSongs.map(sid=>{
-      const members=songMembers(sid);
-      // 멤버별 안 되는 슬롯 수집
-      const byMember={}; // uid -> [{date, time}]
-      // 멤버별 카운트
-      members.forEach(u=>{
-        const av=state.avail[u]||{};
-        Object.keys(av).forEach(k=>{
-          const [d,t]=k.split('|');
-          if(d<c.startDate||d>c.endDate) return;
-          (byMember[u]=byMember[u]||[]).push({d,t,k});
+  let selSid=state.detailSong;
+  if(!selSid || !activeSongs.includes(selSid)) selSid=activeSongs[0];
+
+  // 곡 선택 칩 (single-select)
+  const songChips=activeSongs.map(s=>{
+    const on=s===selSid;
+    const col=songColor(s);
+    const sty=on?`background:${col};border-color:${col};color:#fff`:'';
+    return `<button class="tool-chip ${on?'on':''}" data-act="pickdetailsong" data-sid="${s}" style="${sty}">
+      <span class="csw" style="background:${col}"></span>${esc(itemName(c.songs[s]))}
+    </button>`;
+  }).join('');
+
+  const dates=dateList(c.startDate,c.endDate);
+  const times=timeList(c.startHour,c.endHour,c.slotMinutes);
+  const members=songMembers(selSid);
+  const songNm=itemName(c.songs[selSid]);
+
+  // 통계: 곡 단위 가능 비율
+  const totalSlots=dates.length*times.length;
+  let feasibleCount=0;
+  dates.forEach(d=>times.forEach(t=>{ if(slotOkForSong(selSid, slotKey(d,t))) feasibleCount++; }));
+  const memberStats=members.map(u=>{
+    const av=state.avail[u]||{};
+    let busy=0;
+    dates.forEach(d=>times.forEach(t=>{ if(av[slotKey(d,t)]) busy++; }));
+    return {uid:u, busy};
+  }).sort((a,b)=>b.busy-a.busy);
+
+  // 주차 탭
+  const wks=buildWeeks(dates).map((w,i)=>{
+    const range=w.filter(d=>d.inRange).map(d=>d.date);
+    return {idx:i,dates:w,range};
+  }).filter(w=>w.range.length>0);
+  const activeIdx=Math.min(Math.max(state.activeWeek||0,0), wks.length-1);
+  const active=wks[activeIdx]||null;
+  const tabsHtml=wks.length>1?`<div class="week-tabs">
+    ${wks.map((w,i)=>{
+      const rng=w.range.length>1
+        ?`${mdLabel(w.range[0])} ~ ${mdLabel(w.range[w.range.length-1])}`
+        :mdLabel(w.range[0]);
+      return `<button class="week-tab ${i===activeIdx?'on':''}" data-act="pickweek" data-w="${i}">
+        ${w.idx+1}주차<span class="wkn">${rng}</span></button>`;
+    }).join('')}
+  </div>`:'';
+
+  // Gantt 형태: 각 날짜 → 멤버 sub-col, 각 셀 = (uid, date, time) 가능/불가
+  let grid='';
+  if(active){
+    const N=members.length;
+    let dayHead='<th class="gnt-corner" rowspan="2">시간</th>';
+    let memHead='';
+    active.dates.forEach(day=>{
+      const w=wdOf(day.date);
+      const wdCls=w===0?'sun':(w===6?'sat':'');
+      const outCls=day.inRange?'':'out';
+      dayHead+=`<th class="gnt-day ${wdCls} ${outCls}" colspan="${N}">
+        ${day.inRange?mdLabel(day.date):''} <span class="wd">${day.inRange?WD[w]:''}</span></th>`;
+      members.forEach((uid,mi)=>{
+        const last=mi===N-1?'day-end':'';
+        const mnm=itemName(c.people[uid]);
+        memHead+=`<th class="gnt-sub dtl-sub ${last}" title="${esc(mnm)}">${esc(shortName(mnm))}</th>`;
+      });
+    });
+
+    let rows=times.map(t=>{
+      let cells='';
+      active.dates.forEach(day=>{
+        if(!day.inRange){
+          members.forEach((uid,mi)=>{
+            const last=mi===N-1?'day-end':'';
+            cells+=`<td class="gnt-cell dtl-cell out ${last}"></td>`;
+          });
+          return;
+        }
+        const k=slotKey(day.date,t);
+        // 전원 OK 여부 (행 단위)
+        const allOk=members.every(u=>!(state.avail[u]&&state.avail[u][k]));
+        members.forEach((uid,mi)=>{
+          const last=mi===N-1?'day-end':'';
+          const unav=!!(state.avail[uid]&&state.avail[uid][k]);
+          const cls=unav?'dtl-no':(allOk?'dtl-yes-all':'dtl-yes');
+          const mnm=itemName(c.people[uid]);
+          const ttl=`${esc(mnm)}: ${unav?'안 됨':'가능'}`;
+          cells+=`<td class="gnt-cell dtl-cell ${cls} ${last}" title="${ttl}"></td>`;
         });
       });
-      const memberSummary=members.map(u=>{
-        const slots=byMember[u]||[];
-        const count=slots.length;
-        return {uid:u, count, slots};
-      }).filter(m=>m.count>0).sort((a,b)=>b.count-a.count);
-
-      const songNm=itemName(c.songs[sid]);
-      if(!memberSummary.length){
-        return `<div class="blk-song">
-          <div class="blk-song-head" style="border-left:4px solid ${songColor(sid)}">
-            <span class="blk-nm">${esc(songNm)}</span>
-            <span class="blk-meta">멤버 전원 안 되는 시간 없음 — 모든 시간 가능</span>
-          </div>
-        </div>`;
-      }
-      const summaryHtml=memberSummary.map(m=>{
-        // 그룹: 날짜별 시간 리스트
-        const byDate={};
-        m.slots.forEach(s=>{(byDate[s.d]=byDate[s.d]||[]).push(s.t);});
-        const dayChips=Object.keys(byDate).sort().map(d=>{
-          const wd=['일','월','화','수','목','금','토'][wdOf(d)];
-          const times=byDate[d].sort();
-          return `<div class="blk-day">
-            <span class="blk-day-l">${mdLabel(d)} (${wd})</span>
-            ${times.map(t=>`<span class="blk-pill">${t}</span>`).join('')}
-          </div>`;
-        }).join('');
-        return `<div class="blk-mem">
-          <div class="blk-mem-head">
-            <b>${esc(itemName(c.people[m.uid]))}</b>
-            <span class="blk-ct">${m.count}칸 안 됨</span>
-          </div>
-          <div class="blk-slots">${dayChips}</div>
-        </div>`;
-      }).join('');
-      return `<div class="blk-song">
-        <div class="blk-song-head" style="border-left:4px solid ${songColor(sid)}">
-          <span class="blk-nm">${esc(songNm)}</span>
-          <span class="blk-meta">${members.length}명 · ${memberSummary.length}명이 일부 시간 안 됨</span>
-        </div>
-        <div class="blk-members">${summaryHtml}</div>
-      </div>`;
+      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
     }).join('');
-    return `<div class="card">
-      <h2>곡별 안 되는 시간 상세</h2>
-      <div class="sub">각 곡에서 어떤 멤버가 어느 시간에 안 되는지 한눈에 봅니다. 멤버는 안 되는 칸 수가 많은 순으로 정렬됩니다.</div>
-      <div class="blk-list">${songRows}</div>
-    </div>`;
+
+    grid=`<div class="scroll grid-touch"><table class="grid gantt"><thead>
+      <tr>${dayHead}</tr><tr>${memHead}</tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
   }
+
+  // 멤버 막대 (얼마나 안 되는지 시각화)
+  const memberBars=memberStats.map(m=>{
+    const ratio=totalSlots?Math.round((m.busy/totalSlots)*100):0;
+    return `<div class="dtl-mbar">
+      <span class="dtl-mn">${esc(itemName(c.people[m.uid]))}</span>
+      <div class="dtl-mb"><div class="dtl-mf" style="width:${ratio}%"></div></div>
+      <span class="dtl-mc">${m.busy}칸 (${ratio}%)</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="card-head">
+      <div>
+        <h2>곡별 멤버 가능 현황</h2>
+        <div class="sub" style="margin:4px 0 0">곡을 고르면 그 곡 멤버들의 시간별 가능/불가능이 캘린더 형태로 표시됩니다. <b style="color:var(--ok)">초록</b> = 가능, <b style="color:var(--accent)">빨강</b> = 안 됨. 진한 초록은 그 시간에 전원 가능한 경우입니다.</div>
+      </div>
+      <span class="badge" style="color:var(--muted)">${feasibleCount}/${totalSlots} 가능</span>
+    </div>
+    <div class="song-toggles" style="margin-top:14px">
+      <span class="label">곡 선택:</span>
+      ${songChips}
+    </div>
+    ${tabsHtml}
+    ${grid||'<div class="empty">날짜·시간 범위를 설정하세요.</div>'}
+    ${memberBars?`<div class="dtl-mlist">
+      <div class="section-label" style="margin:18px 0 10px">${esc(songNm)} 멤버별 불가 시간 비율</div>
+      ${memberBars}
+    </div>`:''}
+  </div>`;
 }
 
 /* ---------------- 이벤트 ---------------- */
@@ -1545,6 +1635,7 @@ function bindEvents(){
     if(act==='lock'){toggleLock();return;}
     if(act==='delproject'){delProject();return;}
     if(act==='pickweek'){state.activeWeek=+t.dataset.w;render();return;}
+    if(act==='pickdetailsong'){state.detailSong=t.dataset.sid;render();return;}
     if(act==='exportpng'){exportPNG();return;}
     if(act==='exportics'){exportICS();return;}
     if(act==='pickmember'){
