@@ -1135,47 +1135,6 @@ function viewResults(){
       </div>`;
   }).join('');
 
-  // 곡별 카드 (간략)
-  let songCards=sIds.map(s=>{
-    const mem=songMembers(s);
-    const memNames=mem.map(u=>esc(itemName(c.people[u]))).join(', ');
-    if(!mem.length)
-      return `<div class="song-res"><div class="top">
-        <span class="nm">${esc(itemName(c.songs[s]))}</span>
-        <span class="mem">멤버 미지정</span></div>
-        <div class="zero-msg">담당표에서 이 곡의 멤버를 지정하세요.</div></div>`;
-    const okSlots=[];
-    dates.forEach(d=>times.forEach(t=>{
-      const k=slotKey(d,t);if(slotOkForSong(s,k))okSlots.push({d,t,k});}));
-    const assigned=okSlots.filter(o=>schedule[o.k]===s);
-    const zero=okSlots.length===0;
-    let slotHtml;
-    if(zero){
-      slotHtml='<div class="zero-msg">⚠ 전원이 가능한 시간이 없습니다.</div>';
-    } else {
-      const byDay={};okSlots.forEach(o=>{(byDay[o.d]=byDay[o.d]||[]).push(o);});
-      slotHtml=Object.keys(byDay).map(d=>{
-        const w=wdOf(d);
-        return `<div class="daygrp"><span class="dl">${mdLabel(d)} (${WD[w]})</span> `+
-          byDay[d].map(o=>{
-            const isAsg=schedule[o.k]===s;
-            const sty=isAsg?` style="background:${songColor(s)};color:#fff;border-color:transparent;font-weight:600"`:'';
-            return `<span class="pill ${isAsg?'asg':'ok'}"${sty}>${o.t}${isAsg?' ★':''}</span>`;
-          }).join('')+`</div>`;
-      }).join('');
-    }
-    const asgN=Math.round(assigned.length/blockLen);
-    const asgInfo=asgN?` · <b style="color:var(--accent)">배정 ${asgN}회</b>`:'';
-    return `<div class="song-res ${zero?'zero':''}">
-      <div class="top">
-        <span class="nm">${esc(itemName(c.songs[s]))}</span>
-        <span class="mem">${mem.length}명 · ${memNames}</span>
-        <span class="badge" style="margin-left:auto;color:${zero?'var(--accent)':'var(--ok)'}">
-          가능 ${okSlots.length}칸${asgInfo}</span>
-      </div>
-      <div class="slots">${slotHtml}</div></div>`;
-  }).join('');
-
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 내 배정</h2>
@@ -1186,10 +1145,7 @@ function viewResults(){
       </div>`
     : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
 
-  return autoCard + gridCard + `<div class="card">
-    <div class="section-label">곡별 상세 — 가능 시간 & 배정 (★)</div>
-    ${songCards}
-  </div>`;
+  return autoCard + gridCard;
 }
 
 /* ---------------- 이벤트 ---------------- */
