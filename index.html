@@ -127,6 +127,26 @@
   .daygrp .dl{font-weight:600;font-size:12px;color:var(--muted);}
   .zero-msg{color:var(--accent-d);font-weight:600;font-size:13px;}
 
+  /* results grid extras */
+  td.cell.assigned{background:var(--accent);}
+  td.cell.assigned .asg{font-family:'Bricolage Grotesque',sans-serif;
+    font-weight:800;font-size:10px;color:#fff;line-height:1;}
+  td.cell .okn{display:inline-block;font-size:9px;font-weight:600;
+    color:var(--ink);line-height:1.1;padding:1px 2px;white-space:nowrap;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+  td.cell .nbadge{position:absolute;top:1px;left:2px;font-size:8px;
+    font-weight:700;color:var(--muted);}
+  .song-toggles{display:flex;flex-wrap:wrap;gap:5px 10px;align-items:center;
+    margin-bottom:10px;}
+  .song-toggles label{display:inline-flex;align-items:center;gap:4px;
+    font-size:13px;cursor:pointer;user-select:none;}
+  .song-toggles input{margin:0;cursor:pointer;}
+  .count-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+    gap:6px 10px;margin-bottom:14px;}
+  .count-row{display:flex;align-items:center;gap:8px;padding:5px 0;}
+  .count-row .nm{flex:1;font-size:13px;font-weight:600;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .count-row input{width:54px;text-align:center;}
   .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px;}
   .note{font-size:12.5px;color:var(--muted);background:var(--paper);
     border-left:3px solid var(--line2);padding:7px 11px;border-radius:0 5px 5px 0;
@@ -194,7 +214,8 @@ const PRESET = {
 /* ---------------- 상태 ---------------- */
 let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
-  config:null, avail:{}, index:{}, me:null };
+  config:null, avail:{}, index:{}, me:null,
+  schedule:{}, hiddenSongs:{} };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -238,6 +259,8 @@ function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
+    if(state.screen==='project') render(); });
+  FB.onValue(R('projects/'+pid+'/schedule'),s=>{ state.schedule=s.val()||{};
     if(state.screen==='project') render(); });
 }
 
@@ -308,6 +331,88 @@ function slotOkForSong(sid,key){
 }
 function unavailCount(key){
   let n=0;for(const u in state.avail) if(state.avail[u][key]) n++;return n;
+}
+function shortName(s){
+  if(!s) return '';
+  return /[가-힣]/.test(s) ? s.slice(0,2) : s.slice(0,3);
+}
+
+/* ---------------- 자동 배정 ---------------- */
+function setSongCount(sid,n){
+  const v=Math.max(0,Math.min(50,parseInt(n)||0));
+  FB.set(R('projects/'+state.pid+'/config/songCounts/'+sid),v);
+}
+function clearSchedule(){
+  if(!confirm('자동 배정 결과를 모두 지울까요?')) return;
+  FB.remove(R('projects/'+state.pid+'/schedule'));
+}
+const SESSION_MINUTES=120; // 한 곡당 1회 합주 길이
+function autoSchedule(){
+  const c=state.config;
+  const sIds=Object.keys(c.songs||{}).filter(s=>songMembers(s).length>0);
+  if(!sIds.length){ toast('배정할 곡이 없습니다'); return; }
+  const dates=dateList(c.startDate,c.endDate);
+  const times=timeList(c.startHour,c.endHour,c.slotMinutes);
+  if(!dates.length||!times.length){ toast('날짜·시간 범위를 설정하세요'); return; }
+
+  const blockLen=Math.max(1,Math.round(SESSION_MINUTES/c.slotMinutes));
+
+  // 시간순 슬롯 배열
+  const allSlots=[]; // [{d,t,k}]
+  dates.forEach(d=>times.forEach(t=>allSlots.push({d,t,k:slotKey(d,t)})));
+
+  const counts=c.songCounts||{};
+  const targets={};
+  sIds.forEach(s=>{ targets[s]=(counts[s]===undefined?1:counts[s]); });
+  const totalNeed=Object.values(targets).reduce((a,b)=>a+b,0);
+  if(totalNeed===0){ toast('합주 횟수를 입력하세요'); return; }
+
+  // 곡별: blockLen 연속 슬롯이 모두 가능한 시작 인덱스들
+  const okStarts={};
+  sIds.forEach(s=>{
+    const arr=[];
+    for(let i=0;i+blockLen<=allSlots.length;i++){
+      if(allSlots[i].d!==allSlots[i+blockLen-1].d) continue; // 날짜 경계 넘김 금지
+      let ok=true;
+      for(let j=0;j<blockLen;j++){
+        if(!slotOkForSong(s,allSlots[i+j].k)){ ok=false; break; }
+      }
+      if(ok) arr.push(i);
+    }
+    okStarts[s]=arr;
+  });
+
+  // 빡빡한 곡 먼저 (가능 블록 수 / 목표 비율 작은 순)
+  const order=sIds.filter(s=>targets[s]>0).sort((a,b)=>{
+    const ra=okStarts[a].length/Math.max(targets[a],1);
+    const rb=okStarts[b].length/Math.max(targets[b],1);
+    return ra-rb;
+  });
+
+  const used={}; // slotKey -> sid
+  const fails=[];
+  for(const sid of order){
+    let need=targets[sid];
+    for(const i of okStarts[sid]){
+      if(need<=0) break;
+      let free=true;
+      for(let j=0;j<blockLen;j++) if(used[allSlots[i+j].k]){ free=false; break; }
+      if(free){
+        for(let j=0;j<blockLen;j++) used[allSlots[i+j].k]=sid;
+        need--;
+      }
+    }
+    if(need>0) fails.push({sid,missing:need});
+  }
+
+  FB.set(R('projects/'+state.pid+'/schedule'),used);
+  const blocks=Object.keys(used).length/blockLen;
+  if(fails.length){
+    const names=fails.map(f=>esc(c.songs[f.sid])+'('+f.missing+'회)').join(', ');
+    toast(`${blocks}회 배정. 부족: ${names}`);
+  } else {
+    toast(`${blocks}회 모두 배정 완료 (각 2시간)`);
+  }
 }
 
 /* ---------------- 렌더 ---------------- */
@@ -555,8 +660,47 @@ function viewResults(){
   const times=timeList(c.startHour,c.endHour,c.slotMinutes);
 
   const activeSongs=sIds.filter(s=>songMembers(s).length>0);
+  const counts=c.songCounts||{};
+  const schedule=state.schedule||{};
+  const hidden=state.hiddenSongs||{};
+  const isShown=sid=>!hidden[sid];
+  const hasSchedule=Object.keys(schedule).length>0;
+  const blockLen=Math.max(1,Math.round(SESSION_MINUTES/(c.slotMinutes||60)));
 
-  // 종합 그리드
+  // 자동 배정 카드
+  let countRows=activeSongs.length
+    ? activeSongs.map(s=>`
+        <div class="count-row">
+          <span class="nm" title="${esc(c.songs[s])}">${esc(c.songs[s])}</span>
+          <input type="number" min="0" max="50"
+            value="${counts[s]===undefined?1:counts[s]}"
+            data-act="songcount" data-sid="${s}">
+        </div>`).join('')
+    : '<div class="note">담당표에서 멤버가 지정된 곡이 없습니다.</div>';
+
+  const autoCard=`<div class="card">
+    <h2>자동 시간표 배정</h2>
+    <div class="sub">곡별 합주 횟수를 정하고 '자동 배정'을 누르면 가능한 시간대에 자동 배치합니다. <b>1회 = 2시간 연속</b>, 한 시간대에 한 곡만.</div>
+    <div class="count-grid">${countRows}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-act="autoschedule">⚡ 자동 배정 실행</button>
+      ${hasSchedule?`<button class="btn ghost sm" data-act="clearschedule">배정 지우기</button>`:''}
+    </div>
+    ${hasSchedule?`<div class="note">아래 그리드의 빨간 칸이 배정된 합주 시간입니다. 다시 실행하면 덮어씁니다.</div>`:''}
+  </div>`;
+
+  // 곡 토글
+  const allShown=activeSongs.every(isShown);
+  let toggleHtml=`<div class="song-toggles">
+    <button class="btn ghost sm" data-act="toggleall">${allShown?'모두 숨기기':'모두 보기'}</button>
+    ${activeSongs.map(s=>`
+      <label>
+        <input type="checkbox" data-act="togglesong" data-sid="${s}" ${isShown(s)?'checked':''}>
+        ${esc(c.songs[s])}
+      </label>`).join('')}
+  </div>`;
+
+  // 통합 그리드 — 각 칸: 가능한 (표시중) 곡 약어들 + 배정된 곡 강조
   let aggHead='<th class="corner">시간</th>'+dates.map(d=>{
     const w=wdOf(d);
     return `<th class="col ${w===6?'sat':''} ${w===0?'sun':''}">${mdLabel(d)}
@@ -564,18 +708,28 @@ function viewResults(){
   let aggRows=times.map(t=>{
     let cells=dates.map(d=>{
       const k=slotKey(d,t);
-      let n=0;activeSongs.forEach(s=>{if(slotOkForSong(s,k))n++;});
-      const ratio=activeSongs.length?n/activeSongs.length:0;
-      const bg=n===0?'var(--surface)':
-        `rgba(47,125,82,${(0.18+ratio*0.72).toFixed(2)})`;
-      const col=ratio>0.55?'#fff':'var(--ink)';
-      return `<td class="cell" style="background:${bg};cursor:default">
-        ${n>0?`<span style="font-size:11px;font-weight:700;color:${col}">${n}</span>`:''}</td>`;
+      const asg=schedule[k];
+      if(asg && isShown(asg)){
+        return `<td class="cell assigned" title="${esc(c.songs[asg])} (배정됨)">
+          <span class="asg">${esc(shortName(c.songs[asg]))}</span></td>`;
+      }
+      const okSids=activeSongs.filter(s=>isShown(s)&&slotOkForSong(s,k));
+      if(!okSids.length){
+        return `<td class="cell" style="cursor:default;background:var(--surface)"></td>`;
+      }
+      const fullNames=okSids.map(s=>c.songs[s]).join(', ');
+      const shorts=okSids.map(s=>shortName(c.songs[s])).join(' ');
+      const ratio=okSids.length/Math.max(activeSongs.length,1);
+      const bg=`rgba(47,125,82,${(0.10+ratio*0.45).toFixed(2)})`;
+      return `<td class="cell" style="background:${bg};cursor:default"
+        title="${esc(fullNames)}">
+        ${okSids.length>2?`<span class="nbadge">${okSids.length}</span>`:''}
+        <span class="okn">${esc(shorts)}</span></td>`;
     }).join('');
     return `<tr><td class="rh">${t}</td>${cells}</tr>`;
   }).join('');
 
-  // 곡별
+  // 곡별 카드 (간략)
   let songCards=sIds.map(s=>{
     const mem=songMembers(s);
     const memNames=mem.map(u=>esc(c.people[u])).join(', ');
@@ -586,39 +740,48 @@ function viewResults(){
         <div class="zero-msg">담당표에서 이 곡의 멤버를 지정하세요.</div></div>`;
     const okSlots=[];
     dates.forEach(d=>times.forEach(t=>{
-      const k=slotKey(d,t);if(slotOkForSong(s,k))okSlots.push({d,t});}));
+      const k=slotKey(d,t);if(slotOkForSong(s,k))okSlots.push({d,t,k});}));
+    const assigned=okSlots.filter(o=>schedule[o.k]===s);
     const zero=okSlots.length===0;
     let slotHtml;
     if(zero){
       slotHtml='<div class="zero-msg">⚠ 전원이 가능한 시간이 없습니다.</div>';
-    }else{
-      const byDay={};okSlots.forEach(o=>{(byDay[o.d]=byDay[o.d]||[]).push(o.t);});
+    } else {
+      const byDay={};okSlots.forEach(o=>{(byDay[o.d]=byDay[o.d]||[]).push(o);});
       slotHtml=Object.keys(byDay).map(d=>{
         const w=wdOf(d);
         return `<div class="daygrp"><span class="dl">${mdLabel(d)} (${WD[w]})</span> `+
-          byDay[d].map(t=>`<span class="pill ok">${t}</span>`).join('')+`</div>`;
+          byDay[d].map(o=>{
+            const isAsg=schedule[o.k]===s;
+            return `<span class="pill ${isAsg?'':'ok'}"
+              style="${isAsg?'background:var(--accent);color:#fff;font-weight:700':''}">${o.t}${isAsg?' ★':''}</span>`;
+          }).join('')+`</div>`;
       }).join('');
     }
+    const asgN=Math.round(assigned.length/blockLen);
+    const asgInfo=asgN?` · <b style="color:var(--accent)">배정 ${asgN}회</b>`:'';
     return `<div class="song-res ${zero?'zero':''}">
       <div class="top">
         <span class="nm">${esc(c.songs[s])}</span>
         <span class="mem">${mem.length}명 · ${memNames}</span>
         <span class="badge" style="margin-left:auto;color:${zero?'var(--accent)':'var(--ok)'}">
-          가능 ${okSlots.length}칸</span>
+          가능 ${okSlots.length}칸${asgInfo}</span>
       </div>
       <div class="slots">${slotHtml}</div></div>`;
   }).join('');
 
-  return `<div class="card">
-    <h2>종합 — 시간대별 합주 가능 곡 수</h2>
-    <div class="sub">숫자 = 그 시간에 전원 출석 가능한 곡의 수. 진할수록 많은 곡이 가능합니다.</div>
-    ${(dates.length&&times.length)?
-      `<div class="scroll"><table class="grid"><thead><tr>${aggHead}</tr></thead>
-        <tbody>${aggRows}</tbody></table></div>`
-      :'<div class="note">날짜·시간 범위를 설정하세요.</div>'}
-  </div>
-  <div class="card">
-    <div class="section-label">곡별 가능 시간</div>
+  const gridCard=(dates.length&&times.length)
+    ? `<div class="card">
+        <h2>시간표 — 곡별 가능 시간</h2>
+        <div class="sub">칸 안의 약어 = 그 시간에 가능한 곡. 빨간 칸 = 자동 배정된 합주. 호버하면 풀네임이 보입니다.</div>
+        ${toggleHtml}
+        <div class="scroll"><table class="grid"><thead><tr>${aggHead}</tr></thead>
+          <tbody>${aggRows}</tbody></table></div>
+      </div>`
+    : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
+
+  return autoCard + gridCard + `<div class="card">
+    <div class="section-label">곡별 상세 — 가능 시간 & 배정 (★)</div>
     ${songCards}
   </div>`;
 }
@@ -645,6 +808,14 @@ function bindEvents(){
     if(act==='mx'){matrixToggle(t.dataset.sid,t.dataset.uid);return;}
     if(act==='lock'){toggleLock();return;}
     if(act==='delproject'){delProject();return;}
+    if(act==='autoschedule'){autoSchedule();return;}
+    if(act==='clearschedule'){clearSchedule();return;}
+    if(act==='toggleall'){
+      const sIds=Object.keys(state.config.songs||{}).filter(s=>songMembers(s).length>0);
+      const allShown=sIds.every(s=>!state.hiddenSongs[s]);
+      state.hiddenSongs = allShown ? Object.fromEntries(sIds.map(s=>[s,true])) : {};
+      render();return;
+    }
   }
   app.addEventListener('click',handleClick);
   hbar.addEventListener('click',handleClick);
@@ -668,6 +839,13 @@ function bindEvents(){
     else if(act==='personname')FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),v.trim()||'멤버');
     else if(act==='pickme'){state.me=v||null;
       if(state.me)lsSet('me_'+state.pid,state.me);render();}
+    else if(act==='songcount'){setSongCount(t.dataset.sid,v);}
+    else if(act==='togglesong'){
+      const sid=t.dataset.sid;
+      if(t.checked) delete state.hiddenSongs[sid];
+      else state.hiddenSongs[sid]=true;
+      render();
+    }
   });
 
   app.addEventListener('blur',e=>{
