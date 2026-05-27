@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>밴드 합주 일정 조율</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6; --surface:#fbf9f3; --ink:#1d1b16; --muted:#86806f;
+    --line:#d9d3c4; --line2:#c4bda9; --accent:#d8442a; --accent-d:#a8331f;
+    --ok:#2f7d52; --ok-l:#dcebe0; --warn-bg:#fbe4df;
+    --r:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--paper);color:var(--ink);
+    font-family:'Archivo',system-ui,-apple-system,sans-serif;
+    font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;}
+  body{padding-bottom:60px;}
+  h1,h2,h3{font-family:'Bricolage Grotesque','Archivo',sans-serif;line-height:1.15;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px;}
+
+  header{border-bottom:2px solid var(--ink);background:var(--paper);
+    position:sticky;top:0;z-index:20;}
+  .hbar{display:flex;align-items:baseline;gap:14px;padding:14px 0 12px;flex-wrap:wrap;}
+  .brand{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+    font-size:20px;letter-spacing:-.02em;cursor:pointer;}
+  .brand .dot{color:var(--accent);}
+  .crumb{font-size:13px;color:var(--muted);}
+  .crumb b{color:var(--ink);font-weight:600;}
+  .tabs{display:flex;gap:2px;margin-left:auto;}
+  .tab{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:13px;
+    padding:7px 14px;border:1.5px solid var(--line2);background:var(--surface);
+    cursor:pointer;border-radius:var(--r);color:var(--muted);}
+  .tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  main{padding:22px 0 40px;}
+  .card{background:var(--surface);border:1.5px solid var(--line);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;}
+  .card h2{font-size:17px;font-weight:700;margin-bottom:3px;letter-spacing:-.01em;}
+  .card .sub{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .section-label{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);
+    margin-bottom:9px;}
+
+  button,input,select{font-family:inherit;font-size:14px;color:var(--ink);}
+  .btn{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);
+    padding:8px 16px;border-radius:var(--r);cursor:pointer;font-size:13px;}
+  .btn:hover{background:var(--accent);border-color:var(--accent);}
+  .btn.ghost{background:transparent;color:var(--ink);}
+  .btn.ghost:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .btn.sm{padding:5px 10px;font-size:12px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  input[type=text],input[type=date],select,input[type=number]{
+    border:1.5px solid var(--line2);background:var(--paper);
+    padding:7px 9px;border-radius:5px;}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  input:disabled,select:disabled{opacity:.55;background:var(--line);}
+  label.fld{display:block;margin-bottom:12px;}
+  label.fld .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);
+    margin-bottom:4px;letter-spacing:.02em;}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .row > *{flex:1;min-width:130px;}
+
+  .list-item{display:flex;align-items:center;gap:8px;padding:6px 0;
+    border-bottom:1px solid var(--line);}
+  .list-item:last-child{border-bottom:none;}
+  .list-item input[type=text]{flex:1;}
+  .idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    color:var(--muted);font-size:12px;width:22px;text-align:right;}
+  .x{border:none;background:none;color:var(--muted);cursor:pointer;
+    font-size:18px;line-height:1;padding:2px 6px;}
+  .x:hover{color:var(--accent);}
+
+  .scroll{overflow:auto;border:1.5px solid var(--line2);border-radius:6px;
+    max-height:64vh;-webkit-overflow-scrolling:touch;}
+  table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);}
+  table.grid th,table.grid td{border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);}
+  th.corner{position:sticky;top:0;left:0;z-index:5;background:var(--ink);
+    color:var(--paper);font-size:11px;font-weight:600;padding:6px 8px;}
+  th.col{position:sticky;top:0;z-index:4;background:var(--ink);color:var(--paper);
+    font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:11px;
+    padding:5px 4px;min-width:48px;white-space:nowrap;}
+  th.col .wd{display:block;font-size:10px;opacity:.7;font-family:'Archivo';font-weight:400;}
+  th.col.sat{color:#9fd0f0;} th.col.sun{color:#f0a99f;}
+  td.rh{position:sticky;left:0;z-index:3;background:var(--ink);color:var(--paper);
+    font-family:'Bricolage Grotesque',monospace;font-weight:700;font-size:11px;
+    padding:0 9px;white-space:nowrap;text-align:right;}
+  td.cell{width:48px;height:25px;cursor:pointer;background:var(--surface);
+    text-align:center;position:relative;}
+  td.cell:hover{background:var(--line);}
+  td.cell.no{background:var(--accent);}
+  td.cell.no:hover{background:var(--accent-d);}
+  td.cell .cnt{position:absolute;top:1px;right:2px;font-size:8px;
+    color:var(--muted);font-weight:600;}
+  td.cell.no .cnt{color:#f6cabf;}
+  .grid-touch td.cell{touch-action:auto;}
+
+  /* matrix */
+  td.mx{width:46px;height:30px;cursor:pointer;background:var(--surface);text-align:center;}
+  td.mx:hover{background:var(--line);}
+  td.mx .chk{display:inline-block;width:15px;height:15px;border-radius:3px;
+    border:1.5px solid var(--line2);vertical-align:middle;}
+  td.mx.on .chk{background:var(--accent);border-color:var(--accent);}
+  td.mx.on{background:#f7e4df;}
+  td.song-h{position:sticky;left:0;z-index:3;background:var(--ink);color:var(--paper);
+    font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:12px;
+    padding:0 10px;white-space:nowrap;}
+
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;
+    background:var(--line);color:var(--ink);margin:2px 3px 2px 0;font-weight:500;}
+  .pill.ok{background:var(--ok-l);color:var(--ok);}
+  .badge{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13px;}
+
+  .song-res{border:1.5px solid var(--line);border-radius:6px;padding:13px 14px;
+    margin-bottom:10px;background:var(--surface);}
+  .song-res.zero{border-color:var(--accent);background:var(--warn-bg);}
+  .song-res .top{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:7px;}
+  .song-res .nm{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16px;}
+  .song-res .mem{font-size:12px;color:var(--muted);}
+  .song-res .slots{font-size:13px;}
+  .daygrp{margin:3px 0;}
+  .daygrp .dl{font-weight:600;font-size:12px;color:var(--muted);}
+  .zero-msg{color:var(--accent-d);font-weight:600;font-size:13px;}
+
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px;}
+  .note{font-size:12.5px;color:var(--muted);background:var(--paper);
+    border-left:3px solid var(--line2);padding:7px 11px;border-radius:0 5px 5px 0;
+    margin:8px 0;}
+  .lock-on{color:var(--accent);font-weight:700;}
+  .proj-item{display:flex;align-items:center;gap:10px;padding:11px 13px;
+    border:1.5px solid var(--line);border-radius:6px;margin-bottom:8px;
+    cursor:pointer;background:var(--surface);}
+  .proj-item:hover{border-color:var(--ink);}
+  .proj-item .pn{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:15px;flex:1;}
+  .proj-item .pc{font-size:11px;color:var(--muted);font-family:monospace;}
+  .hero{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+    font-size:30px;letter-spacing:-.025em;margin-bottom:6px;}
+  .hero .dot{color:var(--accent);}
+  code{background:var(--line);padding:1px 5px;border-radius:3px;font-size:13px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:20px;
+    font-size:13px;z-index:50;font-weight:500;}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="hbar" id="hbar"></div></div></header>
+<main><div class="wrap" id="app"></div></main>
+
+<script type="module">
+/* ============================================================
+   ▼▼▼ 여기에 Firebase 설정을 붙여넣으세요 ▼▼▼
+   Firebase 콘솔 → 프로젝트 설정 → '내 앱'의 웹앱 등록 시
+   제공되는 firebaseConfig 객체를 그대로 덮어쓰면 됩니다.
+   Realtime Database를 만들어야 databaseURL 항목이 포함됩니다.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAgnKT3zgERQD--N6eNOW6Ts8u4r35k-wU",
+  authDomain: "talmood-timetable.firebaseapp.com",
+  databaseURL: "https://talmood-timetable-default-rtdb.firebaseio.com",
+  projectId: "talmood-timetable",
+  storageBucket: "talmood-timetable.firebasestorage.app",
+  messagingSenderId: "294447608137",
+  appId: "1:294447608137:web:9b7813e519f8c24c4a6a98",
+  measurementId: "G-6CJRPNYE0L"
+};
+/* ▲▲▲ 여기까지 ▲▲▲ */
+
+const FB_VERSION = "10.7.1"; // 로딩 실패 시 Firebase 콘솔 스니펫의 최신 버전으로 교체
+
+/* ---- 밴드 기본 구성 (설정 화면의 '기본 구성 불러오기' 버튼) ---- */
+const PRESET = {
+  songs: ['GTFO','SMHTL','지옥에서온흑우','디톡스','쏜애플','MCR','술탄','HF','갈돌','외계인'],
+  people: ['임하빈','홍선표','김진우','김준형','이진규','고유진','고승환','홍범석','조무현','이유은','이주영','정유찬','한동현','선수혁'],
+  matrix: {
+    'GTFO':['임하빈','김준형','고승환','이주영'],
+    'SMHTL':['홍선표','김준형','고승환','정유찬'],
+    '지옥에서온흑우':['홍선표','김진우','김준형','고승환','이주영'],
+    '디톡스':['김진우','이진규','조무현','이주영'],
+    '쏜애플':['임하빈','이진규','홍범석','정유찬'],
+    'MCR':['임하빈','김준형','고유진','홍범석','이주영'],
+    '술탄':['임하빈','이진규','홍범석','조무현','한동현','선수혁'],
+    'HF':['홍선표','이진규','고승환','한동현'],
+    '갈돌':['홍선표','김준형','고유진','이유은','이주영'],
+    '외계인':['임하빈','김준형','이진규','조무현','이주영']
+  }
+};
+
+/* ---------------- 상태 ---------------- */
+let DB=null, FB={}, fbReady=false;
+let state={ screen:'loading', pid:null, tab:'setup',
+  config:null, avail:{}, index:{}, me:null };
+
+/* ---------------- 유틸 ---------------- */
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const genId=p=>p+'_'+Math.random().toString(36).slice(2,9);
+const genPid=()=>Math.random().toString(36).slice(2,8).toUpperCase();
+const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+
+function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dateList(s,e){const out=[];let d=new Date(s+'T00:00:00');const end=new Date(e+'T00:00:00');
+  let guard=0;while(d<=end&&guard<400){out.push(fmtDate(d));d.setDate(d.getDate()+1);guard++;}return out;}
+const WD=['일','월','화','수','목','금','토'];
+function wdOf(ds){return new Date(ds+'T00:00:00').getDay();}
+function mdLabel(ds){const d=new Date(ds+'T00:00:00');return(d.getMonth()+1)+'/'+d.getDate();}
+function timeList(sh,eh,sm){const out=[];for(let m=sh*60;m<eh*60;m+=sm)
+  out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));return out;}
+const slotKey=(d,t)=>d+'|'+t;
+
+/* ---------------- Firebase ---------------- */
+async function initFirebase(){
+  if(String(firebaseConfig.apiKey).includes('PASTE')) return 'no-config';
+  try{
+    const a=await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-app.js`);
+    const d=await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-database.js`);
+    const app=a.initializeApp(firebaseConfig);
+    DB=d.getDatabase(app);
+    FB={ref:d.ref,onValue:d.onValue,set:d.set,get:d.get,update:d.update,remove:d.remove};
+    fbReady=true; return 'ok';
+  }catch(e){ console.error('Firebase load failed',e); return 'error'; }
+}
+const R=p=>FB.ref(DB,p);
+
+function subscribeIndex(){
+  FB.onValue(R('projectIndex'),s=>{ state.index=s.val()||{};
+    if(state.screen==='landing') render(); });
+}
+function subscribeProject(pid){
+  FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
+    if(state.screen==='project') render(); });
+  FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
+    if(state.screen==='project') render(); });
+}
+
+/* ---------------- 쓰기 동작 ---------------- */
+async function createProject(){
+  const pid=genPid();
+  const t=new Date();const e=new Date();e.setDate(e.getDate()+6);
+  const cfg={ name:'새 프로젝트', startDate:fmtDate(t), endDate:fmtDate(e),
+    startHour:18, endHour:24, slotMinutes:60, locked:false,
+    songs:{}, people:{}, matrix:{} };
+  await FB.set(R('projects/'+pid+'/config'),cfg);
+  await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
+  location.href=location.pathname+'?p='+pid;
+}
+function cfgUpdate(obj){
+  FB.update(R('projects/'+state.pid+'/config'),obj);
+  if(obj.name!==undefined)
+    FB.update(R('projectIndex/'+state.pid),{name:obj.name});
+}
+function addSong(){ const sid=genId('s');
+  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),'새 곡'); }
+function delSong(sid){
+  FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
+  FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
+}
+function addPerson(){ const uid=genId('u');
+  FB.set(R('projects/'+state.pid+'/config/people/'+uid),'새 멤버'); }
+function delPerson(uid){
+  FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
+  FB.remove(R('projects/'+state.pid+'/avail/'+uid));
+  const mx=state.config.matrix||{};
+  for(const sid in mx) if(mx[sid][uid])
+    FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid));
+}
+function matrixToggle(sid,uid){
+  const on=state.config.matrix?.[sid]?.[uid];
+  const p='projects/'+state.pid+'/config/matrix/'+sid+'/'+uid;
+  on?FB.remove(R(p)):FB.set(R(p),true);
+}
+async function loadPreset(){
+  if(!confirm('밴드 기본 구성(10곡·14명·담당표)을 불러옵니다.\n기존 곡/사람 목록을 덮어쓸까요?'))return;
+  const songs={},people={},matrix={},nameToUid={};
+  PRESET.songs.forEach(n=>{songs[genId('s')]=n;});
+  PRESET.people.forEach(n=>{const id=genId('u');people[id]=n;nameToUid[n]=id;});
+  const songByName={};for(const id in songs)songByName[songs[id]]=id;
+  for(const sn in PRESET.matrix){
+    const sid=songByName[sn];matrix[sid]={};
+    PRESET.matrix[sn].forEach(pn=>{matrix[sid][nameToUid[pn]]=true;});
+  }
+  await FB.update(R('projects/'+state.pid+'/config'),{songs,people,matrix});
+  toast('기본 구성을 불러왔습니다');
+}
+function toggleLock(){ cfgUpdate({locked:!state.config.locked}); }
+async function delProject(){
+  if(!confirm('이 프로젝트를 완전히 삭제합니다. 되돌릴 수 없습니다.\n계속할까요?'))return;
+  await FB.remove(R('projects/'+state.pid));
+  await FB.remove(R('projectIndex/'+state.pid));
+  location.href=location.pathname;
+}
+
+/* ---------------- 계산 ---------------- */
+function songMembers(sid){
+  const m=state.config.matrix?.[sid]||{};
+  return Object.keys(m).filter(u=>m[u]&&state.config.people?.[u]);
+}
+function slotOkForSong(sid,key){
+  return songMembers(sid).every(u=>!(state.avail[u]&&state.avail[u][key]));
+}
+function unavailCount(key){
+  let n=0;for(const u in state.avail) if(state.avail[u][key]) n++;return n;
+}
+
+/* ---------------- 렌더 ---------------- */
+let deferRender=false, painting=false;
+function render(){
+  const a=document.activeElement;
+  if(painting){deferRender=true;return;}
+  if(a&&a.tagName==='INPUT'&&a.type==='text'&&$('app').contains(a)){
+    deferRender=true;return;}
+  doRender();
+}
+function doRender(){
+  const sc=$('app').querySelector('.scroll');
+  const sl=sc?sc.scrollLeft:0, st=sc?sc.scrollTop:0;
+  renderHeader(); renderBody();
+  const sc2=$('app').querySelector('.scroll');
+  if(sc2){sc2.scrollLeft=sl;sc2.scrollTop=st;}
+}
+
+function renderHeader(){
+  let h='<div class="brand" data-act="home">합주<span class="dot">.</span>조율</div>';
+  if(state.screen==='project'&&state.config){
+    h+='<div class="crumb">프로젝트 <b>'+esc(state.config.name||'')+'</b> · 코드 <b>'+state.pid+'</b></div>';
+    h+='<div class="tabs">';
+    [['setup','설정'],['participate','입력'],['results','결과']].forEach(([k,l])=>{
+      h+='<button class="tab '+(state.tab===k?'on':'')+'" data-act="tab" data-tab="'+k+'">'+l+'</button>';
+    });
+    h+='</div>';
+  }
+  $('hbar').innerHTML=h;
+}
+
+function renderBody(){
+  const app=$('app');
+  if(state.screen==='loading'){ app.innerHTML='<div class="empty">불러오는 중…</div>'; return; }
+  if(state.screen==='no-config'){ app.innerHTML=viewNoConfig(); return; }
+  if(state.screen==='fb-error'){ app.innerHTML=viewFbError(); return; }
+  if(state.screen==='landing'){ app.innerHTML=viewLanding(); return; }
+  if(state.screen==='project'){
+    if(!state.config){ app.innerHTML=viewMissing(); return; }
+    if(state.tab==='setup') app.innerHTML=viewSetup();
+    else if(state.tab==='participate') app.innerHTML=viewParticipate();
+    else app.innerHTML=viewResults();
+  }
+}
+
+function viewNoConfig(){
+  return `<div class="card">
+    <div class="hero">설정<span class="dot">이</span> 필요해요</div>
+    <p style="margin-bottom:14px">이 앱은 <code>index.html</code> 파일 안에 Firebase 설정을 넣어야 작동합니다.</p>
+    <div class="section-label">한 번만 하면 됩니다</div>
+    <ol style="padding-left:20px;font-size:14px;line-height:1.9">
+      <li>Firebase 콘솔에서 프로젝트를 만들고 <b>Realtime Database</b>를 생성</li>
+      <li>'웹 앱 등록' 후 받은 <code>firebaseConfig</code>를 복사</li>
+      <li><code>index.html</code> 상단의 표시된 자리에 붙여넣기</li>
+      <li>GitHub 레포에 올리고 Pages를 켜면 끝</li>
+    </ol>
+    <div class="note">함께 받은 세팅 가이드를 참고하세요. 설정을 마치면 이 화면 대신 프로젝트 목록이 나타납니다.</div>
+  </div>`;
+}
+function viewFbError(){
+  return `<div class="card"><div class="hero">연결 실패</div>
+    <p>Firebase에 연결하지 못했습니다. 확인해 주세요:</p>
+    <ul style="padding-left:20px;font-size:14px;line-height:1.8">
+      <li><code>firebaseConfig</code> 값이 정확한지</li>
+      <li>Realtime Database가 생성되어 있고 <code>databaseURL</code>이 포함됐는지</li>
+      <li>인터넷 연결 상태</li></ul>
+    <div class="note">미리보기 환경에서는 외부 연결이 막혀 이 화면이 보일 수 있습니다. 실제 GitHub Pages 배포본에서는 정상 작동합니다.</div>
+  </div>`;
+}
+function viewMissing(){
+  return `<div class="card"><div class="hero">프로젝트를 찾을 수 없어요</div>
+    <p style="margin-bottom:12px">코드 <b>${state.pid}</b> 에 해당하는 프로젝트가 없습니다.</p>
+    <button class="btn" data-act="home">프로젝트 목록으로</button></div>`;
+}
+
+function viewLanding(){
+  const ids=Object.keys(state.index).sort((a,b)=>
+    (state.index[b].createdAt||0)-(state.index[a].createdAt||0));
+  let list= ids.length? ids.map(pid=>
+    `<div class="proj-item" data-act="open" data-pid="${pid}">
+       <div class="pn">${esc(state.index[pid].name||'(이름 없음)')}</div>
+       <div class="pc">${pid}</div></div>`).join('')
+    : '<div class="empty">아직 프로젝트가 없습니다. 첫 프로젝트를 만들어 보세요.</div>';
+  return `<div class="card">
+    <div class="hero">합주 일정<span class="dot">,</span> 한 번에</div>
+    <p class="sub" style="margin-bottom:16px">날짜 범위와 곡·멤버를 정하면, 각자 안 되는 시간을 입력하고 곡별 가능 시간이 자동으로 계산됩니다.</p>
+    <button class="btn" data-act="new">+ 새 프로젝트 만들기</button>
+  </div>
+  <div class="card">
+    <div class="section-label">프로젝트 목록</div>
+    ${list}
+  </div>
+  <div class="card">
+    <div class="section-label">코드로 입장</div>
+    <div class="row">
+      <input type="text" id="codeIn" placeholder="6자리 코드" maxlength="6"
+        style="text-transform:uppercase;flex:2">
+      <button class="btn ghost" data-act="enter" style="flex:1">입장</button>
+    </div>
+  </div>`;
+}
+
+function viewSetup(){
+  const c=state.config, lk=!!c.locked, dis=lk?'disabled':'';
+  const songs=c.songs||{}, people=c.people||{};
+  const sIds=Object.keys(songs), pIds=Object.keys(people);
+  const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
+    o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
+
+  let songRows=sIds.length? sIds.map((id,i)=>
+    `<div class="list-item"><span class="idx">${i+1}</span>
+      <input type="text" value="${esc(songs[id])}" ${dis}
+        data-act="songname" data-sid="${id}">
+      <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''}>×</button>
+    </div>`).join('') : '<div class="note">곡이 없습니다.</div>';
+
+  let pplRows=pIds.length? pIds.map((id,i)=>
+    `<div class="list-item"><span class="idx">${i+1}</span>
+      <input type="text" value="${esc(people[id])}" ${dis}
+        data-act="personname" data-uid="${id}">
+      <button class="x" data-act="delperson" data-uid="${id}" ${dis?'disabled':''}>×</button>
+    </div>`).join('') : '<div class="note">멤버가 없습니다.</div>';
+
+  let matrix='';
+  if(sIds.length&&pIds.length){
+    let head='<th class="corner">곡 \\ 멤버</th>'+
+      pIds.map(u=>`<th class="col">${esc(people[u])}</th>`).join('');
+    let body=sIds.map(s=>{
+      let cells=pIds.map(u=>{
+        const on=c.matrix?.[s]?.[u];
+        return `<td class="mx ${on?'on':''}" data-act="mx" data-sid="${s}" data-uid="${u}">
+          <span class="chk"></span></td>`;
+      }).join('');
+      return `<tr><td class="song-h">${esc(songs[s])}</td>${cells}</tr>`;
+    }).join('');
+    matrix=`<div class="scroll"><table class="grid">
+      <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+      <div class="note">칸을 누르면 그 멤버가 그 곡에 참여하는 것으로 표시됩니다.</div>`;
+  } else {
+    matrix='<div class="note">곡과 멤버를 먼저 추가하면 담당표가 나타납니다.</div>';
+  }
+
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div><h2>프로젝트 설정</h2>
+        <div class="sub">${lk?'<span class="lock-on">잠금 상태 — 입력만 가능</span>':'자유롭게 수정할 수 있습니다'}</div></div>
+      <button class="btn ghost sm" data-act="lock">${lk?'🔓 잠금 해제':'🔒 설정 잠그기'}</button>
+    </div>
+    <label class="fld"><span class="lab">프로젝트 이름</span>
+      <input type="text" value="${esc(c.name||'')}" ${dis} data-act="cfgname" style="width:100%"></label>
+    <div class="row">
+      <label class="fld"><span class="lab">시작일</span>
+        <input type="date" value="${c.startDate||''}" ${dis} data-act="cfgstart"></label>
+      <label class="fld"><span class="lab">종료일</span>
+        <input type="date" value="${c.endDate||''}" ${dis} data-act="cfgend"></label>
+    </div>
+    <div class="row">
+      <label class="fld"><span class="lab">시작 시각</span>
+        <select ${dis} data-act="cfgsh">${hourOpts(c.startHour,0,23)}</select></label>
+      <label class="fld"><span class="lab">종료 시각</span>
+        <select ${dis} data-act="cfgeh">${hourOpts(c.endHour,1,24)}</select></label>
+      <label class="fld"><span class="lab">칸 단위</span>
+        <select ${dis} data-act="cfgslot">
+          <option value="60" ${c.slotMinutes==60?'selected':''}>1시간</option>
+          <option value="30" ${c.slotMinutes==30?'selected':''}>30분</option>
+        </select></label>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="section-label" style="margin:0">곡 목록</div>
+      ${(!sIds.length&&!pIds.length)?`<button class="btn ghost sm" data-act="preset" ${dis}>밴드 기본 구성 불러오기</button>`:''}
+    </div>
+    ${songRows}
+    <div style="margin-top:10px"><button class="btn sm" data-act="addsong" ${dis}>+ 곡 추가</button></div>
+  </div>
+  <div class="card">
+    <div class="section-label">멤버 목록</div>
+    ${pplRows}
+    <div style="margin-top:10px"><button class="btn sm" data-act="addperson" ${dis}>+ 멤버 추가</button></div>
+  </div>
+  <div class="card">
+    <div class="section-label">담당표 — 곡 × 멤버</div>
+    ${matrix}
+  </div>
+  <div class="card">
+    <div class="section-label">위험 구역</div>
+    <button class="btn ghost sm" data-act="delproject"
+      style="border-color:var(--accent);color:var(--accent)">프로젝트 삭제</button>
+  </div>`;
+}
+
+function viewParticipate(){
+  const c=state.config;
+  const pIds=Object.keys(c.people||{});
+  if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 멤버를 먼저 추가하세요.</div></div>`;
+  if(state.me&&!c.people[state.me]) state.me=null;
+
+  let opts='<option value="">— 이름 선택 —</option>'+
+    pIds.map(u=>`<option value="${u}" ${state.me===u?'selected':''}>${esc(c.people[u])}</option>`).join('');
+
+  let head=`<div class="card">
+    <h2>안 되는 시간 입력</h2>
+    <div class="sub">본인 이름을 고르고, 합주가 <b>불가능한 칸</b>을 칠하세요. (PC는 드래그 가능)</div>
+    <label class="fld" style="max-width:240px"><span class="lab">내 이름</span>
+      <select data-act="pickme" style="width:100%">${opts}</select></label>
+  </div>`;
+
+  if(!state.me) return head+`<div class="card"><div class="empty">이름을 선택하면 시간표가 나타납니다.</div></div>`;
+
+  const dates=dateList(c.startDate,c.endDate);
+  const times=timeList(c.startHour,c.endHour,c.slotMinutes);
+  if(!dates.length||!times.length)
+    return head+`<div class="card"><div class="empty">설정에서 날짜·시간 범위를 확인하세요.</div></div>`;
+
+  const mine=state.avail[state.me]||{};
+  let header='<th class="corner">시간</th>'+dates.map(d=>{
+    const w=wdOf(d);
+    return `<th class="col ${w===6?'sat':''} ${w===0?'sun':''}">${mdLabel(d)}
+      <span class="wd">${WD[w]}</span></th>`;}).join('');
+  let rows=times.map(t=>{
+    let cells=dates.map(d=>{
+      const k=slotKey(d,t);
+      const no=!!mine[k];
+      const others=unavailCount(k)-(no?1:0);
+      return `<td class="cell ${no?'no':''}" data-cell="1" data-slot="${k}">
+        ${others>0?`<span class="cnt">${others}</span>`:''}</td>`;
+    }).join('');
+    return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+  }).join('');
+
+  return head+`<div class="card">
+    <div class="scroll grid-touch"><table class="grid">
+      <thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리 숫자 = 같은 시간에 안 되는 다른 멤버 수.</div>
+  </div>`;
+}
+
+function viewResults(){
+  const c=state.config;
+  const sIds=Object.keys(c.songs||{});
+  if(!sIds.length) return `<div class="card"><div class="empty">설정에서 곡을 추가하세요.</div></div>`;
+  const dates=dateList(c.startDate,c.endDate);
+  const times=timeList(c.startHour,c.endHour,c.slotMinutes);
+
+  const activeSongs=sIds.filter(s=>songMembers(s).length>0);
+
+  // 종합 그리드
+  let aggHead='<th class="corner">시간</th>'+dates.map(d=>{
+    const w=wdOf(d);
+    return `<th class="col ${w===6?'sat':''} ${w===0?'sun':''}">${mdLabel(d)}
+      <span class="wd">${WD[w]}</span></th>`;}).join('');
+  let aggRows=times.map(t=>{
+    let cells=dates.map(d=>{
+      const k=slotKey(d,t);
+      let n=0;activeSongs.forEach(s=>{if(slotOkForSong(s,k))n++;});
+      const ratio=activeSongs.length?n/activeSongs.length:0;
+      const bg=n===0?'var(--surface)':
+        `rgba(47,125,82,${(0.18+ratio*0.72).toFixed(2)})`;
+      const col=ratio>0.55?'#fff':'var(--ink)';
+      return `<td class="cell" style="background:${bg};cursor:default">
+        ${n>0?`<span style="font-size:11px;font-weight:700;color:${col}">${n}</span>`:''}</td>`;
+    }).join('');
+    return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+  }).join('');
+
+  // 곡별
+  let songCards=sIds.map(s=>{
+    const mem=songMembers(s);
+    const memNames=mem.map(u=>esc(c.people[u])).join(', ');
+    if(!mem.length)
+      return `<div class="song-res"><div class="top">
+        <span class="nm">${esc(c.songs[s])}</span>
+        <span class="mem">멤버 미지정</span></div>
+        <div class="zero-msg">담당표에서 이 곡의 멤버를 지정하세요.</div></div>`;
+    const okSlots=[];
+    dates.forEach(d=>times.forEach(t=>{
+      const k=slotKey(d,t);if(slotOkForSong(s,k))okSlots.push({d,t});}));
+    const zero=okSlots.length===0;
+    let slotHtml;
+    if(zero){
+      slotHtml='<div class="zero-msg">⚠ 전원이 가능한 시간이 없습니다.</div>';
+    }else{
+      const byDay={};okSlots.forEach(o=>{(byDay[o.d]=byDay[o.d]||[]).push(o.t);});
+      slotHtml=Object.keys(byDay).map(d=>{
+        const w=wdOf(d);
+        return `<div class="daygrp"><span class="dl">${mdLabel(d)} (${WD[w]})</span> `+
+          byDay[d].map(t=>`<span class="pill ok">${t}</span>`).join('')+`</div>`;
+      }).join('');
+    }
+    return `<div class="song-res ${zero?'zero':''}">
+      <div class="top">
+        <span class="nm">${esc(c.songs[s])}</span>
+        <span class="mem">${mem.length}명 · ${memNames}</span>
+        <span class="badge" style="margin-left:auto;color:${zero?'var(--accent)':'var(--ok)'}">
+          가능 ${okSlots.length}칸</span>
+      </div>
+      <div class="slots">${slotHtml}</div></div>`;
+  }).join('');
+
+  return `<div class="card">
+    <h2>종합 — 시간대별 합주 가능 곡 수</h2>
+    <div class="sub">숫자 = 그 시간에 전원 출석 가능한 곡의 수. 진할수록 많은 곡이 가능합니다.</div>
+    ${(dates.length&&times.length)?
+      `<div class="scroll"><table class="grid"><thead><tr>${aggHead}</tr></thead>
+        <tbody>${aggRows}</tbody></table></div>`
+      :'<div class="note">날짜·시간 범위를 설정하세요.</div>'}
+  </div>
+  <div class="card">
+    <div class="section-label">곡별 가능 시간</div>
+    ${songCards}
+  </div>`;
+}
+
+/* ---------------- 이벤트 ---------------- */
+function bindEvents(){
+  const app=$('app'), hbar=$('hbar');
+
+  function handleClick(e){
+    const t=e.target.closest('[data-act]'); if(!t)return;
+    const act=t.dataset.act;
+    if(act==='home'){location.href=location.pathname;return;}
+    if(act==='new'){createProject();return;}
+    if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
+    if(act==='enter'){
+      const v=($('codeIn').value||'').trim().toUpperCase();
+      if(v)location.href=location.pathname+'?p='+v;return;}
+    if(act==='tab'){state.tab=t.dataset.tab;render();return;}
+    if(act==='preset'){loadPreset();return;}
+    if(act==='addsong'){addSong();return;}
+    if(act==='delsong'){delSong(t.dataset.sid);return;}
+    if(act==='addperson'){addPerson();return;}
+    if(act==='delperson'){delPerson(t.dataset.uid);return;}
+    if(act==='mx'){matrixToggle(t.dataset.sid,t.dataset.uid);return;}
+    if(act==='lock'){toggleLock();return;}
+    if(act==='delproject'){delProject();return;}
+  }
+  app.addEventListener('click',handleClick);
+  hbar.addEventListener('click',handleClick);
+
+  app.addEventListener('change',e=>{
+    const t=e.target.closest('[data-act]'); if(!t)return;
+    const act=t.dataset.act, v=t.value;
+    if(act==='cfgname')cfgUpdate({name:v.trim()||'이름 없음'});
+    else if(act==='cfgstart')cfgUpdate({startDate:v});
+    else if(act==='cfgend'){
+      if(state.config&&v<state.config.startDate){alert('종료일은 시작일 이후여야 합니다.');render();return;}
+      cfgUpdate({endDate:v});}
+    else if(act==='cfgsh'){
+      if(+v>=state.config.endHour){alert('시작 시각은 종료 시각보다 빨라야 합니다.');render();return;}
+      cfgUpdate({startHour:+v});}
+    else if(act==='cfgeh'){
+      if(+v<=state.config.startHour){alert('종료 시각은 시작 시각보다 늦어야 합니다.');render();return;}
+      cfgUpdate({endHour:+v});}
+    else if(act==='cfgslot')cfgUpdate({slotMinutes:+v});
+    else if(act==='songname')FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),v.trim()||'곡');
+    else if(act==='personname')FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),v.trim()||'멤버');
+    else if(act==='pickme'){state.me=v||null;
+      if(state.me)lsSet('me_'+state.pid,state.me);render();}
+  });
+
+  app.addEventListener('blur',e=>{
+    if(e.target.tagName==='INPUT'&&e.target.type==='text'&&deferRender){
+      deferRender=false; setTimeout(render,30);
+    }
+  },true);
+
+  /* 그리드 칠하기 */
+  let paintTarget=true, startCell=null, sx=0, sy=0, pType='';
+  const changes={};
+  function setCell(td,on){
+    const k=td.dataset.slot;
+    td.classList.toggle('no',on);
+    state.avail[state.me]=state.avail[state.me]||{};
+    if(on)state.avail[state.me][k]=true; else delete state.avail[state.me][k];
+    changes[k]=on?true:null;
+  }
+  function flush(){
+    if(Object.keys(changes).length){
+      FB.update(R('projects/'+state.pid+'/avail/'+state.me),{...changes});
+      for(const k in changes)delete changes[k];
+    }
+  }
+  app.addEventListener('pointerdown',e=>{
+    const td=e.target.closest('td.cell[data-cell]'); if(!td||!state.me)return;
+    pType=e.pointerType; startCell=td; sx=e.clientX; sy=e.clientY;
+    if(pType==='mouse'){
+      e.preventDefault();
+      paintTarget=!td.classList.contains('no');
+      setCell(td,paintTarget); painting=true;
+    }
+  });
+  app.addEventListener('pointerover',e=>{
+    if(!painting)return;
+    const td=e.target.closest('td.cell[data-cell]'); if(!td)return;
+    setCell(td,paintTarget);
+  });
+  window.addEventListener('pointerup',e=>{
+    if(painting){ painting=false; flush();
+      if(deferRender){deferRender=false;render();} return; }
+    if(startCell&&pType!=='mouse'){
+      const moved=Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy);
+      const td=document.elementFromPoint(e.clientX,e.clientY);
+      if(moved<12&&td&&td.closest('td.cell')===startCell&&state.me){
+        const on=!startCell.classList.contains('no');
+        setCell(startCell,on); flush();
+      }
+      startCell=null;
+    }
+  });
+}
+
+/* ---------------- 시작 ---------------- */
+async function start(){
+  bindEvents(); render();
+  const status=await initFirebase();
+  if(status==='no-config'){state.screen='no-config';render();return;}
+  if(status==='error'){state.screen='fb-error';render();return;}
+  const pid=new URLSearchParams(location.search).get('p');
+  if(pid){
+    state.pid=pid; state.screen='project';
+    state.me=lsGet('me_'+pid)||null;
+    subscribeProject(pid);
+  }else{
+    state.screen='landing'; subscribeIndex();
+  }
+  render();
+}
+start();
+</script>
+</body>
+</html>
