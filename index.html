@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>밴드 합주 일정 조율</title>
+<title>일정 조율</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
@@ -251,7 +251,7 @@
     font-weight:600;font-size:10.5px;padding:7px 4px;min-width:50px;
     white-space:nowrap;letter-spacing:.01em;}
 
-  /* 멤버 칩 클릭 가능하게 */
+  /* 참여자 칩 클릭 가능하게 */
   button.mstat{cursor:pointer;color:var(--ink);font-family:inherit;}
   button.mstat:hover{border-color:var(--ink);}
   button.mstat.done:hover{border-color:var(--ok);}
@@ -316,7 +316,7 @@
   .fd-block .fb-mem{font-size:12px;color:var(--muted);line-height:1.4;}
   .fd-block .fb-mem b{color:var(--ink);font-weight:600;}
 
-  /* 다중 곡 허용 토글 */
+  /* 다중 활동 허용 토글 */
   .par-row{margin:10px 0 14px;padding:9px 13px;background:var(--paper);
     border-radius:var(--r-sm);border:1px solid var(--line);}
   .par-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;
@@ -324,7 +324,7 @@
   .par-toggle input{accent-color:var(--accent);cursor:pointer;width:14px;height:14px;}
   .par-toggle .par-hint{color:var(--muted);font-size:11.5px;margin-left:3px;font-weight:400;}
 
-  /* 곡별 요약 */
+  /* 활동별 요약 */
   .fs-card{border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);padding:14px 16px;margin-bottom:14px;}
   .fs-head{display:flex;justify-content:space-between;align-items:baseline;
@@ -395,7 +395,7 @@
     overflow:hidden;}
   .cal-block .cb-mem b{font-weight:700;}
 
-  /* 상세 탭 — 곡별 멤버 가능 캘린더 */
+  /* 상세 탭 — 활동별 참여자 가능 캘린더 */
   table.gantt th.gnt-sub.dtl-sub{min-width:42px;padding:8px 5px 6px;
     font-size:11px;letter-spacing:0;}
   table.gantt th.gnt-sub.dtl-sub::before{display:none;}
@@ -418,7 +418,7 @@
   .dtl-mc{flex:0 0 96px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;
     font-size:11px;text-align:right;}
 
-  /* 곡별 안 되는 시간 상세 (legacy, kept for compat) */
+  /* 활동별 안 되는 시간 상세 (legacy, kept for compat) */
   .blk-list{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
   .blk-song{border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);overflow:hidden;}
@@ -722,7 +722,7 @@ function timeList(sh,eh,sm){const out=[];for(let m=sh*60;m<eh*60;m+=sm)
   out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));return out;}
 const slotKey=(d,t)=>d+'|'+t;
 
-/* ---- 곡/멤버 항목은 구버전(문자열) / 신버전({name,ts}) 둘 다 지원 ---- */
+/* ---- 활동/참여자 항목은 구버전(문자열) / 신버전({name,ts}) 둘 다 지원 ---- */
 const itemName=v=>typeof v==='string'?v:(v&&v.name)||'';
 const itemTs  =v=>(v&&typeof v==='object'&&typeof v.ts==='number')?v.ts:0;
 function sortedIds(map){
@@ -733,7 +733,7 @@ function sortedIds(map){
   });
 }
 
-/* 곡별 색상 — 등록 순서에 따라 hue 분산 */
+/* 활동별 색상 — 등록 순서에 따라 hue 분산 */
 function _activeSongOrder(){
   return sortedIds(state.config?.songs||{}).filter(s=>songMembers(s).length>0);
 }
@@ -772,7 +772,7 @@ function slotConflicts(sid,slotKey){
   const allowParallel=!!(state.config&&state.config.allowParallel);
   const out=[];
   if(allowParallel){
-    // 멤버 겹치는 경우만 충돌
+    // 참여자 겹치는 경우만 충돌
     const mine=new Set(songMembers(sid));
     for(const other in state.schedule){
       if(other===sid) continue;
@@ -781,7 +781,7 @@ function slotConflicts(sid,slotKey){
       if(shared.length) out.push({sid:other,shared});
     }
   } else {
-    // 기본: 한 슬롯에 한 곡만 — 같은 시간 다른 곡 무조건 충돌
+    // 기본: 한 슬롯에 한 활동만 — 같은 시간 다른 활동 무조건 충돌
     for(const other in state.schedule){
       if(other===sid) continue;
       if(state.schedule[other][slotKey]) out.push({sid:other,shared:[]});
@@ -803,7 +803,7 @@ function fmtDur(min){
   return `${h}시간 ${m}분`;
 }
 function consolidateBlocks(filterUid){
-  // 연속된 같은 곡의 슬롯들을 하나의 블록으로 합침
+  // 연속된 같은 활동의 슬롯들을 하나의 블록으로 합침
   const c=state.config; if(!c) return [];
   const sm=c.slotMinutes||60;
   const blocks=[];
@@ -899,8 +899,8 @@ async function createProject(){
   const base=Date.now();
   const s1=genId('s'), s2=genId('s'), s3=genId('s');
   const u1=genId('u'), u2=genId('u'), u3=genId('u');
-  const songs={[s1]:{name:'곡 1',ts:base},[s2]:{name:'곡 2',ts:base+1},[s3]:{name:'곡 3',ts:base+2}};
-  const people={[u1]:{name:'멤버 1',ts:base},[u2]:{name:'멤버 2',ts:base+1},[u3]:{name:'멤버 3',ts:base+2}};
+  const songs={[s1]:{name:'활동 1',ts:base},[s2]:{name:'활동 2',ts:base+1},[s3]:{name:'활동 3',ts:base+2}};
+  const people={[u1]:{name:'참여자 1',ts:base},[u2]:{name:'참여자 2',ts:base+1},[u3]:{name:'참여자 3',ts:base+2}};
   const matrix={
     [s1]:{[u1]:true,[u2]:true},
     [s2]:{[u2]:true,[u3]:true},
@@ -920,13 +920,13 @@ function cfgUpdate(obj){
     FB.update(R('projectIndex/'+state.pid),{name:obj.name});
 }
 function addSong(){ const sid=genId('s');
-  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),{name:'새 곡',ts:Date.now()}); }
+  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),{name:'새 활동',ts:Date.now()}); }
 function delSong(sid){
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
 }
 function addPerson(){ const uid=genId('u');
-  FB.set(R('projects/'+state.pid+'/config/people/'+uid),{name:'새 멤버',ts:Date.now()}); }
+  FB.set(R('projects/'+state.pid+'/config/people/'+uid),{name:'새 참여자',ts:Date.now()}); }
 function delPerson(uid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
   FB.remove(R('projects/'+state.pid+'/avail/'+uid));
@@ -988,8 +988,8 @@ function exportICS(){
     lines.push(`DTSTAMP:${dtstamp}`);
     lines.push(`DTSTART:${dstart}`);
     lines.push(`DTEND:${dend}`);
-    lines.push(`SUMMARY:합주 · ${escapeICS(songNm)}`);
-    lines.push(`DESCRIPTION:${escapeICS('멤버: '+memNm)}`);
+    lines.push(`SUMMARY:일정 · ${escapeICS(songNm)}`);
+    lines.push(`DESCRIPTION:${escapeICS('참여자: '+memNm)}`);
     lines.push('END:VEVENT');
   });
   lines.push('END:VCALENDAR');
@@ -1057,7 +1057,7 @@ function doRender(){
 }
 
 function renderHeader(){
-  let h='<div class="brand" data-act="home">합주<span class="dot">.</span>조율</div>';
+  let h='<div class="brand" data-act="home">일정<span class="dot">.</span>조율</div>';
   if(state.screen==='project'&&state.config){
     h+='<div class="crumb">'
       +'<span class="pname">'+esc(state.config.name||'(이름 없음)')+'</span>'
@@ -1103,10 +1103,10 @@ function viewHelp(){
 
         <div class="tut-section">
           <h3>🎯 한눈에 보는 흐름</h3>
-          <p>밴드/그룹 합주 일정을 모두가 같이 정하는 도구입니다.</p>
+          <p>여러 사람이 모이는 일정을 함께 조율하는 도구입니다.</p>
           <ol>
-            <li><b>리더</b>가 프로젝트를 만들고 6자리 <b>코드</b>를 멤버들에게 공유</li>
-            <li><b>각 멤버</b>가 안 되는 시간을 입력하고 작성 완료 체크</li>
+            <li><b>리더</b>가 프로젝트를 만들고 6자리 <b>코드</b>를 참여자들에게 공유</li>
+            <li><b>각 참여자</b>가 안 되는 시간을 입력하고 작성 완료 체크</li>
             <li>리더(또는 같이)가 시간표를 짜고, 모두가 결과를 받아갑니다</li>
           </ol>
         </div>
@@ -1118,58 +1118,58 @@ function viewHelp(){
             <li><b>설정</b> 탭에서:
               <ul>
                 <li>프로젝트 이름</li>
-                <li>합주 가능한 <b>날짜 범위</b>와 <b>시간 범위</b>, 칸 단위 (30분 또는 1시간)</li>
-                <li><b>곡 목록</b>과 <b>멤버 목록</b> 추가</li>
-                <li><b>담당표</b> — 각 곡에 누가 참여하는지 체크</li>
+                <li>참여 가능한 <b>날짜 범위</b>와 <b>시간 범위</b>, 칸 단위 (30분 또는 1시간)</li>
+                <li><b>활동 목록</b>과 <b>참여자 목록</b> 추가</li>
+                <li><b>참여표</b> — 각 활동에 누가 참여하는지 체크</li>
               </ul>
             </li>
             <li><b>코드 공유</b>: 헤더의 코드 칩을 클릭하면 클립보드에 복사됩니다.
               현재 URL(<code>?p=ABC123</code>)을 직접 공유해도 됩니다.</li>
-            <li>곡·멤버를 다 받았으면 <b>🔒 설정 잠그기</b>로 멤버들이 실수로 못 바꾸게 막을 수 있습니다.</li>
+            <li>활동·참여자를 다 받았으면 <b>🔒 설정 잠그기</b>로 참여자들이 실수로 못 바꾸게 막을 수 있습니다.</li>
           </ol>
         </div>
 
         <div class="tut-section">
-          <h3>👤 멤버로 초대받았다면</h3>
+          <h3>👤 참여자로 초대받았다면</h3>
           <ol>
             <li>받은 코드를 메인 화면 코드 입력란에 넣거나, 받은 링크 클릭으로 입장합니다.</li>
             <li><b>입력</b> 탭에서 <b>내 이름</b>을 고릅니다.</li>
-            <li>합주가 <span style="color:var(--accent);font-weight:700">불가능한 시간 칸</span>을 클릭하거나 드래그로 칠합니다.
+            <li>참여가<span style="color:var(--accent);font-weight:700">불가능한 시간 칸</span>을 클릭하거나 드래그로 칠합니다.
               빨갛게 표시된 칸이 "안 됨"입니다.
               <ul>
                 <li>PC: 즉시 박스 드래그로 여러 칸을 한 번에</li>
                 <li>모바일: 칸을 탭(짧게)하면 하나, <b>꾹 눌렀다가</b> 손가락 움직이면 박스 드래그</li>
               </ul>
             </li>
-            <li>다 입력했으면 우상단 <b>"작성 완료 체크"</b>를 눌러주세요. 다른 멤버들도 누가 끝났는지 봅니다.</li>
-            <li>멤버 현황 칩 클릭으로 다른 사람 시간표로 바로 이동할 수 있습니다.</li>
+            <li>다 입력했으면 우상단 <b>"작성 완료 체크"</b>를 눌러주세요. 다른 참여자들도 누가 끝났는지 봅니다.</li>
+            <li>참여자 현황 칩 클릭으로 다른 사람 시간표로 바로 이동할 수 있습니다.</li>
           </ol>
         </div>
 
         <div class="tut-section">
           <h3>📊 시간표 짜기 (결과 탭)</h3>
-          <p>날짜 × 곡 sub-col × 시간으로 펼쳐진 간트 그리드가 보입니다. 칸 색의 의미:</p>
+          <p>날짜 × 활동 sub-col × 시간으로 펼쳐진 간트 그리드가 보입니다. 칸 색의 의미:</p>
           <ul>
-            <li><b>옅은 색</b> — 가능 (그 시간에 그 곡 합주 OK)</li>
+            <li><b>옅은 색</b> — 가능 (그 시간에 그 활동 전원 가능)</li>
             <li><b>짙은 색</b> — 실제로 배정됨</li>
-            <li><b>회색 빗금</b> — 멤버가 안 됨</li>
-            <li><b>흰 빗금</b> — 같은 시간에 다른 곡 이미 배정</li>
+            <li><b>회색 빗금</b> — 참여자가 안 됨</li>
+            <li><b>흰 빗금</b> — 같은 시간에 다른 활동 이미 배정</li>
           </ul>
           <p>조작:</p>
           <ul>
             <li>가능한 칸 <b>클릭</b> = 배정 / 해제 토글</li>
-            <li>같은 sub-col(곡×날짜) 안에서 <b>세로 드래그</b> = 연속 시간 한 번에 배정</li>
-            <li>위쪽 토글 <b>"같은 시간에 여러 곡 허용"</b>:
-              꺼짐(기본) = 한 슬롯에 한 곡만 / 켜짐 = 멤버 안 겹치면 동시 가능</li>
+            <li>같은 sub-col(활동×날짜) 안에서 <b>세로 드래그</b> = 연속 시간 한 번에 배정</li>
+            <li>위쪽 토글 <b>"같은 시간에 여러 활동 허용"</b>:
+              꺼짐(기본) = 한 슬롯에 한 활동만 / 켜짐 = 참여자 안 겹치면 동시 가능</li>
           </ul>
         </div>
 
         <div class="tut-section">
           <h3>📅 결과 공유 & 캘린더 내보내기</h3>
           <ul>
-            <li><b>곡별 합주 요약</b> — 각 곡이 몇 회 / 몇 시간 / 언제 합주하는지 정리</li>
-            <li><b>최종 캘린더</b> — 배정된 합주를 캘린더 모양으로 시각화</li>
-            <li><b>멤버 필터</b> — 드롭다운에서 본인 선택하면 본인 일정만 표시</li>
+            <li><b>활동별 일정 요약</b> — 각 활동이 몇 회 / 몇 시간 / 언제 진행하는지 정리</li>
+            <li><b>최종 캘린더</b> — 배정된 일정을 캘린더 모양으로 시각화</li>
+            <li><b>참여자 필터</b> — 드롭다운에서 본인 선택하면 본인 일정만 표시</li>
             <li><b>📷 PNG</b> — 그 화면 그대로 이미지로 저장</li>
             <li><b>📅 .ics</b> — Google/Apple/Outlook 캘린더로 가져갈 수 있는 파일 다운로드</li>
           </ul>
@@ -1177,17 +1177,17 @@ function viewHelp(){
 
         <div class="tut-section">
           <h3>🔍 상세 탭</h3>
-          <p>곡 하나를 고르면 그 곡 멤버들의 시간대별 가능/불가능을 한눈에 봅니다.
-             멤버별 안 되는 칸 비율 막대도 함께 표시 — <b>"이 곡은 누구 때문에 안 되는지"</b> 빠르게 파악 가능합니다.</p>
+          <p>활동 하나를 고르면 그 활동 참여자들의 시간대별 가능/불가능을 한눈에 봅니다.
+             참여자별 안 되는 칸 비율 막대도 함께 표시 — <b>"이 활동은 누구 때문에 안 되는지"</b> 빠르게 파악 가능합니다.</p>
         </div>
 
         <div class="tut-section tut-tip">
           <h3>💡 자주 묻는 것</h3>
           <ul>
-            <li><b>코드를 잃어버렸어요</b> — 다른 멤버에게 다시 물어보세요. 헤더 코드 칩 클릭으로 공유.</li>
-            <li><b>새 프로젝트를 만들면?</b> — 예시로 곡 3개, 멤버 3개와 담당표가 채워져 있습니다. 이름은 자유롭게 바꾸고, 필요 없는 항목은 × 버튼으로 삭제하세요.</li>
+            <li><b>코드를 잃어버렸어요</b> — 다른 참여자에게 다시 물어보세요. 헤더 코드 칩 클릭으로 공유.</li>
+            <li><b>새 프로젝트를 만들면?</b> — 예시로 활동 3개, 참여자 3개와 참여표가 채워져 있습니다. 이름은 자유롭게 바꾸고, 필요 없는 항목은 × 버튼으로 삭제하세요.</li>
             <li><b>다른 기기에서 같은 프로젝트를 열려면?</b> — 코드 입력 또는 링크로 들어가면 됩니다. 메인 화면 "최근 프로젝트" 목록은 그 기기에서 들어가본 것만 보입니다.</li>
-            <li><b>설정 잠그면 뭐가 잠기나요?</b> — 곡·멤버 추가/이름 변경, 날짜/시간 범위 변경이 막힙니다. 시간 입력과 배정은 그대로 가능.</li>
+            <li><b>설정 잠그면 뭐가 잠기나요?</b> — 활동·참여자 추가/이름 변경, 날짜/시간 범위 변경이 막힙니다. 시간 입력과 배정은 그대로 가능.</li>
           </ul>
         </div>
 
@@ -1241,8 +1241,8 @@ function viewLanding(){
   }).join('');
 
   return `<div class="card" style="padding:32px">
-    <div class="hero">합주 일정<span class="dot">,</span> 한 번에</div>
-    <p class="sub" style="margin-bottom:24px;font-size:14.5px;max-width:560px">날짜·시간 범위와 곡·멤버를 정하면, 각자 안 되는 시간을 입력하고 곡별 가능 시간을 자동으로 계산합니다. <b>코드를 아는 사람만</b> 프로젝트에 들어올 수 있습니다.</p>
+    <div class="hero">일정 조율<span class="dot">,</span> 한 번에</div>
+    <p class="sub" style="margin-bottom:24px;font-size:14.5px;max-width:560px">날짜·시간 범위와 활동·참여자를 정하면, 각자 안 되는 시간을 입력하고 활동별 모두가 가능한 시간을 자동으로 계산합니다. <b>코드를 아는 사람만</b> 프로젝트에 들어올 수 있습니다.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn" data-act="new">+ 새 프로젝트 만들기</button>
       <span style="color:var(--muted-2);font-size:13px;padding:0 4px">또는</span>
@@ -1268,18 +1268,18 @@ function viewSetup(){
       <input type="text" value="${esc(itemName(songs[id]))}" ${dis}
         data-act="songname" data-sid="${id}">
       <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 곡이 없습니다.</div>';
+    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
 
   let pplRows=pIds.length? pIds.map((id,i)=>
     `<div class="list-item"><span class="idx">${i+1}</span>
       <input type="text" value="${esc(itemName(people[id]))}" ${dis}
         data-act="personname" data-uid="${id}">
       <button class="x" data-act="delperson" data-uid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 멤버가 없습니다.</div>';
+    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 참여자가 없습니다.</div>';
 
   let matrix='';
   if(sIds.length&&pIds.length){
-    let head='<th class="corner">곡 \\ 멤버</th>'+
+    let head='<th class="corner">활동 \\ 참여자</th>'+
       pIds.map(u=>`<th class="col">${esc(itemName(people[u]))}</th>`).join('');
     let body=sIds.map(s=>{
       let cells=pIds.map(u=>{
@@ -1291,9 +1291,9 @@ function viewSetup(){
     }).join('');
     matrix=`<div class="scroll tall"><table class="grid">
       <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-      <div class="note">칸을 클릭하면 그 멤버가 그 곡에 참여하는 것으로 표시됩니다.</div>`;
+      <div class="note">칸을 클릭하면 그 참여자가 그 활동에 참여하는 것으로 표시됩니다.</div>`;
   } else {
-    matrix='<div class="empty" style="padding:24px 12px">곡과 멤버를 먼저 추가하면 담당표가 나타납니다.</div>';
+    matrix='<div class="empty" style="padding:24px 12px">활동과 참여자를 먼저 추가하면 참여표가 나타납니다.</div>';
   }
 
   return `<div class="card">
@@ -1306,7 +1306,7 @@ function viewSetup(){
     </div>
     <div class="page-intro">
       <div class="pi-h">🎯 이 페이지는?</div>
-      <p>프로젝트의 <b>뼈대</b>를 만드는 곳입니다. 합주할 <b>기간·시간대</b>, <b>곡 목록</b>, <b>멤버 목록</b>, 누가 어떤 곡을 연주하는지(<b>담당표</b>)를 정합니다. 다 정했으면 우상단의 잠금 버튼으로 잠가두면 멤버들이 실수로 못 바꿉니다.</p>
+      <p>프로젝트의 <b>뼈대</b>를 만드는 곳입니다. 진행할 <b>기간·시간대</b>, <b>활동 목록</b>, <b>참여자 목록</b>, 어떤 활동에 누가 참여하는지(<b>참여표</b>)를 정합니다. 다 정했으면 우상단의 잠금 버튼으로 잠가두면 참여자들이 실수로 못 바꿉니다.</p>
     </div>
     <label class="fld">
       <span class="lab">프로젝트 이름</span>
@@ -1335,22 +1335,22 @@ function viewSetup(){
   </div>
   <div class="card">
     <div class="card-head">
-      <div class="section-label" style="margin:0">곡 목록 <span class="count">${sIds.length}</span></div>
+      <div class="section-label" style="margin:0">활동 목록 <span class="count">${sIds.length}</span></div>
       <div style="display:flex;gap:6px">
-        <button class="btn sm" data-act="addsong" ${dis}>+ 곡 추가</button>
+        <button class="btn sm" data-act="addsong" ${dis}>+ 활동 추가</button>
       </div>
     </div>
     ${songRows}
   </div>
   <div class="card">
     <div class="card-head">
-      <div class="section-label" style="margin:0">멤버 목록 <span class="count">${pIds.length}</span></div>
-      <button class="btn sm" data-act="addperson" ${dis}>+ 멤버 추가</button>
+      <div class="section-label" style="margin:0">참여자 목록 <span class="count">${pIds.length}</span></div>
+      <button class="btn sm" data-act="addperson" ${dis}>+ 참여자 추가</button>
     </div>
     ${pplRows}
   </div>
   <div class="card">
-    <div class="section-label">담당표 — 곡 × 멤버</div>
+    <div class="section-label">참여표 — 활동 × 참여자</div>
     ${matrix}
   </div>
   <div class="card danger-zone">
@@ -1367,7 +1367,7 @@ function viewSetup(){
 function viewParticipate(){
   const c=state.config;
   const pIds=sortedIds(c.people||{});
-  if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 멤버를 먼저 추가하세요.</div></div>`;
+  if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 참여자를 먼저 추가하세요.</div></div>`;
   if(state.me&&!c.people[state.me]) state.me=null;
 
   let opts='<option value="">— 이름 선택 —</option>'+
@@ -1393,18 +1393,18 @@ function viewParticipate(){
     <div class="card-head">
       <div>
         <h2>안 되는 시간 입력</h2>
-        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 합주가 <b style="color:var(--accent)">불가능한 칸</b>을 칠하세요. PC는 박스 드래그, 모바일은 꾹 눌러서 드래그.</div>
+        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 참여가<b style="color:var(--accent)">불가능한 칸</b>을 칠하세요. PC는 박스 드래그, 모바일은 꾹 눌러서 드래그.</div>
       </div>
     </div>
     <div class="page-intro">
       <div class="pi-h">🎯 이 페이지는?</div>
-      <p>각자 <b>본인의 안 되는 시간</b>을 표시하는 곳입니다. 본인 이름을 고른 뒤 합주가 불가능한 시간 칸을 빨갛게 칠하세요. 멤버 현황으로 다른 사람의 진행도 볼 수 있고, 다 입력했으면 우상단의 <b>"작성 완료 체크"</b>를 눌러 다른 사람들에게 알려주세요.</p>
+      <p>각자 <b>본인의 안 되는 시간</b>을 표시하는 곳입니다. 본인 이름을 고른 뒤 참여가불가능한 시간 칸을 빨갛게 칠하세요. 참여자 현황으로 다른 사람의 진행도 볼 수 있고, 다 입력했으면 우상단의 <b>"작성 완료 체크"</b>를 눌러 다른 사람들에게 알려주세요.</p>
     </div>
     <label class="fld" style="max-width:280px;margin-bottom:0">
       <span class="lab">내 이름</span>
       <select data-act="pickme" style="width:100%">${opts}</select>
     </label>
-    <div class="section-label" style="margin:18px 0 0">멤버 현황 <span class="count">${doneCount}/${pIds.length}</span></div>
+    <div class="section-label" style="margin:18px 0 0">참여자 현황 <span class="count">${doneCount}/${pIds.length}</span></div>
     <div class="member-status">${statusChips}</div>
   </div>`;
 
@@ -1470,14 +1470,14 @@ function viewParticipate(){
     </div>
     ${tabsHtml}
     ${gridHtml || '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>'}
-    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 멤버 수. PC에서는 박스 드래그로 여러 칸 한 번에 선택할 수 있습니다. 다 입력했으면 우상단의 <b>작성 완료 체크</b>를 눌러주세요.</div>
+    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 참여자 수. PC에서는 박스 드래그로 여러 칸 한 번에 선택할 수 있습니다. 다 입력했으면 우상단의 <b>작성 완료 체크</b>를 눌러주세요.</div>
   </div>`;
 }
 
 function viewResults(){
   const c=state.config;
   const sIds=sortedIds(c.songs||{});
-  if(!sIds.length) return `<div class="card"><div class="empty">설정에서 곡을 추가하세요.</div></div>`;
+  if(!sIds.length) return `<div class="card"><div class="empty">설정에서 활동을 추가하세요.</div></div>`;
   const dates=dateList(c.startDate,c.endDate);
   const times=timeList(c.startHour,c.endHour,c.slotMinutes);
 
@@ -1486,7 +1486,7 @@ function viewResults(){
   const hidden=state.hiddenSongs||{};
   const isShown=sid=>!hidden[sid];
 
-  // 곡 토글 — chip style
+  // 활동 토글 — chip style
   const allShown=activeSongs.every(isShown);
   let toggleHtml=`<div class="song-toggles">
     <span class="label">표시:</span>
@@ -1501,7 +1501,7 @@ function viewResults(){
       </label>`;}).join('')}
   </div>`;
 
-  // 표시할 곡 (활성 + 안 숨김)
+  // 표시할 활동 (활성 + 안 숨김)
   const visibleSongs=activeSongs.filter(isShown);
 
   const wks=buildWeeks(dates).map((w,i)=>{
@@ -1533,11 +1533,11 @@ function viewResults(){
       title=`${itemName(c.songs[sid])} 배정 · 클릭하면 해제`;
     } else if(!feasible){
       cls+=' infeasible';
-      title='이 시간엔 멤버가 안 됩니다';
+      title='이 시간엔 참여자가 안 됩니다';
     } else if(cfs.length){
       cls+=' conflict';
       const nm=cfs.map(x=>itemName(c.songs[x.sid])).join(', ');
-      title=`멤버 겹침: ${nm}`;
+      title=`참여자 겹침: ${nm}`;
     } else {
       cls+=' feasible';
       style=`background:${songColorLight(sid)}`;
@@ -1549,7 +1549,7 @@ function viewResults(){
   function renderGantt(week){
     const days=week.filter(d=>d.inRange);
     if(!days.length) return '<div class="empty">표시할 날짜가 없습니다.</div>';
-    if(!visibleSongs.length) return '<div class="empty">표시할 곡을 위에서 체크하세요.</div>';
+    if(!visibleSongs.length) return '<div class="empty">표시할 활동을 위에서 체크하세요.</div>';
     const N=visibleSongs.length;
     let dayHead='<th class="gnt-corner" rowspan="2">시간</th>';
     let subHead='';
@@ -1584,7 +1584,7 @@ function viewResults(){
   const optRow=`<div class="par-row">
     <label class="par-toggle">
       <input type="checkbox" data-act="toggleparallel" ${allowParallel?'checked':''}>
-      <span>같은 시간에 여러 곡 허용 <span class="par-hint">${allowParallel?'(멤버 겹치지 않을 때만 가능)':'(한 슬롯에 한 곡만)'}</span></span>
+      <span>같은 시간에 여러 활동 허용 <span class="par-hint">${allowParallel?'(참여자 겹치지 않을 때만 가능)':'(한 슬롯에 한 활동만)'}</span></span>
     </label>
   </div>`;
 
@@ -1593,7 +1593,7 @@ function viewResults(){
         <h2>시간표 — 가능 시간 & 배정</h2>
         <div class="page-intro">
           <div class="pi-h">🎯 이 페이지는?</div>
-          <p>실제 <b>합주 시간표를 짜는 곳</b>입니다. 모든 멤버 입력이 종합되어 곡별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=멤버 안 됨. 최종 결과는 아래 캘린더 카드에서 PNG·캘린더(.ics)로 받을 수 있습니다.</p>
+          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 모든 참여자 입력이 종합되어 활동별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=참여자 안 됨. 최종 결과는 아래 캘린더 카드에서 PNG·캘린더(.ics)로 받을 수 있습니다.</p>
         </div>
         ${optRow}
         ${tabsHtml}
@@ -1708,9 +1708,9 @@ function viewResults(){
   </div>`:'';
 
   const calHtml=activeWk?renderCalWeek(activeWk.dates):'';
-  const filterLabel=filterUid?`${esc(itemName(c.people[filterUid]))} 님의 일정`:'전체 합주 일정';
+  const filterLabel=filterUid?`${esc(itemName(c.people[filterUid]))} 님의 일정`:'전체 일정';
 
-  // 곡별 요약
+  // 활동별 요약
   const sumBySid={};
   blocks.forEach(b=>{
     const dur=parseTime(b.end)-parseTime(b.start);
@@ -1740,7 +1740,7 @@ function viewResults(){
   const totalMin=blocks.reduce((s,b)=>s+(parseTime(b.end)-parseTime(b.start)),0);
   const summaryHtml=blocks.length?`<div class="fs-card">
     <div class="fs-head">
-      <span class="fs-h-label">곡별 합주 요약</span>
+      <span class="fs-h-label">활동별 일정 요약</span>
       <span class="fs-h-total">총 ${blocks.length}회 · ${fmtDur(totalMin)}</span>
     </div>
     <div class="fs-list-wrap">${summaryRows}</div>
@@ -1750,7 +1750,7 @@ function viewResults(){
     <div class="card-head">
       <div>
         <h2>최종 시간표</h2>
-        <div class="sub" style="margin:4px 0 0">배정된 합주를 캘린더 형태로 표시합니다. 멤버 필터를 걸면 그 사람의 일정만 봅니다.</div>
+        <div class="sub" style="margin:4px 0 0">배정된 일정을 캘린더 형태로 표시합니다. 참여자 필터를 걸면 그 사람의 일정만 봅니다.</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <select data-act="filtermember">${memberOpts}</select>
@@ -1760,7 +1760,7 @@ function viewResults(){
     </div>
     ${finalTabsHtml}
     <div id="final-snapshot">
-      <div class="fd-title">${esc(c.name||'합주 일정')} <span class="fd-subtitle">· ${filterLabel}</span></div>
+      <div class="fd-title">${esc(c.name||'일정')} <span class="fd-subtitle">· ${filterLabel}</span></div>
       ${summaryHtml}
       ${blocks.length
         ? calHtml
@@ -1771,20 +1771,20 @@ function viewResults(){
   return gridCard + finalCard;
 }
 
-/* ---- 상세 탭: 곡별 멤버 가능 캘린더 ---- */
+/* ---- 상세 탭: 활동별 참여자 가능 캘린더 ---- */
 function viewResultsDetail(){
   const c=state.config;
   if(!c) return '<div class="card"><div class="empty">프로젝트를 먼저 만드세요.</div></div>';
   const sIds=sortedIds(c.songs||{});
   const activeSongs=sIds.filter(s=>songMembers(s).length>0);
   if(!activeSongs.length){
-    return `<div class="card"><div class="empty">담당표에서 멤버가 지정된 곡이 없습니다.</div></div>`;
+    return `<div class="card"><div class="empty">참여표에서 참여자가 지정된 활동이 없습니다.</div></div>`;
   }
 
   let selSid=state.detailSong;
   if(!selSid || !activeSongs.includes(selSid)) selSid=activeSongs[0];
 
-  // 곡 선택 칩 (single-select)
+  // 활동 선택 칩 (single-select)
   const songChips=activeSongs.map(s=>{
     const on=s===selSid;
     const col=songColor(s);
@@ -1799,7 +1799,7 @@ function viewResultsDetail(){
   const members=songMembers(selSid);
   const songNm=itemName(c.songs[selSid]);
 
-  // 통계: 곡 단위 가능 비율
+  // 통계: 활동 단위 가능 비율
   const totalSlots=dates.length*times.length;
   let feasibleCount=0;
   dates.forEach(d=>times.forEach(t=>{ if(slotOkForSong(selSid, slotKey(d,t))) feasibleCount++; }));
@@ -1827,7 +1827,7 @@ function viewResultsDetail(){
     }).join('')}
   </div>`:'';
 
-  // Gantt 형태: 각 날짜 → 멤버 sub-col, 각 셀 = (uid, date, time) 가능/불가
+  // Gantt 형태: 각 날짜 → 참여자 sub-col, 각 셀 = (uid, date, time) 가능/불가
   let grid='';
   if(active){
     const N=members.length;
@@ -1876,7 +1876,7 @@ function viewResultsDetail(){
       <tbody>${rows}</tbody></table></div>`;
   }
 
-  // 멤버 막대 (얼마나 안 되는지 시각화)
+  // 참여자 막대 (얼마나 안 되는지 시각화)
   const memberBars=memberStats.map(m=>{
     const ratio=totalSlots?Math.round((m.busy/totalSlots)*100):0;
     return `<div class="dtl-mbar">
@@ -1889,23 +1889,23 @@ function viewResultsDetail(){
   return `<div class="card">
     <div class="card-head">
       <div>
-        <h2>곡별 멤버 가능 현황</h2>
-        <div class="sub" style="margin:4px 0 0">곡을 고르면 그 곡 멤버들의 시간별 가능/불가능이 캘린더 형태로 표시됩니다. <b style="color:var(--ok)">초록</b> = 가능, <b style="color:var(--accent)">빨강</b> = 안 됨. 진한 초록은 그 시간에 전원 가능한 경우입니다.</div>
+        <h2>활동별 참여자 가능 현황</h2>
+        <div class="sub" style="margin:4px 0 0">활동을 고르면 그 활동 참여자들의 시간별 가능/불가능이 캘린더 형태로 표시됩니다. <b style="color:var(--ok)">초록</b> = 가능, <b style="color:var(--accent)">빨강</b> = 안 됨. 진한 초록은 그 시간에 전원 가능한 경우입니다.</div>
       </div>
       <span class="badge" style="color:var(--muted)">${feasibleCount}/${totalSlots} 가능</span>
     </div>
     <div class="page-intro">
       <div class="pi-h">🎯 이 페이지는?</div>
-      <p>시간표 짜기가 막혔을 때 <b>"이 곡은 누가 막고 있는지"</b> 찾는 진단 페이지입니다. 곡 하나를 고르면 그 곡 멤버들의 시간대별 가능/불가능이 캘린더로 보이고, 아래에 멤버별 안 되는 칸 비율도 표시됩니다.</p>
+      <p>시간표 짜기가 막혔을 때 <b>"이 활동은 누가 막고 있는지"</b> 찾는 진단 페이지입니다. 활동 하나를 고르면 그 활동 참여자들의 시간대별 가능/불가능이 캘린더로 보이고, 아래에 참여자별 안 되는 칸 비율도 표시됩니다.</p>
     </div>
     <div class="song-toggles" style="margin-top:14px">
-      <span class="label">곡 선택:</span>
+      <span class="label">활동 선택:</span>
       ${songChips}
     </div>
     ${tabsHtml}
     ${grid||'<div class="empty">날짜·시간 범위를 설정하세요.</div>'}
     ${memberBars?`<div class="dtl-mlist">
-      <div class="section-label" style="margin:18px 0 10px">${esc(songNm)} 멤버별 불가 시간 비율</div>
+      <div class="section-label" style="margin:18px 0 10px">${esc(songNm)} 참여자별 불가 시간 비율</div>
       ${memberBars}
     </div>`:''}
   </div>`;
@@ -1984,12 +1984,12 @@ function bindEvents(){
     else if(act==='songname'){
       const cur=state.config.songs?.[t.dataset.sid];
       const ts=itemTs(cur);
-      FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),{name:v.trim()||'곡',ts});
+      FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),{name:v.trim()||'활동',ts});
     }
     else if(act==='personname'){
       const cur=state.config.people?.[t.dataset.uid];
       const ts=itemTs(cur);
-      FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),{name:v.trim()||'멤버',ts});
+      FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),{name:v.trim()||'참여자',ts});
     }
     else if(act==='pickme'){state.me=v||null;
       if(state.me)lsSet('me_'+state.pid,state.me);render();}
@@ -2140,7 +2140,7 @@ function bindEvents(){
     }
   });
 
-  /* 간트 sub-cell — 같은 sub-col(곡×날짜) 안에서 세로 드래그로 시간 범위 토글, 모바일은 long-press */
+  /* 간트 sub-cell — 같은 sub-col(활동×날짜) 안에서 세로 드래그로 시간 범위 토글, 모바일은 long-press */
   let gGrid=null, gSid='', gCol='', gR0=0, gR1=0;
   let gSnap={}, gFlipTo=true;
   let gTouchCell=null, gSx=0, gSy=0;
@@ -2202,12 +2202,12 @@ function bindEvents(){
       FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:null});
       return;
     }
-    if(!slotOkForSong(sid,k)){ toast('이 시간엔 멤버가 안 됩니다'); return; }
+    if(!slotOkForSong(sid,k)){ toast('이 시간엔 참여자가 안 됩니다'); return; }
     const cfs=slotConflicts(sid,k);
     if(cfs.length){
       const nm=cfs.map(x=>itemName(state.config.songs[x.sid])).join(', ');
       const allowParallel=!!(state.config&&state.config.allowParallel);
-      toast(allowParallel?`멤버 겹침: ${nm}`:`이 시간에 이미 배정됨: ${nm}`); return;
+      toast(allowParallel?`참여자 겹침: ${nm}`:`이 시간에 이미 배정됨: ${nm}`); return;
     }
     state.schedule[sid]=state.schedule[sid]||{};
     state.schedule[sid][k]=true;
