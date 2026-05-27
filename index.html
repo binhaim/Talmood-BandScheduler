@@ -272,8 +272,8 @@
     margin-right:5px;flex-shrink:0;box-shadow:0 0 0 1px rgba(0,0,0,.06);}
   .tool-chip.on .csw,.chip-toggle.on .csw{display:none;}
 
-  /* 주차 좌우 2단 */
-  .week-pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  /* 주차 위아래 2단 */
+  .week-pair{display:flex;flex-direction:column;gap:18px;}
   .week-pane{min-width:0;}
   .week-pane .pane-title{font-size:11px;font-weight:600;color:var(--muted);
     letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;
@@ -281,7 +281,6 @@
   .week-pane .pane-title .hint{font-size:11px;color:var(--accent);
     font-weight:600;letter-spacing:0;text-transform:none;}
   .week-pane .scroll{display:inline-block;max-width:100%;}
-  @media (max-width:1000px){.week-pair{grid-template-columns:1fr;gap:18px;}}
 
   /* 우측 인터랙티브 그리드 */
   td.cell.rt{cursor:default;background:var(--surface);transition:filter 80ms ease;}
