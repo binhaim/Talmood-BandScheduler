@@ -307,6 +307,34 @@
   .fd-block .fb-mem{font-size:12px;color:var(--muted);line-height:1.4;}
   .fd-block .fb-mem b{color:var(--ink);font-weight:600;}
 
+  /* 곡별 요약 */
+  .fs-card{border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);padding:14px 16px;margin-bottom:14px;}
+  .fs-head{display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  .fs-h-label{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:14px;letter-spacing:-.01em;color:var(--ink);}
+  .fs-h-total{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:13px;color:var(--accent);letter-spacing:-.01em;}
+  .fs-list-wrap{display:flex;flex-direction:column;gap:7px;}
+  .fs-row{display:grid;grid-template-columns:14px minmax(80px,auto) auto 1fr;
+    align-items:baseline;gap:10px;font-size:12.5px;line-height:1.5;}
+  .fs-dot{width:8px;height:8px;border-radius:50%;background:var(--sc);
+    align-self:center;flex-shrink:0;box-shadow:0 0 0 1px rgba(0,0,0,.05);}
+  .fs-name{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:13.5px;color:var(--ink);letter-spacing:-.005em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fs-count{font-size:12px;color:var(--accent);font-weight:600;
+    background:var(--accent-soft);padding:1px 8px;border-radius:999px;
+    white-space:nowrap;}
+  .fs-list{font-size:12px;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:4px 10px;}
+  .fs-sess{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;}
+  @media (max-width:640px){
+    .fs-row{grid-template-columns:14px 1fr auto;}
+    .fs-list{grid-column:1 / -1;padding-left:24px;}
+  }
+
   /* 캘린더 뷰 */
   .cal{border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);overflow:hidden;}
@@ -351,9 +379,10 @@
   .cal-block .cb-mem b{font-weight:700;}
 
   /* 상세 탭 — 곡별 멤버 가능 캘린더 */
-  table.gantt th.gnt-sub.dtl-sub{min-width:32px;padding:8px 4px 6px;}
+  table.gantt th.gnt-sub.dtl-sub{min-width:42px;padding:8px 5px 6px;
+    font-size:11px;letter-spacing:0;}
   table.gantt th.gnt-sub.dtl-sub::before{display:none;}
-  table.gantt td.gnt-cell.dtl-cell{width:32px;height:30px;cursor:default;}
+  table.gantt td.gnt-cell.dtl-cell{width:42px;height:30px;cursor:default;}
   table.gantt td.gnt-cell.dtl-cell.dtl-yes{background:var(--ok-soft);}
   table.gantt td.gnt-cell.dtl-cell.dtl-yes-all{background:rgba(45,117,73,.38);}
   table.gantt td.gnt-cell.dtl-cell.dtl-no{background:var(--accent);}
@@ -677,6 +706,12 @@ function parseTime(t){const [h,m]=t.split(':').map(Number);return h*60+(m||0);}
 function fmtTime(min){
   const h=Math.floor(min/60), mm=min%60;
   return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+function fmtDur(min){
+  const h=Math.floor(min/60), m=min%60;
+  if(h===0) return `${m}분`;
+  if(m===0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
 }
 function consolidateBlocks(filterUid){
   // 연속된 같은 곡의 슬롯들을 하나의 블록으로 합침
@@ -1451,6 +1486,43 @@ function viewResults(){
 
   const calHtml=activeWk?renderCalWeek(activeWk.dates):'';
   const filterLabel=filterUid?`${esc(itemName(c.people[filterUid]))} 님의 일정`:'전체 합주 일정';
+
+  // 곡별 요약
+  const sumBySid={};
+  blocks.forEach(b=>{
+    const dur=parseTime(b.end)-parseTime(b.start);
+    const e=sumBySid[b.sid]||{count:0,minutes:0,list:[]};
+    e.count++; e.minutes+=dur; e.list.push(b);
+    sumBySid[b.sid]=e;
+  });
+  const songOrder=sortedIds(c.songs||{});
+  const summaryRows=songOrder
+    .filter(sid=>sumBySid[sid])
+    .map(sid=>{
+      const e=sumBySid[sid];
+      const songNm=itemName(c.songs[sid]);
+      const sessionList=e.list
+        .slice().sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))
+        .map(b=>{
+          const wd=['일','월','화','수','목','금','토'][wdOf(b.date)];
+          return `<span class="fs-sess">${mdLabel(b.date)}(${wd}) ${b.start}–${b.end}</span>`;
+        }).join('');
+      return `<div class="fs-row" style="--sc:${songColor(sid)}">
+        <span class="fs-dot"></span>
+        <span class="fs-name">${esc(songNm)}</span>
+        <span class="fs-count">${e.count}회 · ${fmtDur(e.minutes)}</span>
+        <span class="fs-list">${sessionList}</span>
+      </div>`;
+    }).join('');
+  const totalMin=blocks.reduce((s,b)=>s+(parseTime(b.end)-parseTime(b.start)),0);
+  const summaryHtml=blocks.length?`<div class="fs-card">
+    <div class="fs-head">
+      <span class="fs-h-label">곡별 합주 요약</span>
+      <span class="fs-h-total">총 ${blocks.length}회 · ${fmtDur(totalMin)}</span>
+    </div>
+    <div class="fs-list-wrap">${summaryRows}</div>
+  </div>`:'';
+
   const finalCard=`<div class="card">
     <div class="card-head">
       <div>
@@ -1466,6 +1538,7 @@ function viewResults(){
     ${finalTabsHtml}
     <div id="final-snapshot">
       <div class="fd-title">${esc(c.name||'합주 일정')} <span class="fd-subtitle">· ${filterLabel}</span></div>
+      ${summaryHtml}
       ${blocks.length
         ? calHtml
         : `<div class="empty" style="padding:30px 12px">아직 배정된 시간표가 없습니다. 위 그리드에서 칸을 클릭해 배정해 보세요.</div>`}
@@ -1546,7 +1619,7 @@ function viewResultsDetail(){
       members.forEach((uid,mi)=>{
         const last=mi===N-1?'day-end':'';
         const mnm=itemName(c.people[uid]);
-        memHead+=`<th class="gnt-sub dtl-sub ${last}" title="${esc(mnm)}">${esc(shortName(mnm))}</th>`;
+        memHead+=`<th class="gnt-sub dtl-sub ${last}" title="${esc(mnm)}">${esc(mnm)}</th>`;
       });
     });
 
