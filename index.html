@@ -254,22 +254,22 @@
   table.gantt th.gnt-day{position:sticky;top:0;z-index:4;background:var(--ink);
     color:var(--paper);font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
     font-size:11px;padding:6px 4px;text-align:center;
-    border-right:3px solid #000;}
+    border-right:4px solid var(--ink);border-bottom:0;}
   table.gantt th.gnt-day .wd{display:inline-block;font-size:10px;opacity:.65;
     font-family:'Archivo';font-weight:400;margin-left:2px;}
   table.gantt th.gnt-day.sat{color:#9ac8e8;}
   table.gantt th.gnt-day.sun{color:#e89c92;}
-  table.gantt th.gnt-sub{position:sticky;top:28px;z-index:3;background:var(--ink);
+  table.gantt th.gnt-sub{background:var(--ink);
     color:var(--paper);font-family:'Bricolage Grotesque',sans-serif;font-weight:600;
     font-size:10.5px;padding:6px 2px 5px;text-align:center;min-width:26px;
-    white-space:nowrap;letter-spacing:-.01em;border-bottom:1px solid #000;}
+    white-space:nowrap;letter-spacing:-.01em;border-bottom:1px solid var(--ink);}
   table.gantt th.gnt-sub::before{content:'';display:block;height:3px;width:100%;
     background:var(--sc,#888);margin-bottom:4px;border-radius:2px;}
-  table.gantt th.gnt-sub.day-end{border-right:3px solid #000;}
+  table.gantt th.gnt-sub.day-end{border-right:4px solid var(--ink);}
   table.gantt td.gnt-cell{width:26px;height:30px;cursor:pointer;padding:0;
     border-right:1px solid var(--line);border-bottom:1px solid var(--line);
     transition:filter 80ms ease;}
-  table.gantt td.gnt-cell.day-end{border-right:3px solid var(--ink);}
+  table.gantt td.gnt-cell.day-end{border-right:4px solid var(--ink);}
   table.gantt td.gnt-cell.feasible:hover, table.gantt td.gnt-cell.has:hover{filter:brightness(.88);}
   table.gantt td.gnt-cell.infeasible{cursor:not-allowed;
     background:repeating-linear-gradient(135deg, var(--surface) 0 3px,
@@ -306,6 +306,73 @@
     font-size:14px;color:var(--ink);margin-bottom:5px;letter-spacing:-.01em;}
   .fd-block .fb-mem{font-size:12px;color:var(--muted);line-height:1.4;}
   .fd-block .fb-mem b{color:var(--ink);font-weight:600;}
+
+  /* 캘린더 뷰 */
+  .cal{border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);overflow:hidden;}
+  .cal-row{display:flex;}
+  .cal-corner{flex:0 0 56px;background:var(--ink);height:32px;}
+  .cal-head-days{flex:1;display:flex;}
+  .cal-head-row .cal-day-head{flex:1;background:var(--ink);color:var(--paper);
+    text-align:center;padding:7px 4px 6px;font-family:'Bricolage Grotesque',sans-serif;
+    font-size:11px;font-weight:700;border-right:1px solid #000;height:32px;
+    box-sizing:border-box;display:flex;align-items:center;justify-content:center;
+    gap:4px;}
+  .cal-head-row .cal-day-head:last-child{border-right:0;}
+  .cal-head-row .cal-day-head span{font-size:10px;opacity:.65;font-family:'Archivo';
+    font-weight:400;}
+  .cal-head-row .cal-day-head.sat{color:#9ac8e8;}
+  .cal-head-row .cal-day-head.sun{color:#e89c92;}
+  .cal-head-row .cal-day-head.out{opacity:.35;}
+  .cal-time-col{flex:0 0 56px;background:var(--paper);border-right:1px solid var(--line);}
+  .cal-time{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+    color:var(--muted);padding:2px 7px 0;text-align:right;
+    border-bottom:1px solid var(--line);box-sizing:border-box;line-height:1.1;}
+  .cal-days{flex:1;display:flex;}
+  .cal-day{flex:1;min-width:0;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;}
+  .cal-day:last-child{border-right:0;}
+  .cal-day.out{background:repeating-linear-gradient(135deg,
+    transparent 0 5px,rgba(26,24,20,.025) 5px 10px);}
+  .cal-day-body{position:relative;}
+  .cal-day-body .cal-cell{border-bottom:1px solid var(--line);box-sizing:border-box;}
+  .cal-day-body .cal-cell:last-child{border-bottom:0;}
+  .cal-block{position:absolute;color:#fff;border-radius:5px;padding:5px 7px 4px;
+    display:flex;flex-direction:column;gap:1px;line-height:1.15;
+    overflow:hidden;cursor:default;box-shadow:0 1px 2px rgba(0,0,0,.10);}
+  .cal-block .cb-name{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:11.5px;letter-spacing:-.005em;text-shadow:0 1px 1px rgba(0,0,0,.15);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-block .cb-time{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
+    font-weight:500;opacity:.88;}
+  .cal-block .cb-mem{font-size:10px;opacity:.92;line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden;}
+  .cal-block .cb-mem b{font-weight:700;}
+
+  /* 곡별 안 되는 시간 상세 */
+  .blk-list{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
+  .blk-song{border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);overflow:hidden;}
+  .blk-song-head{padding:11px 14px;display:flex;align-items:center;
+    justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:var(--paper);border-bottom:1px solid var(--line);}
+  .blk-song-head .blk-nm{font-family:'Bricolage Grotesque',sans-serif;
+    font-weight:800;font-size:15px;letter-spacing:-.01em;}
+  .blk-song-head .blk-meta{font-size:12px;color:var(--muted);}
+  .blk-members{padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+  .blk-mem-head{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+  .blk-mem-head b{font-size:13px;color:var(--ink);font-weight:700;}
+  .blk-mem-head .blk-ct{font-size:11px;color:var(--accent);font-weight:600;
+    background:var(--accent-soft);padding:1px 7px;border-radius:999px;}
+  .blk-slots{display:flex;flex-direction:column;gap:3px;}
+  .blk-day{font-size:12px;line-height:1.6;}
+  .blk-day-l{display:inline-block;font-weight:600;font-size:11px;
+    color:var(--muted);letter-spacing:.03em;text-transform:uppercase;
+    margin-right:6px;min-width:54px;}
+  .blk-pill{display:inline-block;font-family:ui-monospace,Menlo,monospace;
+    font-size:11px;background:var(--accent-soft);color:var(--accent-d);
+    padding:2px 7px;border-radius:4px;margin:0 3px 2px 0;font-weight:500;}
   th.col.out{opacity:.4;}
   td.cell.out{background:repeating-linear-gradient(135deg,
     transparent 0 4px,rgba(26,24,20,.025) 4px 8px);cursor:default;}
@@ -1254,43 +1321,118 @@ function viewResults(){
       </div>`
     : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
 
-  // 최종 결과 카드
+  // 최종 시간표 (캘린더 뷰)
   const pIds=sortedIds(c.people||{});
   const filterUid=state.finalFilter&&c.people[state.finalFilter]?state.finalFilter:'';
   const blocks=consolidateBlocks(filterUid||null);
   const memberOpts='<option value="">전체 보기</option>'+
     pIds.map(u=>`<option value="${u}" ${filterUid===u?'selected':''}>${esc(itemName(c.people[u]))}</option>`).join('');
-  const byDate={};
-  blocks.forEach(b=>{(byDate[b.date]=byDate[b.date]||[]).push(b);});
-  const dayList=Object.keys(byDate).sort().map(date=>{
-    const w=wdOf(date);
-    const wdLabel=['일','월','화','수','목','금','토'][w];
-    return `<div class="fd-day">
-      <div class="fd-head">${mdLabel(date)} <span class="fd-wd">${wdLabel}요일</span></div>
-      <div class="fd-blocks">
-        ${byDate[date].map(b=>{
-          const songNm=itemName(c.songs[b.sid]);
-          const memList=b.members.map(u=>esc(itemName(c.people[u])));
-          const isMe=filterUid&&b.members.includes(filterUid);
-          return `<div class="fd-block" style="--sc:${songColor(b.sid)}">
-            <div class="fb-time"><span class="fb-dot"></span>${b.start} – ${b.end}</div>
-            <div class="fb-song">${esc(songNm)}</div>
-            <div class="fb-mem">${memList.map(n=>{
-              const highlight = filterUid && n===esc(itemName(c.people[filterUid]));
-              return highlight?`<b>${n}</b>`:n;
-            }).join(' · ')}</div>
-          </div>`;
-        }).join('')}
+
+  // 겹치는 블록 → column 분배
+  function layoutDayBlocks(arr){
+    const sorted=arr.slice().sort((a,b)=>parseTime(a.start)-parseTime(b.start));
+    const colEnd=[];
+    sorted.forEach(b=>{
+      const sm=parseTime(b.start);
+      let col=-1;
+      for(let i=0;i<colEnd.length;i++) if(colEnd[i]<=sm){col=i;break;}
+      if(col===-1){col=colEnd.length;colEnd.push(0);}
+      colEnd[col]=parseTime(b.end);
+      b._col=col;
+    });
+    const total=colEnd.length;
+    sorted.forEach(b=>b._cols=total);
+    return sorted;
+  }
+
+  function renderCalWeek(week){
+    const sm=c.slotMinutes||60;
+    const cellH=36;
+    const baseMin=parseTime(times[0]);
+    const totalH=times.length*cellH;
+    const dateSet=new Set(week.filter(d=>d.inRange).map(d=>d.date));
+    const wkBlocks=blocks.filter(b=>dateSet.has(b.date));
+    const byD={};
+    wkBlocks.forEach(b=>{(byD[b.date]=byD[b.date]||[]).push(b);});
+    Object.keys(byD).forEach(d=>{byD[d]=layoutDayBlocks(byD[d]);});
+
+    const timeCells=times.map(t=>`<div class="cal-time" style="height:${cellH}px">${t}</div>`).join('');
+
+    const daysHtml=week.map(d=>{
+      const w=wdOf(d.date);
+      const wdLabel=['일','월','화','수','목','금','토'][w];
+      const wdCls=w===0?'sun':(w===6?'sat':'');
+      const outCls=d.inRange?'':'out';
+      let bg='';
+      for(let i=0;i<times.length;i++) bg+=`<div class="cal-cell" style="height:${cellH}px"></div>`;
+      const dayBlocks=byD[d.date]||[];
+      const blocksHtml=dayBlocks.map(b=>{
+        const sMin=parseTime(b.start), eMin=parseTime(b.end);
+        const top=((sMin-baseMin)/sm)*cellH;
+        const h=((eMin-sMin)/sm)*cellH-2;
+        const leftPct=(b._col/b._cols)*100;
+        const wPct=(1/b._cols)*100;
+        const songNm=itemName(c.songs[b.sid]);
+        const memList=b.members.map(u=>{
+          const nm=esc(itemName(c.people[u]));
+          return filterUid&&u===filterUid?`<b>${nm}</b>`:nm;
+        }).join(' · ');
+        const tall=h>50;
+        return `<div class="cal-block" style="background:${songColor(b.sid)};top:${top}px;height:${h}px;left:calc(${leftPct.toFixed(2)}% + 1px);width:calc(${wPct.toFixed(2)}% - 2px)" title="${esc(songNm+' · '+b.start+'-'+b.end)}">
+          <div class="cb-name">${esc(songNm)}</div>
+          <div class="cb-time">${b.start} – ${b.end}</div>
+          ${tall?`<div class="cb-mem">${memList}</div>`:''}
+        </div>`;
+      }).join('');
+      return `<div class="cal-day ${wdCls} ${outCls}">
+        <div class="cal-day-body" style="height:${totalH}px">${bg}${blocksHtml}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="cal">
+      <div class="cal-row cal-head-row">
+        <div class="cal-corner"></div>
+        <div class="cal-days cal-head-days">
+          ${week.map(d=>{
+            const w=wdOf(d.date);
+            const wdLabel=['일','월','화','수','목','금','토'][w];
+            const wdCls=w===0?'sun':(w===6?'sat':'');
+            const outCls=d.inRange?'':'out';
+            return `<div class="cal-day-head ${wdCls} ${outCls}">${d.inRange?mdLabel(d.date):''} <span>${d.inRange?wdLabel:''}</span></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="cal-row cal-body-row">
+        <div class="cal-time-col">${timeCells}</div>
+        <div class="cal-days">${daysHtml}</div>
       </div>
     </div>`;
-  }).join('');
+  }
 
+  // 주차별 캘린더 (active week만 보여줘 한 화면에 부담 없게)
+  const wksAll=buildWeeks(dates).map((w,i)=>{
+    const range=w.filter(dd=>dd.inRange).map(dd=>dd.date);
+    return {idx:i,dates:w,range};
+  }).filter(w=>w.range.length>0);
+  const activeWk=wksAll[Math.min(Math.max(state.activeWeek||0,0), wksAll.length-1)]||null;
+  const finalTabsHtml=wksAll.length>1?`<div class="week-tabs">
+    ${wksAll.map((w,i)=>{
+      const rng=w.range.length>1
+        ?`${mdLabel(w.range[0])} ~ ${mdLabel(w.range[w.range.length-1])}`
+        :mdLabel(w.range[0]);
+      const on=activeWk&&activeWk.idx===w.idx;
+      return `<button class="week-tab ${on?'on':''}" data-act="pickweek" data-w="${i}">
+        ${w.idx+1}주차<span class="wkn">${rng}</span></button>`;
+    }).join('')}
+  </div>`:'';
+
+  const calHtml=activeWk?renderCalWeek(activeWk.dates):'';
   const filterLabel=filterUid?`${esc(itemName(c.people[filterUid]))} 님의 일정`:'전체 합주 일정';
   const finalCard=`<div class="card">
     <div class="card-head">
       <div>
         <h2>최종 시간표</h2>
-        <div class="sub" style="margin:4px 0 0">배정된 합주를 시간 블록으로 정리한 결과입니다. 멤버 필터를 걸면 그 사람의 일정만 봅니다.</div>
+        <div class="sub" style="margin:4px 0 0">배정된 합주를 캘린더 형태로 표시합니다. 멤버 필터를 걸면 그 사람의 일정만 봅니다.</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <select data-act="filtermember">${memberOpts}</select>
@@ -1298,15 +1440,85 @@ function viewResults(){
         <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics</button>
       </div>
     </div>
-    <div id="final-snapshot" style="padding:14px 0">
+    ${finalTabsHtml}
+    <div id="final-snapshot">
       <div class="fd-title">${esc(c.name||'합주 일정')} <span class="fd-subtitle">· ${filterLabel}</span></div>
       ${blocks.length
-        ? `<div class="fd-list">${dayList}</div>`
+        ? calHtml
         : `<div class="empty" style="padding:30px 12px">아직 배정된 시간표가 없습니다. 위 그리드에서 칸을 클릭해 배정해 보세요.</div>`}
     </div>
   </div>`;
 
-  return gridCard + finalCard;
+  // 곡별 안 되는 시간 상세
+  const blockerCard=renderBlockerCard();
+
+  return gridCard + finalCard + blockerCard;
+
+  function renderBlockerCard(){
+    if(!activeSongs.length) return '';
+    const sm=c.slotMinutes||60;
+    const songRows=activeSongs.map(sid=>{
+      const members=songMembers(sid);
+      // 멤버별 안 되는 슬롯 수집
+      const byMember={}; // uid -> [{date, time}]
+      // 멤버별 카운트
+      members.forEach(u=>{
+        const av=state.avail[u]||{};
+        Object.keys(av).forEach(k=>{
+          const [d,t]=k.split('|');
+          if(d<c.startDate||d>c.endDate) return;
+          (byMember[u]=byMember[u]||[]).push({d,t,k});
+        });
+      });
+      const memberSummary=members.map(u=>{
+        const slots=byMember[u]||[];
+        const count=slots.length;
+        return {uid:u, count, slots};
+      }).filter(m=>m.count>0).sort((a,b)=>b.count-a.count);
+
+      const songNm=itemName(c.songs[sid]);
+      if(!memberSummary.length){
+        return `<div class="blk-song">
+          <div class="blk-song-head" style="border-left:4px solid ${songColor(sid)}">
+            <span class="blk-nm">${esc(songNm)}</span>
+            <span class="blk-meta">멤버 전원 안 되는 시간 없음 — 모든 시간 가능</span>
+          </div>
+        </div>`;
+      }
+      const summaryHtml=memberSummary.map(m=>{
+        // 그룹: 날짜별 시간 리스트
+        const byDate={};
+        m.slots.forEach(s=>{(byDate[s.d]=byDate[s.d]||[]).push(s.t);});
+        const dayChips=Object.keys(byDate).sort().map(d=>{
+          const wd=['일','월','화','수','목','금','토'][wdOf(d)];
+          const times=byDate[d].sort();
+          return `<div class="blk-day">
+            <span class="blk-day-l">${mdLabel(d)} (${wd})</span>
+            ${times.map(t=>`<span class="blk-pill">${t}</span>`).join('')}
+          </div>`;
+        }).join('');
+        return `<div class="blk-mem">
+          <div class="blk-mem-head">
+            <b>${esc(itemName(c.people[m.uid]))}</b>
+            <span class="blk-ct">${m.count}칸 안 됨</span>
+          </div>
+          <div class="blk-slots">${dayChips}</div>
+        </div>`;
+      }).join('');
+      return `<div class="blk-song">
+        <div class="blk-song-head" style="border-left:4px solid ${songColor(sid)}">
+          <span class="blk-nm">${esc(songNm)}</span>
+          <span class="blk-meta">${members.length}명 · ${memberSummary.length}명이 일부 시간 안 됨</span>
+        </div>
+        <div class="blk-members">${summaryHtml}</div>
+      </div>`;
+    }).join('');
+    return `<div class="card">
+      <h2>곡별 안 되는 시간 상세</h2>
+      <div class="sub">각 곡에서 어떤 멤버가 어느 시간에 안 되는지 한눈에 봅니다. 멤버는 안 되는 칸 수가 많은 순으로 정렬됩니다.</div>
+      <div class="blk-list">${songRows}</div>
+    </div>`;
+  }
 }
 
 /* ---------------- 이벤트 ---------------- */
