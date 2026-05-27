@@ -327,11 +327,30 @@
     padding:4px 11px;border-radius:999px;background:var(--surface);
     border:1px solid var(--line);font-weight:500;}
   .mstat .dot{width:6px;height:6px;border-radius:50%;background:var(--muted-2);}
+  .mstat.pending{background:#fdf2dc;border-color:transparent;color:#8a5d00;}
+  .mstat.pending .dot{background:#d99300;}
   .mstat.done{background:var(--ok-soft);border-color:transparent;color:var(--ok);}
-  .mstat.done .dot{background:var(--ok);}
-  .mstat.me{border-color:var(--ink);font-weight:600;}
+  .mstat.done .dot{background:var(--ok);
+    box-shadow:inset 0 0 0 1px var(--ok),
+      0 0 0 0 transparent;}
+  .mstat.done .check{font-size:10px;font-weight:700;margin-right:1px;}
+  .mstat.me{outline:2px solid var(--ink);outline-offset:1px;font-weight:600;}
   .mstat .ct{color:var(--muted);font-size:11px;font-weight:500;}
+  .mstat.pending .ct{color:#8a5d00;opacity:.8;}
   .mstat.done .ct{color:var(--ok);opacity:.7;}
+
+  /* 작성 완료 토글 */
+  .btn-done{display:inline-flex;align-items:center;gap:7px;
+    font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:12px;
+    padding:6px 13px;border-radius:999px;border:1px solid var(--line-2);
+    background:var(--surface);color:var(--muted);cursor:pointer;
+    transition:background var(--t),border-color var(--t),color var(--t);}
+  .btn-done:hover{border-color:var(--ok);color:var(--ok);}
+  .btn-done .check{display:inline-flex;align-items:center;justify-content:center;
+    width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;
+    font-size:9px;line-height:1;background:transparent;}
+  .btn-done.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);}
+  .btn-done.on .check{background:var(--ok);border-color:var(--ok);color:#fff;}
 
   /* landing */
   .proj-item{display:flex;align-items:center;gap:12px;padding:14px 18px;
@@ -426,7 +445,7 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0 };
+  activeWeek:0, done:{} };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -540,6 +559,8 @@ function subscribeProject(pid){
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/schedule'),s=>{ state.schedule=s.val()||{};
     if(state.screen==='project') render(); });
+  FB.onValue(R('projects/'+pid+'/done'),s=>{ state.done=s.val()||{};
+    if(state.screen==='project') render(); });
 }
 
 /* ---------------- 쓰기 동작 ---------------- */
@@ -569,9 +590,16 @@ function addPerson(){ const uid=genId('u');
 function delPerson(uid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
   FB.remove(R('projects/'+state.pid+'/avail/'+uid));
+  FB.remove(R('projects/'+state.pid+'/done/'+uid));
   const mx=state.config.matrix||{};
   for(const sid in mx) if(mx[sid][uid])
     FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid));
+}
+function toggleDone(){
+  if(!state.me||!state.pid) return;
+  const cur=!!state.done[state.me];
+  if(cur) FB.remove(R('projects/'+state.pid+'/done/'+state.me));
+  else FB.set(R('projects/'+state.pid+'/done/'+state.me),true);
 }
 function matrixToggle(sid,uid){
   const on=state.config.matrix?.[sid]?.[uid];
@@ -915,11 +943,18 @@ function viewParticipate(){
   const statusChips=pIds.map(u=>{
     const n=state.avail[u]?Object.keys(state.avail[u]).length:0;
     const isMe=u===state.me;
-    const done=n>0;
-    return `<button class="mstat ${done?'done':''} ${isMe?'me':''}" data-act="pickmember" data-uid="${u}" title="${done?n+'칸 표시함 · 클릭하면 이 사람 일정으로 이동':'미입력 · 클릭하면 이 사람 일정으로 이동'}">
-      <span class="dot"></span>${esc(itemName(c.people[u]))}${done?`<span class="ct">${n}</span>`:''}</button>`;
+    const isDone=!!state.done[u];
+    const cls=isDone?'done':(n>0?'pending':'');
+    const title=isDone
+      ? `작성 완료 · ${n}칸 표시 · 클릭하면 이 사람 일정으로 이동`
+      : (n>0?`작성 중 · ${n}칸 표시 · 클릭하면 이 사람 일정으로 이동`
+            :'미입력 · 클릭하면 이 사람 일정으로 이동');
+    const check=isDone?'<span class="check">✓</span>':'<span class="dot"></span>';
+    const ct=isDone?'<span class="ct">완료</span>':(n>0?`<span class="ct">${n}</span>`:'');
+    return `<button class="mstat ${cls} ${isMe?'me':''}" data-act="pickmember" data-uid="${u}" title="${title}">
+      ${check}${esc(itemName(c.people[u]))}${ct}</button>`;
   }).join('');
-  const doneCount=pIds.filter(u=>state.avail[u]&&Object.keys(state.avail[u]).length>0).length;
+  const doneCount=pIds.filter(u=>!!state.done[u]).length;
 
   let head=`<div class="card">
     <div class="card-head">
@@ -982,14 +1017,21 @@ function viewParticipate(){
       <thead><tr>${head2}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
+  const meDone=!!state.done[state.me];
   return head+`<div class="card">
     <div class="card-head" style="margin-bottom:10px">
       <h2 style="font-size:15px">${esc(itemName(c.people[state.me]))} 님의 일정</h2>
-      <span class="badge" style="color:${myCount?'var(--accent)':'var(--muted)'}">표시한 시간 ${myCount}칸</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="badge" style="color:${myCount?'var(--accent)':'var(--muted)'}">표시한 시간 ${myCount}칸</span>
+        <button class="btn-done ${meDone?'on':''}" data-act="toggledone">
+          <span class="check">${meDone?'✓':''}</span>
+          ${meDone?'작성 완료됨':'작성 완료 체크'}
+        </button>
+      </div>
     </div>
     ${tabsHtml}
     ${gridHtml || '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>'}
-    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 멤버 수. PC에서는 박스 드래그로 여러 칸 한 번에 선택할 수 있습니다.</div>
+    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 멤버 수. PC에서는 박스 드래그로 여러 칸 한 번에 선택할 수 있습니다. 다 입력했으면 우상단의 <b>작성 완료 체크</b>를 눌러주세요.</div>
   </div>`;
 }
 
@@ -1219,6 +1261,7 @@ function bindEvents(){
       if(state.pid) lsSet('me_'+state.pid,uid);
       render();return;
     }
+    if(act==='toggledone'){toggleDone();return;}
     if(act==='toggleall'){
       const sIds=sortedIds(state.config.songs||{}).filter(s=>songMembers(s).length>0);
       const allShown=sIds.every(s=>!state.hiddenSongs[s]);
