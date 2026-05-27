@@ -919,14 +919,28 @@ function cfgUpdate(obj){
   if(obj.name!==undefined)
     FB.update(R('projectIndex/'+state.pid),{name:obj.name});
 }
-function addSong(){ const sid=genId('s');
-  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),{name:'새 활동',ts:Date.now()}); }
+function addSong(){
+  const sid=genId('s');
+  const obj={name:'새 활동',ts:Date.now()};
+  state.config=state.config||{};
+  state.config.songs=state.config.songs||{};
+  state.config.songs[sid]=obj; // 낙관적 로컬 업데이트 (Enter 직후 새 입력란이 즉시 보이도록)
+  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),obj);
+  return sid;
+}
 function delSong(sid){
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
 }
-function addPerson(){ const uid=genId('u');
-  FB.set(R('projects/'+state.pid+'/config/people/'+uid),{name:'새 참여자',ts:Date.now()}); }
+function addPerson(){
+  const uid=genId('u');
+  const obj={name:'새 참여자',ts:Date.now()};
+  state.config=state.config||{};
+  state.config.people=state.config.people||{};
+  state.config.people[uid]=obj;
+  FB.set(R('projects/'+state.pid+'/config/people/'+uid),obj);
+  return uid;
+}
 function delPerson(uid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
   FB.remove(R('projects/'+state.pid+'/avail/'+uid));
@@ -2013,6 +2027,45 @@ function bindEvents(){
       deferRender=false; setTimeout(render,30);
     }
   },true);
+
+  /* Enter 키로 다음 입력란 / 새 항목 추가 */
+  app.addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    const t=e.target;
+    if(t.tagName!=='INPUT') return;
+    const act=t.dataset.act;
+    if(act!=='songname'&&act!=='personname') return;
+    e.preventDefault();
+    const isSong=act==='songname';
+    const dataKey=isSong?'sid':'uid';
+    const fbPath=isSong?'songs':'people';
+    const defaultName=isSong?'활동':'참여자';
+    const id=t.dataset[dataKey];
+    // 현재 입력 값 저장 (Firebase + 로컬)
+    const map=isSong?state.config.songs:state.config.people;
+    const cur=map?.[id];
+    const ts=itemTs(cur);
+    const obj={name:t.value.trim()||defaultName,ts};
+    if(map) map[id]=obj;
+    FB.set(R('projects/'+state.pid+'/config/'+fbPath+'/'+id),obj);
+    // 이 리스트 안의 입력란들
+    const list=Array.from($('app').querySelectorAll('input[data-act="'+act+'"]'));
+    const idx=list.indexOf(t);
+    if(idx>=0&&idx<list.length-1){
+      // 다음 입력란으로
+      list[idx+1].focus(); list[idx+1].select();
+    } else {
+      // 마지막 → 새로 추가 + 새 입력란 포커스
+      if(isSong) addSong(); else addPerson();
+      deferRender=false;
+      doRender();
+      const fresh=$('app').querySelectorAll('input[data-act="'+act+'"]');
+      if(fresh.length){
+        const last=fresh[fresh.length-1];
+        last.focus(); last.select();
+      }
+    }
+  });
 
   /* 그리드 칠하기 — 박스 드래그 (상하좌우) — 데스크탑 즉시, 모바일은 long-press */
   let paintTarget=true, startCell=null, sx=0, sy=0, pType='';
