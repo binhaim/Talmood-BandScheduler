@@ -768,6 +768,25 @@ function normalizeSchedule(raw){
 function isAssigned(sid,slotKey){
   return !!(state.schedule&&state.schedule[sid]&&state.schedule[sid][slotKey]);
 }
+function slotInRange(k){
+  if(!k||!state.config) return false;
+  const [d,t]=k.split('|'); if(!d||!t) return false;
+  const c=state.config;
+  if(d<c.startDate||d>c.endDate) return false;
+  const [h,m]=t.split(':').map(Number);
+  const min=h*60+(m||0);
+  const startMin=(c.startHour||0)*60;
+  const endMin=(c.endHour||24)*60;
+  if(min<startMin||min>=endMin) return false;
+  const sm=c.slotMinutes||60;
+  if((min-startMin)%sm!==0) return false;
+  return true;
+}
+function countInRange(av){
+  if(!av) return 0;
+  let n=0; for(const k in av) if(av[k]&&slotInRange(k)) n++; return n;
+}
+
 function slotConflicts(sid,slotKey){
   const allowParallel=!!(state.config&&state.config.allowParallel);
   const out=[];
@@ -1388,7 +1407,7 @@ function viewParticipate(){
     pIds.map(u=>`<option value="${u}" ${state.me===u?'selected':''}>${esc(itemName(c.people[u]))}</option>`).join('');
 
   const statusChips=pIds.map(u=>{
-    const n=state.avail[u]?Object.keys(state.avail[u]).length:0;
+    const n=countInRange(state.avail[u]);
     const isMe=u===state.me;
     const isDone=!!state.done[u];
     const cls=isDone?'done':(n>0?'pending':'');
@@ -1430,7 +1449,7 @@ function viewParticipate(){
     return head+`<div class="card"><div class="empty">설정에서 날짜·시간 범위를 확인하세요.</div></div>`;
 
   const mine=state.avail[state.me]||{};
-  const myCount=Object.keys(mine).length;
+  const myCount=countInRange(mine);
   const wks=buildWeeks(dates).map((w,i)=>{
     const range=w.filter(d=>d.inRange).map(d=>d.date);
     return {idx:i, dates:w, range};
