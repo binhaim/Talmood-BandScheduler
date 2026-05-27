@@ -539,6 +539,11 @@
   .proj-item .pc{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;
     color:var(--muted);font-weight:600;letter-spacing:.04em;
     background:var(--paper);padding:3px 9px;border-radius:999px;}
+  .proj-item .proj-x{border:none;background:transparent;color:var(--muted-2);
+    cursor:pointer;font-size:16px;line-height:1;padding:4px 8px;
+    border-radius:4px;opacity:0;transition:opacity var(--t),color var(--t),background var(--t);}
+  .proj-item:hover .proj-x{opacity:1;}
+  .proj-item .proj-x:hover{color:var(--accent);background:var(--accent-soft);}
   .hero{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
     font-size:32px;letter-spacing:-.03em;margin-bottom:8px;line-height:1.1;}
   .hero .dot{color:var(--accent);}
@@ -629,6 +634,21 @@ const genId=p=>p+'_'+Math.random().toString(36).slice(2,9);
 const genPid=()=>Math.random().toString(36).slice(2,8).toUpperCase();
 const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+const lsDel=k=>{try{localStorage.removeItem(k);}catch(e){}};
+function getVisited(){
+  const out=[];
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('v_')){
+        const pid=k.slice(2);
+        const ts=parseInt(localStorage.getItem(k))||0;
+        out.push({pid,ts});
+      }
+    }
+  }catch(e){}
+  return out;
+}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
 async function copyCode(){
@@ -830,6 +850,7 @@ async function createProject(){
     songs:{}, people:{}, matrix:{} };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
+  lsSet('v_'+pid,String(Date.now()));
   location.href=location.pathname+'?p='+pid;
 }
 function cfgUpdate(obj){
@@ -946,6 +967,7 @@ async function delProject(){
   if(!confirm('이 프로젝트를 완전히 삭제합니다. 되돌릴 수 없습니다.\n계속할까요?'))return;
   await FB.remove(R('projects/'+state.pid));
   await FB.remove(R('projectIndex/'+state.pid));
+  lsDel('v_'+state.pid);
   location.href=location.pathname;
 }
 
@@ -1050,16 +1072,22 @@ function viewMissing(){
 }
 
 function viewLanding(){
-  const ids=Object.keys(state.index).sort((a,b)=>
-    (state.index[b].createdAt||0)-(state.index[a].createdAt||0));
-  const list=ids.map(pid=>
-    `<div class="proj-item" data-act="open" data-pid="${pid}">
-       <div class="pn">${esc(state.index[pid].name||'(이름 없음)')}</div>
-       <div class="pc">${pid}</div></div>`).join('');
+  const idx=state.index||{};
+  const visited=getVisited()
+    .filter(v=>idx[v.pid])           // Firebase에 실제 존재하는 것만
+    .sort((a,b)=>b.ts-a.ts);          // 최근 방문 순
+  const list=visited.map(v=>{
+    const pid=v.pid;
+    return `<div class="proj-item" data-act="open" data-pid="${pid}">
+       <div class="pn">${esc(idx[pid].name||'(이름 없음)')}</div>
+       <div class="pc">${pid}</div>
+       <button class="proj-x" data-act="forget" data-pid="${pid}" title="이 기기 목록에서 제거 (프로젝트 자체는 남아 있음)">×</button>
+     </div>`;
+  }).join('');
 
   return `<div class="card" style="padding:32px">
     <div class="hero">합주 일정<span class="dot">,</span> 한 번에</div>
-    <p class="sub" style="margin-bottom:24px;font-size:14.5px;max-width:560px">날짜·시간 범위와 곡·멤버를 정하면, 각자 안 되는 시간을 입력하고 곡별 가능 시간을 자동으로 계산합니다.</p>
+    <p class="sub" style="margin-bottom:24px;font-size:14.5px;max-width:560px">날짜·시간 범위와 곡·멤버를 정하면, 각자 안 되는 시간을 입력하고 곡별 가능 시간을 자동으로 계산합니다. <b>코드를 아는 사람만</b> 프로젝트에 들어올 수 있습니다.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn" data-act="new">+ 새 프로젝트 만들기</button>
       <span style="color:var(--muted-2);font-size:13px;padding:0 4px">또는</span>
@@ -1067,8 +1095,8 @@ function viewLanding(){
       <button class="btn ghost" data-act="enter">입장</button>
     </div>
   </div>
-  ${ids.length?`<div class="card">
-    <div class="section-label">내 프로젝트 <span class="count">${ids.length}</span></div>
+  ${visited.length?`<div class="card">
+    <div class="section-label">최근 프로젝트 <span class="count">${visited.length}</span></div>
     ${list}
   </div>`:''}`;
 }
@@ -1722,6 +1750,15 @@ function bindEvents(){
     if(act==='copycode'){copyCode();return;}
     if(act==='new'){createProject();return;}
     if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
+    if(act==='forget'){
+      e.stopPropagation();
+      const pid=t.dataset.pid;
+      const nm=state.index[pid]?.name||pid;
+      if(!confirm(`'${nm}' 을 이 기기 목록에서 제거할까요?\n(프로젝트 자체는 그대로 남아 있어서 다시 코드로 들어올 수 있습니다.)`)) return;
+      lsDel('v_'+pid);
+      render();
+      return;
+    }
     if(act==='enter'){
       const v=($('codeIn').value||'').trim().toUpperCase();
       if(v)location.href=location.pathname+'?p='+v;return;}
@@ -2021,6 +2058,7 @@ async function start(){
   if(pid){
     state.pid=pid; state.screen='project';
     state.me=lsGet('me_'+pid)||null;
+    lsSet('v_'+pid,String(Date.now())); // 코드로 들어왔으면 방문 기록
     subscribeProject(pid);
   }else{
     state.screen='landing'; subscribeIndex();
