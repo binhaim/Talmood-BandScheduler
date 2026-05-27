@@ -576,6 +576,21 @@
 
   .danger-zone{background:rgba(207,61,30,.02);border-color:rgba(207,61,30,.18);}
 
+  /* 시간표 포맷 설정 그룹 */
+  .fmt-group{background:var(--paper);border:1px solid var(--line);
+    border-radius:var(--r-sm);padding:14px 14px 12px;margin-top:4px;}
+
+  /* 드래그 중 모바일 스크롤 막기 */
+  body.dragging{user-select:none;-webkit-user-select:none;}
+  body.dragging .scroll, body.dragging td{touch-action:none;}
+
+  /* 페이지 푸터 */
+  .page-foot{margin-top:40px;padding:18px 0 28px;text-align:center;
+    color:var(--muted-2);font-size:11.5px;letter-spacing:.04em;
+    border-top:1px solid var(--line);}
+  .page-foot b{color:var(--muted);font-weight:600;}
+  .page-foot .ord{font-size:9px;vertical-align:super;margin-left:1px;}
+
   /* 튜토리얼 모달 */
   .modal-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.55);
     z-index:100;display:flex;align-items:flex-start;justify-content:center;
@@ -623,6 +638,7 @@
 <body>
 <header><div class="wrap"><div class="hbar" id="hbar"></div></div></header>
 <main><div class="wrap" id="app"></div></main>
+<footer class="page-foot"><div class="wrap">Made by <b>Talmood 42<span class="ord">th</span></b> · 임하빈</div></footer>
 
 <script type="module">
 /* ============================================================
@@ -644,24 +660,6 @@ const firebaseConfig = {
 /* ▲▲▲ 여기까지 ▲▲▲ */
 
 const FB_VERSION = "10.7.1"; // 로딩 실패 시 Firebase 콘솔 스니펫의 최신 버전으로 교체
-
-/* ---- 밴드 기본 구성 (설정 화면의 '기본 구성 불러오기' 버튼) ---- */
-const PRESET = {
-  songs: ['GTFO','SMHTL','지옥에서온흑우','디톡스','쏜애플','MCR','술탄','HF','갈돌','외계인'],
-  people: ['임하빈','홍선표','김진우','김준형','이진규','고유진','고승환','홍범석','조무현','이유은','이주영','정유찬','한동현','선수혁'],
-  matrix: {
-    'GTFO':['임하빈','김준형','고승환','이주영'],
-    'SMHTL':['홍선표','김준형','고승환','정유찬'],
-    '지옥에서온흑우':['홍선표','김진우','김준형','고승환','이주영'],
-    '디톡스':['김진우','이진규','조무현','이주영'],
-    '쏜애플':['임하빈','이진규','홍범석','정유찬'],
-    'MCR':['임하빈','김준형','고유진','홍범석','이주영'],
-    '술탄':['임하빈','이진규','홍범석','조무현','한동현','선수혁'],
-    'HF':['홍선표','이진규','고승환','한동현'],
-    '갈돌':['홍선표','김준형','고유진','이유은','이주영'],
-    '외계인':['임하빈','김준형','이진규','조무현','이주영']
-  }
-};
 
 /* ---------------- 상태 ---------------- */
 let DB=null, FB={}, fbReady=false;
@@ -888,9 +886,19 @@ function subscribeProject(pid){
 async function createProject(){
   const pid=genPid();
   const t=new Date();const e=new Date();e.setDate(e.getDate()+6);
+  const base=Date.now();
+  const s1=genId('s'), s2=genId('s'), s3=genId('s');
+  const u1=genId('u'), u2=genId('u'), u3=genId('u');
+  const songs={[s1]:{name:'곡 1',ts:base},[s2]:{name:'곡 2',ts:base+1},[s3]:{name:'곡 3',ts:base+2}};
+  const people={[u1]:{name:'멤버 1',ts:base},[u2]:{name:'멤버 2',ts:base+1},[u3]:{name:'멤버 3',ts:base+2}};
+  const matrix={
+    [s1]:{[u1]:true,[u2]:true},
+    [s2]:{[u2]:true,[u3]:true},
+    [s3]:{[u1]:true,[u3]:true}
+  };
   const cfg={ name:'새 프로젝트', startDate:fmtDate(t), endDate:fmtDate(e),
     startHour:18, endHour:24, slotMinutes:60, locked:false, allowParallel:false,
-    songs:{}, people:{}, matrix:{} };
+    songs, people, matrix };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
   lsSet('v_'+pid,String(Date.now()));
@@ -990,20 +998,6 @@ function matrixToggle(sid,uid){
   const on=state.config.matrix?.[sid]?.[uid];
   const p='projects/'+state.pid+'/config/matrix/'+sid+'/'+uid;
   on?FB.remove(R(p)):FB.set(R(p),true);
-}
-async function loadPreset(){
-  if(!confirm('밴드 기본 구성(10곡·14명·담당표)을 불러옵니다.\n기존 곡/사람 목록을 덮어쓸까요?'))return;
-  const songs={},people={},matrix={},nameToUid={};
-  const base=Date.now();
-  PRESET.songs.forEach((n,i)=>{songs[genId('s')]={name:n,ts:base+i};});
-  PRESET.people.forEach((n,i)=>{const id=genId('u');people[id]={name:n,ts:base+i};nameToUid[n]=id;});
-  const songByName={};for(const id in songs)songByName[songs[id].name]=id;
-  for(const sn in PRESET.matrix){
-    const sid=songByName[sn];matrix[sid]={};
-    PRESET.matrix[sn].forEach(pn=>{matrix[sid][nameToUid[pn]]=true;});
-  }
-  await FB.update(R('projects/'+state.pid+'/config'),{songs,people,matrix});
-  toast('기본 구성을 불러왔습니다');
 }
 function toggleLock(){ cfgUpdate({locked:!state.config.locked}); }
 async function delProject(){
@@ -1133,8 +1127,8 @@ function viewHelp(){
             <li>합주가 <span style="color:var(--accent);font-weight:700">불가능한 시간 칸</span>을 클릭하거나 드래그로 칠합니다.
               빨갛게 표시된 칸이 "안 됨"입니다.
               <ul>
-                <li>PC: 박스 드래그로 여러 칸을 한 번에</li>
-                <li>모바일: 칸을 탭해서 하나씩</li>
+                <li>PC: 즉시 박스 드래그로 여러 칸을 한 번에</li>
+                <li>모바일: 칸을 탭(짧게)하면 하나, <b>꾹 눌렀다가</b> 손가락 움직이면 박스 드래그</li>
               </ul>
             </li>
             <li>다 입력했으면 우상단 <b>"작성 완료 체크"</b>를 눌러주세요. 다른 멤버들도 누가 끝났는지 봅니다.</li>
@@ -1181,7 +1175,7 @@ function viewHelp(){
           <h3>💡 자주 묻는 것</h3>
           <ul>
             <li><b>코드를 잃어버렸어요</b> — 다른 멤버에게 다시 물어보세요. 헤더 코드 칩 클릭으로 공유.</li>
-            <li><b>기본 구성이 뭐예요?</b> — 곡과 멤버가 둘 다 비었을 때 나오는 "기본 구성 불러오기" 버튼. 미리 정의된 10곡·14명 셋업이 한 번에 들어갑니다 (탈무드 밴드 기본값).</li>
+            <li><b>새 프로젝트를 만들면?</b> — 예시로 곡 3개, 멤버 3개와 담당표가 채워져 있습니다. 이름은 자유롭게 바꾸고, 필요 없는 항목은 × 버튼으로 삭제하세요.</li>
             <li><b>다른 기기에서 같은 프로젝트를 열려면?</b> — 코드 입력 또는 링크로 들어가면 됩니다. 메인 화면 "최근 프로젝트" 목록은 그 기기에서 들어가본 것만 보입니다.</li>
             <li><b>설정 잠그면 뭐가 잠기나요?</b> — 곡·멤버 추가/이름 변경, 날짜/시간 범위 변경이 막힙니다. 시간 입력과 배정은 그대로 가능.</li>
           </ul>
@@ -1304,29 +1298,31 @@ function viewSetup(){
       <span class="lab">프로젝트 이름</span>
       <input type="text" value="${esc(c.name||'')}" ${dis} data-act="cfgname" style="width:100%">
     </label>
-    <div class="row">
-      <label class="fld" style="margin-bottom:0"><span class="lab">시작일</span>
-        <input type="date" value="${c.startDate||''}" ${dis} data-act="cfgstart"></label>
-      <label class="fld" style="margin-bottom:0"><span class="lab">종료일</span>
-        <input type="date" value="${c.endDate||''}" ${dis} data-act="cfgend"></label>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <label class="fld" style="margin-bottom:0"><span class="lab">시작 시각</span>
-        <select ${dis} data-act="cfgsh">${hourOpts(c.startHour,0,23)}</select></label>
-      <label class="fld" style="margin-bottom:0"><span class="lab">종료 시각</span>
-        <select ${dis} data-act="cfgeh">${hourOpts(c.endHour,1,24)}</select></label>
-      <label class="fld" style="margin-bottom:0"><span class="lab">칸 단위</span>
-        <select ${dis} data-act="cfgslot">
-          <option value="60" ${c.slotMinutes==60?'selected':''}>1시간</option>
-          <option value="30" ${c.slotMinutes==30?'selected':''}>30분</option>
-        </select></label>
+    <div class="fmt-group">
+      <div class="section-label" style="margin:0 0 10px">시간표 포맷 설정</div>
+      <div class="row">
+        <label class="fld" style="margin-bottom:0"><span class="lab">시작일</span>
+          <input type="date" value="${c.startDate||''}" ${dis} data-act="cfgstart"></label>
+        <label class="fld" style="margin-bottom:0"><span class="lab">종료일</span>
+          <input type="date" value="${c.endDate||''}" ${dis} data-act="cfgend"></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label class="fld" style="margin-bottom:0"><span class="lab">시작 시각</span>
+          <select ${dis} data-act="cfgsh">${hourOpts(c.startHour,0,23)}</select></label>
+        <label class="fld" style="margin-bottom:0"><span class="lab">종료 시각</span>
+          <select ${dis} data-act="cfgeh">${hourOpts(c.endHour,1,24)}</select></label>
+        <label class="fld" style="margin-bottom:0"><span class="lab">칸 단위</span>
+          <select ${dis} data-act="cfgslot">
+            <option value="60" ${c.slotMinutes==60?'selected':''}>1시간</option>
+            <option value="30" ${c.slotMinutes==30?'selected':''}>30분</option>
+          </select></label>
+      </div>
     </div>
   </div>
   <div class="card">
     <div class="card-head">
       <div class="section-label" style="margin:0">곡 목록 <span class="count">${sIds.length}</span></div>
       <div style="display:flex;gap:6px">
-        ${(!sIds.length&&!pIds.length)?`<button class="btn ghost sm" data-act="preset" ${dis}>기본 구성 불러오기</button>`:''}
         <button class="btn sm" data-act="addsong" ${dis}>+ 곡 추가</button>
       </div>
     </div>
@@ -1917,7 +1913,6 @@ function bindEvents(){
       const v=($('codeIn').value||'').trim().toUpperCase();
       if(v)location.href=location.pathname+'?p='+v;return;}
     if(act==='tab'){state.tab=t.dataset.tab;render();return;}
-    if(act==='preset'){loadPreset();return;}
     if(act==='addsong'){addSong();return;}
     if(act==='delsong'){delSong(t.dataset.sid);return;}
     if(act==='addperson'){addPerson();return;}
@@ -1994,10 +1989,14 @@ function bindEvents(){
     }
   },true);
 
-  /* 그리드 칠하기 — 박스 드래그 (상하좌우) */
+  /* 그리드 칠하기 — 박스 드래그 (상하좌우) — 데스크탑 즉시, 모바일은 long-press */
   let paintTarget=true, startCell=null, sx=0, sy=0, pType='';
   let dragR0=0, dragC0=0, dragR1=0, dragC1=0;
   let snapshot={}, dragGrid=null;
+  let touchHoldTimer=null;
+  const LONG_PRESS_MS=320;
+  const enterDrag=()=>document.body.classList.add('dragging');
+  const exitDrag=()=>document.body.classList.remove('dragging');
 
   function applyBox(){
     if(!dragGrid) return;
@@ -2038,51 +2037,89 @@ function bindEvents(){
     FB.update(R('projects/'+state.pid+'/avail/'+state.me),upd);
   }
 
+  function startParticipateDrag(td){
+    paintTarget=!td.classList.contains('no');
+    dragR0=dragR1=+td.dataset.r;
+    dragC0=dragC1=+td.dataset.c;
+    snapshot={...(state.avail[state.me]||{})};
+    dragGrid=td.closest('table');
+    painting=true;
+    enterDrag();
+    applyBox();
+  }
   app.addEventListener('pointerdown',e=>{
     const td=e.target.closest('td.cell[data-cell]'); if(!td||!state.me)return;
     pType=e.pointerType; startCell=td; sx=e.clientX; sy=e.clientY;
     if(pType==='mouse'){
       e.preventDefault();
-      paintTarget=!td.classList.contains('no');
-      dragR0=dragR1=+td.dataset.r;
-      dragC0=dragC1=+td.dataset.c;
-      snapshot={...(state.avail[state.me]||{})};
-      dragGrid=td.closest('table');
-      painting=true;
-      applyBox();
+      startParticipateDrag(td);
+    } else {
+      // 터치: long-press로 드래그 진입
+      if(touchHoldTimer)clearTimeout(touchHoldTimer);
+      const pid=e.pointerId;
+      touchHoldTimer=setTimeout(()=>{
+        touchHoldTimer=null;
+        try{td.setPointerCapture(pid);}catch(_){}
+        startParticipateDrag(td);
+        if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
+      },LONG_PRESS_MS);
     }
   });
+  app.addEventListener('pointermove',e=>{
+    if(touchHoldTimer){
+      if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>10){
+        clearTimeout(touchHoldTimer);touchHoldTimer=null;
+      }
+      return;
+    }
+    if(!painting||pType==='mouse') return; // 마우스는 pointerover로 처리
+    e.preventDefault();
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el) return;
+    const td=el.closest('td.cell[data-cell]'); if(!td) return;
+    if(td.closest('table')!==dragGrid) return;
+    const r=+td.dataset.r, c=+td.dataset.c;
+    if(r===dragR1&&c===dragC1) return;
+    dragR1=r; dragC1=c;
+    applyBox();
+  },{passive:false});
   app.addEventListener('pointerover',e=>{
-    if(!painting)return;
+    if(!painting||pType!=='mouse')return;
     const td=e.target.closest('td.cell[data-cell]'); if(!td)return;
-    if(td.closest('table')!==dragGrid) return; // 다른 주차 그리드로 드래그 넘어가지 않게
+    if(td.closest('table')!==dragGrid) return;
     const r=+td.dataset.r, c=+td.dataset.c;
     if(r===dragR1&&c===dragC1)return;
     dragR1=r; dragC1=c;
     applyBox();
   });
   window.addEventListener('pointerup',e=>{
+    if(touchHoldTimer){
+      clearTimeout(touchHoldTimer);touchHoldTimer=null;
+      if(startCell&&pType!=='mouse'){
+        const moved=Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy);
+        const td=document.elementFromPoint(e.clientX,e.clientY);
+        if(moved<12&&td&&td.closest('td.cell')===startCell&&state.me){
+          singleTap(startCell);
+        }
+      }
+      startCell=null;
+      return;
+    }
     if(painting){
       painting=false;
       commitBox();
       dragGrid=null;
+      exitDrag();
       if(deferRender){deferRender=false;render();}
       return;
     }
-    if(startCell&&pType!=='mouse'){
-      const moved=Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy);
-      const td=document.elementFromPoint(e.clientX,e.clientY);
-      if(moved<12&&td&&td.closest('td.cell')===startCell&&state.me){
-        singleTap(startCell);
-      }
-      startCell=null;
-    }
   });
 
-  /* 간트 sub-cell — 같은 sub-col(곡×날짜) 안에서 세로 드래그로 시간 범위 토글 */
+  /* 간트 sub-cell — 같은 sub-col(곡×날짜) 안에서 세로 드래그로 시간 범위 토글, 모바일은 long-press */
   let gGrid=null, gSid='', gCol='', gR0=0, gR1=0;
   let gSnap={}, gFlipTo=true;
   let gTouchCell=null, gSx=0, gSy=0;
+  let gTouchHoldTimer=null;
 
   function canAssignAt(sid,k){
     return slotOkForSong(sid,k) && slotConflicts(sid,k).length===0;
@@ -2152,53 +2189,90 @@ function bindEvents(){
     FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:true});
   }
 
+  function startGanttDrag(td){
+    if(td.classList.contains('infeasible')||td.classList.contains('conflict')){
+      gGrid=null; return false;
+    }
+    gSid=td.dataset.sid;
+    gCol=td.dataset.col;
+    gR0=gR1=+td.dataset.r;
+    gGrid=td.closest('table');
+    gSnap={...(state.schedule[gSid]||{})};
+    gFlipTo=!td.classList.contains('has');
+    gPainting=true;
+    enterDrag();
+    applyGanttDrag();
+    return true;
+  }
   app.addEventListener('pointerdown',e=>{
     const td=e.target.closest('td.gnt-cell[data-gantt]'); if(!td) return;
     if(e.pointerType==='mouse'){
       e.preventDefault();
-      gSid=td.dataset.sid;
-      gCol=td.dataset.col;
-      gR0=gR1=+td.dataset.r;
-      gGrid=td.closest('table');
-      gSnap={...(state.schedule[gSid]||{})};
-      // 시작 셀이 has면 erase 모드, 아니면 paint 모드
-      gFlipTo=!td.classList.contains('has');
-      // infeasible/conflict 시작은 무시
-      if(td.classList.contains('infeasible')||td.classList.contains('conflict')){
-        gGrid=null; return;
-      }
-      gPainting=true;
-      applyGanttDrag();
+      startGanttDrag(td);
     } else {
       gTouchCell=td; gSx=e.clientX; gSy=e.clientY;
+      if(gTouchHoldTimer)clearTimeout(gTouchHoldTimer);
+      const pid=e.pointerId;
+      gTouchHoldTimer=setTimeout(()=>{
+        gTouchHoldTimer=null;
+        try{td.setPointerCapture(pid);}catch(_){}
+        if(startGanttDrag(td)){
+          if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
+        }
+      },LONG_PRESS_MS);
     }
   });
+  app.addEventListener('pointermove',e=>{
+    if(gTouchHoldTimer){
+      if(Math.abs(e.clientX-gSx)+Math.abs(e.clientY-gSy)>10){
+        clearTimeout(gTouchHoldTimer);gTouchHoldTimer=null;
+      }
+      return;
+    }
+    if(!gPainting||e.pointerType==='mouse') return; // 마우스는 pointerover로
+    e.preventDefault();
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el) return;
+    const td=el.closest('td.gnt-cell[data-gantt]'); if(!td) return;
+    if(td.closest('table')!==gGrid) return;
+    if(td.dataset.col!==gCol) return;
+    const r=+td.dataset.r;
+    if(r===gR1) return;
+    gR1=r;
+    applyGanttDrag();
+  },{passive:false});
   app.addEventListener('pointerover',e=>{
-    if(!gPainting) return;
+    if(!gPainting||e.pointerType!=='mouse') return;
     const td=e.target.closest('td.gnt-cell[data-gantt]'); if(!td) return;
     if(td.closest('table')!==gGrid) return;
-    if(td.dataset.col!==gCol) return; // 같은 sub-col 안에서만
+    if(td.dataset.col!==gCol) return;
     const r=+td.dataset.r;
     if(r===gR1) return;
     gR1=r;
     applyGanttDrag();
   });
   window.addEventListener('pointerup',e=>{
+    if(gTouchHoldTimer){
+      clearTimeout(gTouchHoldTimer);gTouchHoldTimer=null;
+      if(gTouchCell){
+        const moved=Math.abs(e.clientX-gSx)+Math.abs(e.clientY-gSy);
+        const td=document.elementFromPoint(e.clientX,e.clientY);
+        if(moved<12&&td&&td.closest('td.gnt-cell')===gTouchCell){
+          ganttSingleTap(gTouchCell);
+        }
+      }
+      gTouchCell=null;
+      return;
+    }
     if(gPainting){
       gPainting=false;
       commitGanttDrag();
       gGrid=null;
+      exitDrag();
       if(deferRender){deferRender=false;render();}
       return;
     }
-    if(gTouchCell){
-      const moved=Math.abs(e.clientX-gSx)+Math.abs(e.clientY-gSy);
-      const td=document.elementFromPoint(e.clientX,e.clientY);
-      if(moved<12&&td&&td.closest('td.gnt-cell')===gTouchCell){
-        ganttSingleTap(gTouchCell);
-      }
-      gTouchCell=null;
-    }
+    gTouchCell=null;
   });
 }
 
