@@ -213,6 +213,18 @@
     max-width:100%;overflow:hidden;text-overflow:ellipsis;}
   td.cell .nbadge{position:absolute;top:1px;left:3px;font-size:8px;
     font-weight:700;color:var(--muted);}
+  /* 주 단위 그리드 */
+  .week-label{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px;
+    font-family:'Bricolage Grotesque',sans-serif;}
+  .week-label:first-of-type{margin-top:4px;}
+  .week-label .wk{font-weight:700;font-size:13px;color:var(--ink);
+    letter-spacing:-.01em;}
+  .week-label .wkr{font-size:12px;color:var(--muted);}
+  th.col.out{opacity:.4;}
+  td.cell.out{background:repeating-linear-gradient(135deg,
+    transparent 0 4px,rgba(26,24,20,.025) 4px 8px);cursor:default;}
+  td.cell.out:hover{background:repeating-linear-gradient(135deg,
+    transparent 0 4px,rgba(26,24,20,.025) 4px 8px);}
 
   /* chip-style toggles */
   .song-toggles{display:flex;flex-wrap:wrap;gap:6px;align-items:center;
@@ -373,6 +385,45 @@ function timeList(sh,eh,sm){const out=[];for(let m=sh*60;m<eh*60;m+=sm)
   out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));return out;}
 const slotKey=(d,t)=>d+'|'+t;
 
+/* ---- 곡/멤버 항목은 구버전(문자열) / 신버전({name,ts}) 둘 다 지원 ---- */
+const itemName=v=>typeof v==='string'?v:(v&&v.name)||'';
+const itemTs  =v=>(v&&typeof v==='object'&&typeof v.ts==='number')?v.ts:0;
+function sortedIds(map){
+  return Object.keys(map||{}).sort((a,b)=>{
+    const ta=itemTs(map[a]), tb=itemTs(map[b]);
+    if(ta!==tb) return ta-tb;
+    return a<b?-1:a>b?1:0;
+  });
+}
+
+/* ---- 주 단위 그리드 (월~일) ---- */
+function weekStart(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const dow=d.getDay();          // 0=일, 1=월, …, 6=토
+  const off=(dow+6)%7;           // 월=0, 화=1, …, 일=6
+  d.setDate(d.getDate()-off);
+  return d;
+}
+function buildWeeks(dates){
+  if(!dates.length) return [];
+  const inSet=new Set(dates);
+  const first=weekStart(dates[0]);
+  const last=new Date(dates[dates.length-1]+'T00:00:00');
+  const out=[];
+  let cur=new Date(first);
+  let guard=0;
+  while(cur<=last && guard<60){
+    const days=[];
+    for(let i=0;i<7;i++){
+      const ds=fmtDate(cur);
+      days.push({date:ds, inRange:inSet.has(ds)});
+      cur.setDate(cur.getDate()+1);
+    }
+    out.push(days); guard++;
+  }
+  return out;
+}
+
 /* ---------------- Firebase ---------------- */
 async function initFirebase(){
   if(String(firebaseConfig.apiKey).includes('PASTE')) return 'no-config';
@@ -417,13 +468,13 @@ function cfgUpdate(obj){
     FB.update(R('projectIndex/'+state.pid),{name:obj.name});
 }
 function addSong(){ const sid=genId('s');
-  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),'새 곡'); }
+  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),{name:'새 곡',ts:Date.now()}); }
 function delSong(sid){
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
 }
 function addPerson(){ const uid=genId('u');
-  FB.set(R('projects/'+state.pid+'/config/people/'+uid),'새 멤버'); }
+  FB.set(R('projects/'+state.pid+'/config/people/'+uid),{name:'새 멤버',ts:Date.now()}); }
 function delPerson(uid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
   FB.remove(R('projects/'+state.pid+'/avail/'+uid));
@@ -439,9 +490,10 @@ function matrixToggle(sid,uid){
 async function loadPreset(){
   if(!confirm('밴드 기본 구성(10곡·14명·담당표)을 불러옵니다.\n기존 곡/사람 목록을 덮어쓸까요?'))return;
   const songs={},people={},matrix={},nameToUid={};
-  PRESET.songs.forEach(n=>{songs[genId('s')]=n;});
-  PRESET.people.forEach(n=>{const id=genId('u');people[id]=n;nameToUid[n]=id;});
-  const songByName={};for(const id in songs)songByName[songs[id]]=id;
+  const base=Date.now();
+  PRESET.songs.forEach((n,i)=>{songs[genId('s')]={name:n,ts:base+i};});
+  PRESET.people.forEach((n,i)=>{const id=genId('u');people[id]={name:n,ts:base+i};nameToUid[n]=id;});
+  const songByName={};for(const id in songs)songByName[songs[id].name]=id;
   for(const sn in PRESET.matrix){
     const sid=songByName[sn];matrix[sid]={};
     PRESET.matrix[sn].forEach(pn=>{matrix[sid][nameToUid[pn]]=true;});
@@ -485,7 +537,7 @@ function clearSchedule(){
 const SESSION_MINUTES=120; // 한 곡당 1회 합주 길이
 function autoSchedule(){
   const c=state.config;
-  const sIds=Object.keys(c.songs||{}).filter(s=>songMembers(s).length>0);
+  const sIds=sortedIds(c.songs||{}).filter(s=>songMembers(s).length>0);
   if(!sIds.length){ toast('배정할 곡이 없습니다'); return; }
   const dates=dateList(c.startDate,c.endDate);
   const times=timeList(c.startHour,c.endHour,c.slotMinutes);
@@ -544,7 +596,7 @@ function autoSchedule(){
   FB.set(R('projects/'+state.pid+'/schedule'),used);
   const blocks=Object.keys(used).length/blockLen;
   if(fails.length){
-    const names=fails.map(f=>esc(c.songs[f.sid])+'('+f.missing+'회)').join(', ');
+    const names=fails.map(f=>esc(itemName(c.songs[f.sid]))+'('+f.missing+'회)').join(', ');
     toast(`${blocks}회 배정. 부족: ${names}`);
   } else {
     toast(`${blocks}회 모두 배정 완료 (각 2시간)`);
@@ -656,20 +708,20 @@ function viewLanding(){
 function viewSetup(){
   const c=state.config, lk=!!c.locked, dis=lk?'disabled':'';
   const songs=c.songs||{}, people=c.people||{};
-  const sIds=Object.keys(songs), pIds=Object.keys(people);
+  const sIds=sortedIds(songs), pIds=sortedIds(people);
   const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
     o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
 
   let songRows=sIds.length? sIds.map((id,i)=>
     `<div class="list-item"><span class="idx">${i+1}</span>
-      <input type="text" value="${esc(songs[id])}" ${dis}
+      <input type="text" value="${esc(itemName(songs[id]))}" ${dis}
         data-act="songname" data-sid="${id}">
       <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
     </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 곡이 없습니다.</div>';
 
   let pplRows=pIds.length? pIds.map((id,i)=>
     `<div class="list-item"><span class="idx">${i+1}</span>
-      <input type="text" value="${esc(people[id])}" ${dis}
+      <input type="text" value="${esc(itemName(people[id]))}" ${dis}
         data-act="personname" data-uid="${id}">
       <button class="x" data-act="delperson" data-uid="${id}" ${dis?'disabled':''} title="삭제">×</button>
     </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 멤버가 없습니다.</div>';
@@ -677,14 +729,14 @@ function viewSetup(){
   let matrix='';
   if(sIds.length&&pIds.length){
     let head='<th class="corner">곡 \\ 멤버</th>'+
-      pIds.map(u=>`<th class="col">${esc(people[u])}</th>`).join('');
+      pIds.map(u=>`<th class="col">${esc(itemName(people[u]))}</th>`).join('');
     let body=sIds.map(s=>{
       let cells=pIds.map(u=>{
         const on=c.matrix?.[s]?.[u];
         return `<td class="mx ${on?'on':''}" data-act="mx" data-sid="${s}" data-uid="${u}">
           <span class="chk"></span></td>`;
       }).join('');
-      return `<tr><td class="song-h">${esc(songs[s])}</td>${cells}</tr>`;
+      return `<tr><td class="song-h">${esc(itemName(songs[s]))}</td>${cells}</tr>`;
     }).join('');
     matrix=`<div class="scroll"><table class="grid">
       <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
@@ -757,19 +809,19 @@ function viewSetup(){
 
 function viewParticipate(){
   const c=state.config;
-  const pIds=Object.keys(c.people||{});
+  const pIds=sortedIds(c.people||{});
   if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 멤버를 먼저 추가하세요.</div></div>`;
   if(state.me&&!c.people[state.me]) state.me=null;
 
   let opts='<option value="">— 이름 선택 —</option>'+
-    pIds.map(u=>`<option value="${u}" ${state.me===u?'selected':''}>${esc(c.people[u])}</option>`).join('');
+    pIds.map(u=>`<option value="${u}" ${state.me===u?'selected':''}>${esc(itemName(c.people[u]))}</option>`).join('');
 
   const statusChips=pIds.map(u=>{
     const n=state.avail[u]?Object.keys(state.avail[u]).length:0;
     const isMe=u===state.me;
     const done=n>0;
     return `<span class="mstat ${done?'done':''} ${isMe?'me':''}" title="${done?n+'칸 표시함':'미입력'}">
-      <span class="dot"></span>${esc(c.people[u])}${done?`<span class="ct">${n}</span>`:''}</span>`;
+      <span class="dot"></span>${esc(itemName(c.people[u]))}${done?`<span class="ct">${n}</span>`:''}</span>`;
   }).join('');
   const doneCount=pIds.filter(u=>state.avail[u]&&Object.keys(state.avail[u]).length>0).length;
 
@@ -801,12 +853,12 @@ function viewParticipate(){
     const w=wdOf(d);
     return `<th class="col ${w===6?'sat':''} ${w===0?'sun':''}">${mdLabel(d)}
       <span class="wd">${WD[w]}</span></th>`;}).join('');
-  let rows=times.map(t=>{
-    let cells=dates.map(d=>{
+  let rows=times.map((t,ri)=>{
+    let cells=dates.map((d,ci)=>{
       const k=slotKey(d,t);
       const no=!!mine[k];
       const others=unavailCount(k)-(no?1:0);
-      return `<td class="cell ${no?'no':''}" data-cell="1" data-slot="${k}">
+      return `<td class="cell ${no?'no':''}" data-cell="1" data-slot="${k}" data-r="${ri}" data-c="${ci}">
         ${others>0?`<span class="cnt">${others}</span>`:''}</td>`;
     }).join('');
     return `<tr><td class="rh">${t}</td>${cells}</tr>`;
@@ -814,7 +866,7 @@ function viewParticipate(){
 
   return head+`<div class="card">
     <div class="card-head" style="margin-bottom:10px">
-      <h2 style="font-size:15px">${esc(c.people[state.me])} 님의 일정</h2>
+      <h2 style="font-size:15px">${esc(itemName(c.people[state.me]))} 님의 일정</h2>
       <span class="badge" style="color:${myCount?'var(--accent)':'var(--muted)'}">표시한 시간 ${myCount}칸</span>
     </div>
     <div class="scroll grid-touch"><table class="grid">
@@ -825,7 +877,7 @@ function viewParticipate(){
 
 function viewResults(){
   const c=state.config;
-  const sIds=Object.keys(c.songs||{});
+  const sIds=sortedIds(c.songs||{});
   if(!sIds.length) return `<div class="card"><div class="empty">설정에서 곡을 추가하세요.</div></div>`;
   const dates=dateList(c.startDate,c.endDate);
   const times=timeList(c.startHour,c.endHour,c.slotMinutes);
@@ -842,7 +894,7 @@ function viewResults(){
   let countRows=activeSongs.length
     ? activeSongs.map(s=>`
         <div class="count-row">
-          <span class="nm" title="${esc(c.songs[s])}">${esc(c.songs[s])}</span>
+          <span class="nm" title="${esc(itemName(c.songs[s]))}">${esc(itemName(c.songs[s]))}</span>
           <input type="number" min="0" max="50"
             value="${counts[s]===undefined?1:counts[s]}"
             data-act="songcount" data-sid="${s}">
@@ -874,46 +926,68 @@ function viewResults(){
     ${activeSongs.map(s=>`
       <label class="chip-toggle ${isShown(s)?'on':''}">
         <input type="checkbox" data-act="togglesong" data-sid="${s}" ${isShown(s)?'checked':''}>
-        ${esc(c.songs[s])}
+        ${esc(itemName(c.songs[s]))}
       </label>`).join('')}
   </div>`;
 
-  // 통합 그리드 — 각 칸: 가능한 (표시중) 곡 약어들 + 배정된 곡 강조
-  let aggHead='<th class="corner">시간</th>'+dates.map(d=>{
-    const w=wdOf(d);
-    return `<th class="col ${w===6?'sat':''} ${w===0?'sun':''}">${mdLabel(d)}
-      <span class="wd">${WD[w]}</span></th>`;}).join('');
-  let aggRows=times.map(t=>{
-    let cells=dates.map(d=>{
-      const k=slotKey(d,t);
-      const asg=schedule[k];
-      if(asg && isShown(asg)){
-        return `<td class="cell assigned" title="${esc(c.songs[asg])} (배정됨)">
-          <span class="asg">${esc(shortName(c.songs[asg]))}</span></td>`;
-      }
-      const okSids=activeSongs.filter(s=>isShown(s)&&slotOkForSong(s,k));
-      if(!okSids.length){
-        return `<td class="cell" style="cursor:default;background:var(--surface)"></td>`;
-      }
-      const fullNames=okSids.map(s=>c.songs[s]).join(', ');
-      const shorts=okSids.map(s=>shortName(c.songs[s])).join(' ');
-      const ratio=okSids.length/Math.max(activeSongs.length,1);
-      const bg=`rgba(47,125,82,${(0.10+ratio*0.45).toFixed(2)})`;
-      return `<td class="cell" style="background:${bg};cursor:default"
-        title="${esc(fullNames)}">
-        ${okSids.length>2?`<span class="nbadge">${okSids.length}</span>`:''}
-        <span class="okn">${esc(shorts)}</span></td>`;
+  // 주 단위 그리드 (월~일)
+  function cellFor(d,t){
+    const k=slotKey(d,t);
+    const asg=schedule[k];
+    if(asg && isShown(asg)){
+      return `<td class="cell assigned" title="${esc(itemName(c.songs[asg]))} (배정됨)">
+        <span class="asg">${esc(shortName(itemName(c.songs[asg])))}</span></td>`;
+    }
+    const okSids=activeSongs.filter(s=>isShown(s)&&slotOkForSong(s,k));
+    if(!okSids.length){
+      return `<td class="cell" style="cursor:default;background:var(--surface)"></td>`;
+    }
+    const fullNames=okSids.map(s=>itemName(c.songs[s])).join(', ');
+    const shorts=okSids.map(s=>shortName(itemName(c.songs[s]))).join(' ');
+    const ratio=okSids.length/Math.max(activeSongs.length,1);
+    const bg=`rgba(47,125,82,${(0.10+ratio*0.45).toFixed(2)})`;
+    return `<td class="cell" style="background:${bg};cursor:default"
+      title="${esc(fullNames)}">
+      ${okSids.length>2?`<span class="nbadge">${okSids.length}</span>`:''}
+      <span class="okn">${esc(shorts)}</span></td>`;
+  }
+
+  const weeks=buildWeeks(dates);
+  const WD_MON=['월','화','수','목','금','토','일'];  // 월요일 시작
+  const weekBlocks=weeks.map((week,wi)=>{
+    const inDates=week.filter(d=>d.inRange).map(d=>d.date);
+    if(!inDates.length) return '';
+    const rangeLabel=inDates.length>1
+      ? `${mdLabel(inDates[0])} ~ ${mdLabel(inDates[inDates.length-1])}`
+      : mdLabel(inDates[0]);
+    let wHead='<th class="corner">시간</th>'+week.map((day,di)=>{
+      const isSat=di===5, isSun=di===6;
+      const cls='col '+(isSat?'sat':'')+(isSun?'sun':'')+(day.inRange?'':' out');
+      return `<th class="${cls}">${mdLabel(day.date)}
+        <span class="wd">${WD_MON[di]}</span></th>`;
     }).join('');
-    return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+    let wRows=times.map(t=>{
+      const cells=week.map(day=>{
+        if(!day.inRange) return `<td class="cell out"></td>`;
+        return cellFor(day.date,t);
+      }).join('');
+      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+    }).join('');
+    return `<div class="week-label">
+        <span class="wk">${wi+1}주차</span>
+        <span class="wkr">${rangeLabel}</span>
+      </div>
+      <div class="scroll"><table class="grid">
+        <thead><tr>${wHead}</tr></thead><tbody>${wRows}</tbody></table></div>`;
   }).join('');
 
   // 곡별 카드 (간략)
   let songCards=sIds.map(s=>{
     const mem=songMembers(s);
-    const memNames=mem.map(u=>esc(c.people[u])).join(', ');
+    const memNames=mem.map(u=>esc(itemName(c.people[u]))).join(', ');
     if(!mem.length)
       return `<div class="song-res"><div class="top">
-        <span class="nm">${esc(c.songs[s])}</span>
+        <span class="nm">${esc(itemName(c.songs[s]))}</span>
         <span class="mem">멤버 미지정</span></div>
         <div class="zero-msg">담당표에서 이 곡의 멤버를 지정하세요.</div></div>`;
     const okSlots=[];
@@ -939,7 +1013,7 @@ function viewResults(){
     const asgInfo=asgN?` · <b style="color:var(--accent)">배정 ${asgN}회</b>`:'';
     return `<div class="song-res ${zero?'zero':''}">
       <div class="top">
-        <span class="nm">${esc(c.songs[s])}</span>
+        <span class="nm">${esc(itemName(c.songs[s]))}</span>
         <span class="mem">${mem.length}명 · ${memNames}</span>
         <span class="badge" style="margin-left:auto;color:${zero?'var(--accent)':'var(--ok)'}">
           가능 ${okSlots.length}칸${asgInfo}</span>
@@ -952,8 +1026,7 @@ function viewResults(){
         <h2>시간표 — 곡별 가능 시간</h2>
         <div class="sub">칸 안의 약어 = 그 시간에 가능한 곡. 빨간 칸 = 자동 배정된 합주. 호버하면 풀네임이 보입니다.</div>
         ${toggleHtml}
-        <div class="scroll"><table class="grid"><thead><tr>${aggHead}</tr></thead>
-          <tbody>${aggRows}</tbody></table></div>
+        ${weekBlocks}
       </div>`
     : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
 
@@ -989,7 +1062,7 @@ function bindEvents(){
     if(act==='autoschedule'){autoSchedule();return;}
     if(act==='clearschedule'){clearSchedule();return;}
     if(act==='toggleall'){
-      const sIds=Object.keys(state.config.songs||{}).filter(s=>songMembers(s).length>0);
+      const sIds=sortedIds(state.config.songs||{}).filter(s=>songMembers(s).length>0);
       const allShown=sIds.every(s=>!state.hiddenSongs[s]);
       state.hiddenSongs = allShown ? Object.fromEntries(sIds.map(s=>[s,true])) : {};
       render();return;
@@ -1013,8 +1086,16 @@ function bindEvents(){
       if(+v<=state.config.startHour){alert('종료 시각은 시작 시각보다 늦어야 합니다.');render();return;}
       cfgUpdate({endHour:+v});}
     else if(act==='cfgslot')cfgUpdate({slotMinutes:+v});
-    else if(act==='songname')FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),v.trim()||'곡');
-    else if(act==='personname')FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),v.trim()||'멤버');
+    else if(act==='songname'){
+      const cur=state.config.songs?.[t.dataset.sid];
+      const ts=itemTs(cur);
+      FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),{name:v.trim()||'곡',ts});
+    }
+    else if(act==='personname'){
+      const cur=state.config.people?.[t.dataset.uid];
+      const ts=itemTs(cur);
+      FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),{name:v.trim()||'멤버',ts});
+    }
     else if(act==='pickme'){state.me=v||null;
       if(state.me)lsSet('me_'+state.pid,state.me);render();}
     else if(act==='songcount'){setSongCount(t.dataset.sid,v);}
@@ -1032,45 +1113,85 @@ function bindEvents(){
     }
   },true);
 
-  /* 그리드 칠하기 */
+  /* 그리드 칠하기 — 박스 드래그 (상하좌우) */
   let paintTarget=true, startCell=null, sx=0, sy=0, pType='';
-  const changes={};
-  function setCell(td,on){
+  let dragR0=0, dragC0=0, dragR1=0, dragC1=0;
+  let snapshot={}, dragGrid=null;
+
+  function applyBox(){
+    if(!dragGrid) return;
+    const minR=Math.min(dragR0,dragR1), maxR=Math.max(dragR0,dragR1);
+    const minC=Math.min(dragC0,dragC1), maxC=Math.max(dragC0,dragC1);
+    dragGrid.querySelectorAll('td.cell[data-cell]').forEach(td=>{
+      const r=+td.dataset.r, c=+td.dataset.c;
+      const inBox=r>=minR&&r<=maxR&&c>=minC&&c<=maxC;
+      td.classList.toggle('no', inBox ? paintTarget : !!snapshot[td.dataset.slot]);
+    });
+  }
+  function commitBox(){
+    if(!dragGrid) return;
+    const minR=Math.min(dragR0,dragR1), maxR=Math.max(dragR0,dragR1);
+    const minC=Math.min(dragC0,dragC1), maxC=Math.max(dragC0,dragC1);
+    const updates={};
+    state.avail[state.me]=state.avail[state.me]||{};
+    dragGrid.querySelectorAll('td.cell[data-cell]').forEach(td=>{
+      const r=+td.dataset.r, c=+td.dataset.c;
+      if(r<minR||r>maxR||c<minC||c>maxC) return;
+      const k=td.dataset.slot;
+      const had=!!snapshot[k];
+      if(paintTarget===had) return;
+      if(paintTarget){ state.avail[state.me][k]=true; updates[k]=true; }
+      else { delete state.avail[state.me][k]; updates[k]=null; }
+    });
+    if(Object.keys(updates).length)
+      FB.update(R('projects/'+state.pid+'/avail/'+state.me),updates);
+  }
+  function singleTap(td){
+    const on=!td.classList.contains('no');
     const k=td.dataset.slot;
     td.classList.toggle('no',on);
     state.avail[state.me]=state.avail[state.me]||{};
-    if(on)state.avail[state.me][k]=true; else delete state.avail[state.me][k];
-    changes[k]=on?true:null;
+    const upd={};
+    if(on){ state.avail[state.me][k]=true; upd[k]=true; }
+    else { delete state.avail[state.me][k]; upd[k]=null; }
+    FB.update(R('projects/'+state.pid+'/avail/'+state.me),upd);
   }
-  function flush(){
-    if(Object.keys(changes).length){
-      FB.update(R('projects/'+state.pid+'/avail/'+state.me),{...changes});
-      for(const k in changes)delete changes[k];
-    }
-  }
+
   app.addEventListener('pointerdown',e=>{
     const td=e.target.closest('td.cell[data-cell]'); if(!td||!state.me)return;
     pType=e.pointerType; startCell=td; sx=e.clientX; sy=e.clientY;
     if(pType==='mouse'){
       e.preventDefault();
       paintTarget=!td.classList.contains('no');
-      setCell(td,paintTarget); painting=true;
+      dragR0=dragR1=+td.dataset.r;
+      dragC0=dragC1=+td.dataset.c;
+      snapshot={...(state.avail[state.me]||{})};
+      dragGrid=td.closest('table');
+      painting=true;
+      applyBox();
     }
   });
   app.addEventListener('pointerover',e=>{
     if(!painting)return;
     const td=e.target.closest('td.cell[data-cell]'); if(!td)return;
-    setCell(td,paintTarget);
+    const r=+td.dataset.r, c=+td.dataset.c;
+    if(r===dragR1&&c===dragC1)return;
+    dragR1=r; dragC1=c;
+    applyBox();
   });
   window.addEventListener('pointerup',e=>{
-    if(painting){ painting=false; flush();
-      if(deferRender){deferRender=false;render();} return; }
+    if(painting){
+      painting=false;
+      commitBox();
+      dragGrid=null;
+      if(deferRender){deferRender=false;render();}
+      return;
+    }
     if(startCell&&pType!=='mouse'){
       const moved=Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy);
       const td=document.elementFromPoint(e.clientX,e.clientY);
       if(moved<12&&td&&td.closest('td.cell')===startCell&&state.me){
-        const on=!startCell.classList.contains('no');
-        setCell(startCell,on); flush();
+        singleTap(startCell);
       }
       startCell=null;
     }
