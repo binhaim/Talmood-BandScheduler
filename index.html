@@ -576,6 +576,16 @@
 
   .danger-zone{background:rgba(207,61,30,.02);border-color:rgba(207,61,30,.18);}
 
+  /* 페이지 인트로 박스 */
+  .page-intro{background:var(--paper);border:1px solid var(--line);
+    border-left:3px solid var(--accent);padding:11px 14px;
+    border-radius:var(--r-sm);margin-bottom:16px;}
+  .page-intro .pi-h{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:13px;letter-spacing:-.005em;color:var(--ink);margin-bottom:4px;
+    display:flex;align-items:center;gap:6px;}
+  .page-intro p{font-size:12.5px;color:var(--ink-2);line-height:1.6;margin:0;}
+  .page-intro b{color:var(--ink);font-weight:600;}
+
   /* 시간표 포맷 설정 그룹 */
   .fmt-group{background:var(--paper);border:1px solid var(--line);
     border-radius:var(--r-sm);padding:14px 14px 12px;margin-top:4px;}
@@ -1294,6 +1304,10 @@ function viewSetup(){
       </div>
       <button class="btn ghost sm" data-act="lock">${lk?'잠금 해제':'설정 잠그기'}</button>
     </div>
+    <div class="page-intro">
+      <div class="pi-h">🎯 이 페이지는?</div>
+      <p>프로젝트의 <b>뼈대</b>를 만드는 곳입니다. 합주할 <b>기간·시간대</b>, <b>곡 목록</b>, <b>멤버 목록</b>, 누가 어떤 곡을 연주하는지(<b>담당표</b>)를 정합니다. 다 정했으면 우상단의 잠금 버튼으로 잠가두면 멤버들이 실수로 못 바꿉니다.</p>
+    </div>
     <label class="fld">
       <span class="lab">프로젝트 이름</span>
       <input type="text" value="${esc(c.name||'')}" ${dis} data-act="cfgname" style="width:100%">
@@ -1379,8 +1393,12 @@ function viewParticipate(){
     <div class="card-head">
       <div>
         <h2>안 되는 시간 입력</h2>
-        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 합주가 <b style="color:var(--accent)">불가능한 칸</b>을 칠하세요. PC는 박스 드래그로 여러 칸 한 번에 선택 가능.</div>
+        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 합주가 <b style="color:var(--accent)">불가능한 칸</b>을 칠하세요. PC는 박스 드래그, 모바일은 꾹 눌러서 드래그.</div>
       </div>
+    </div>
+    <div class="page-intro">
+      <div class="pi-h">🎯 이 페이지는?</div>
+      <p>각자 <b>본인의 안 되는 시간</b>을 표시하는 곳입니다. 본인 이름을 고른 뒤 합주가 불가능한 시간 칸을 빨갛게 칠하세요. 멤버 현황으로 다른 사람의 진행도 볼 수 있고, 다 입력했으면 우상단의 <b>"작성 완료 체크"</b>를 눌러 다른 사람들에게 알려주세요.</p>
     </div>
     <label class="fld" style="max-width:280px;margin-bottom:0">
       <span class="lab">내 이름</span>
@@ -1573,7 +1591,10 @@ function viewResults(){
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 배정</h2>
-        <div class="sub">각 날짜가 곡별 sub-col로 나뉘어 있습니다. <b>옅은 색</b> = 가능한 시간, <b>짙은 색</b> = 실제 배정, 빗금 = 멤버 안 됨, 흰빗금 = 같은 시간에 다른 곡 배정됨. <b>칸을 클릭/드래그</b>하면 직접 배정·해제됩니다.</div>
+        <div class="page-intro">
+          <div class="pi-h">🎯 이 페이지는?</div>
+          <p>실제 <b>합주 시간표를 짜는 곳</b>입니다. 모든 멤버 입력이 종합되어 곡별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=멤버 안 됨. 최종 결과는 아래 캘린더 카드에서 PNG·캘린더(.ics)로 받을 수 있습니다.</p>
+        </div>
         ${optRow}
         ${tabsHtml}
         ${toggleHtml}
@@ -1872,6 +1893,10 @@ function viewResultsDetail(){
         <div class="sub" style="margin:4px 0 0">곡을 고르면 그 곡 멤버들의 시간별 가능/불가능이 캘린더 형태로 표시됩니다. <b style="color:var(--ok)">초록</b> = 가능, <b style="color:var(--accent)">빨강</b> = 안 됨. 진한 초록은 그 시간에 전원 가능한 경우입니다.</div>
       </div>
       <span class="badge" style="color:var(--muted)">${feasibleCount}/${totalSlots} 가능</span>
+    </div>
+    <div class="page-intro">
+      <div class="pi-h">🎯 이 페이지는?</div>
+      <p>시간표 짜기가 막혔을 때 <b>"이 곡은 누가 막고 있는지"</b> 찾는 진단 페이지입니다. 곡 하나를 고르면 그 곡 멤버들의 시간대별 가능/불가능이 캘린더로 보이고, 아래에 멤버별 안 되는 칸 비율도 표시됩니다.</p>
     </div>
     <div class="song-toggles" style="margin-top:14px">
       <span class="label">곡 선택:</span>
