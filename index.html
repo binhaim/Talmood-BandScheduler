@@ -307,6 +307,14 @@
   .fd-block .fb-mem{font-size:12px;color:var(--muted);line-height:1.4;}
   .fd-block .fb-mem b{color:var(--ink);font-weight:600;}
 
+  /* 다중 곡 허용 토글 */
+  .par-row{margin:10px 0 14px;padding:9px 13px;background:var(--paper);
+    border-radius:var(--r-sm);border:1px solid var(--line);}
+  .par-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;
+    color:var(--ink-2);cursor:pointer;user-select:none;}
+  .par-toggle input{accent-color:var(--accent);cursor:pointer;width:14px;height:14px;}
+  .par-toggle .par-hint{color:var(--muted);font-size:11.5px;margin-left:3px;font-weight:400;}
+
   /* 곡별 요약 */
   .fs-card{border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);padding:14px 16px;margin-bottom:14px;}
@@ -690,13 +698,23 @@ function isAssigned(sid,slotKey){
   return !!(state.schedule&&state.schedule[sid]&&state.schedule[sid][slotKey]);
 }
 function slotConflicts(sid,slotKey){
-  const mine=new Set(songMembers(sid));
+  const allowParallel=!!(state.config&&state.config.allowParallel);
   const out=[];
-  for(const other in state.schedule){
-    if(other===sid) continue;
-    if(!state.schedule[other][slotKey]) continue;
-    const shared=songMembers(other).filter(u=>mine.has(u));
-    if(shared.length) out.push({sid:other,shared});
+  if(allowParallel){
+    // 멤버 겹치는 경우만 충돌
+    const mine=new Set(songMembers(sid));
+    for(const other in state.schedule){
+      if(other===sid) continue;
+      if(!state.schedule[other][slotKey]) continue;
+      const shared=songMembers(other).filter(u=>mine.has(u));
+      if(shared.length) out.push({sid:other,shared});
+    }
+  } else {
+    // 기본: 한 슬롯에 한 곡만 — 같은 시간 다른 곡 무조건 충돌
+    for(const other in state.schedule){
+      if(other===sid) continue;
+      if(state.schedule[other][slotKey]) out.push({sid:other,shared:[]});
+    }
   }
   return out;
 }
@@ -808,7 +826,7 @@ async function createProject(){
   const pid=genPid();
   const t=new Date();const e=new Date();e.setDate(e.getDate()+6);
   const cfg={ name:'새 프로젝트', startDate:fmtDate(t), endDate:fmtDate(e),
-    startHour:18, endHour:24, slotMinutes:60, locked:false,
+    startHour:18, endHour:24, slotMinutes:60, locked:false, allowParallel:false,
     songs:{}, people:{}, matrix:{} };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
@@ -1369,10 +1387,19 @@ function viewResults(){
 
   const ganttHtml = active ? renderGantt(active.dates) : '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>';
 
+  const allowParallel=!!c.allowParallel;
+  const optRow=`<div class="par-row">
+    <label class="par-toggle">
+      <input type="checkbox" data-act="toggleparallel" ${allowParallel?'checked':''}>
+      <span>같은 시간에 여러 곡 허용 <span class="par-hint">${allowParallel?'(멤버 겹치지 않을 때만 가능)':'(한 슬롯에 한 곡만)'}</span></span>
+    </label>
+  </div>`;
+
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 배정</h2>
-        <div class="sub">각 날짜가 곡별 sub-col로 나뉘어 있습니다. <b>옅은 색</b> = 가능한 시간, <b>짙은 색</b> = 실제 배정, 빗금 = 멤버 안 됨, 흰빗금 = 다른 곡과 멤버 겹침. <b>칸을 클릭/드래그</b>하면 직접 배정·해제됩니다.</div>
+        <div class="sub">각 날짜가 곡별 sub-col로 나뉘어 있습니다. <b>옅은 색</b> = 가능한 시간, <b>짙은 색</b> = 실제 배정, 빗금 = 멤버 안 됨, 흰빗금 = 같은 시간에 다른 곡 배정됨. <b>칸을 클릭/드래그</b>하면 직접 배정·해제됩니다.</div>
+        ${optRow}
         ${tabsHtml}
         ${toggleHtml}
         ${ganttHtml}
@@ -1765,6 +1792,9 @@ function bindEvents(){
       state.finalFilter=v||'';
       render();
     }
+    else if(act==='toggleparallel'){
+      cfgUpdate({allowParallel:!!t.checked});
+    }
   });
 
   app.addEventListener('blur',e=>{
@@ -1923,7 +1953,8 @@ function bindEvents(){
     const cfs=slotConflicts(sid,k);
     if(cfs.length){
       const nm=cfs.map(x=>itemName(state.config.songs[x.sid])).join(', ');
-      toast(`멤버 겹침: ${nm}`); return;
+      const allowParallel=!!(state.config&&state.config.allowParallel);
+      toast(allowParallel?`멤버 겹침: ${nm}`:`이 시간에 이미 배정됨: ${nm}`); return;
     }
     state.schedule[sid]=state.schedule[sid]||{};
     state.schedule[sid][k]=true;
