@@ -53,6 +53,15 @@
   .code-chip:active{transform:scale(.96);}
   .code-chip svg{width:11px;height:11px;opacity:.7;}
 
+  .help-btn{margin-left:auto;border:1px solid var(--line-2);background:var(--surface);
+    color:var(--ink);width:28px;height:28px;border-radius:50%;cursor:pointer;
+    font-size:13px;font-weight:700;font-family:'Bricolage Grotesque',sans-serif;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background var(--t),border-color var(--t),color var(--t);
+    flex-shrink:0;}
+  .help-btn:hover{border-color:var(--ink);background:var(--paper);color:var(--accent);}
+  .tabs ~ .help-btn{margin-left:8px;}
+
   .tabs{display:flex;gap:2px;margin-left:auto;background:var(--paper);
     padding:3px;border-radius:8px;border:1px solid var(--line);}
   .tab{font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:13px;
@@ -567,6 +576,40 @@
 
   .danger-zone{background:rgba(207,61,30,.02);border-color:rgba(207,61,30,.18);}
 
+  /* 튜토리얼 모달 */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.55);
+    z-index:100;display:flex;align-items:flex-start;justify-content:center;
+    padding:40px 16px;overflow-y:auto;animation:modalIn .2s ease;
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+  @keyframes modalIn{from{opacity:0;}to{opacity:1;}}
+  .modal{background:var(--surface);border-radius:var(--r);max-width:720px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.22);position:relative;overflow:hidden;
+    animation:modalSlide .25s cubic-bezier(.4,0,.2,1);}
+  @keyframes modalSlide{from{transform:translateY(-8px);opacity:.7;}to{transform:translateY(0);opacity:1;}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;
+    padding:18px 24px;border-bottom:1px solid var(--line);background:var(--paper);
+    position:sticky;top:0;z-index:1;}
+  .modal-head h2{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--ink);}
+  .modal-x{border:none;background:transparent;font-size:24px;cursor:pointer;
+    color:var(--muted);padding:2px 10px;border-radius:6px;line-height:1;
+    transition:background var(--t),color var(--t);}
+  .modal-x:hover{background:var(--accent-soft);color:var(--accent);}
+  .modal-body{padding:18px 28px 28px;max-height:calc(85vh - 60px);overflow-y:auto;}
+  .tut-section{margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+  .tut-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .tut-section h3{font-size:15px;margin-bottom:9px;font-weight:700;
+    letter-spacing:-.01em;color:var(--ink);}
+  .tut-section p{font-size:13.5px;color:var(--ink-2);margin-bottom:7px;line-height:1.65;}
+  .tut-section ol, .tut-section ul{padding-left:22px;font-size:13.5px;
+    color:var(--ink-2);line-height:1.7;}
+  .tut-section ul ul, .tut-section ol ul{margin-top:3px;margin-bottom:4px;}
+  .tut-section li{margin-bottom:5px;}
+  .tut-section li b{color:var(--ink);font-weight:600;}
+  .tut-section code{font-size:12px;background:var(--paper);padding:1px 5px;border-radius:3px;}
+  .tut-section.tut-tip{background:var(--paper);padding:16px 18px;border-radius:var(--r-sm);
+    border:1px solid var(--line);margin-bottom:0;}
+  .tut-section.tut-tip h3{margin-bottom:6px;}
+
   @media (max-width:640px){
     .wrap{padding:0 14px;}
     .card{padding:16px;}
@@ -625,7 +668,7 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null };
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -1023,22 +1066,130 @@ function renderHeader(){
     });
     h+='</div>';
   }
+  h+='<button class="help-btn" data-act="help" title="사용법">?</button>';
   $('hbar').innerHTML=h;
 }
 
 function renderBody(){
   const app=$('app');
-  if(state.screen==='loading'){ app.innerHTML='<div class="empty">불러오는 중…</div>'; return; }
-  if(state.screen==='no-config'){ app.innerHTML=viewNoConfig(); return; }
-  if(state.screen==='fb-error'){ app.innerHTML=viewFbError(); return; }
-  if(state.screen==='landing'){ app.innerHTML=viewLanding(); return; }
-  if(state.screen==='project'){
-    if(!state.config){ app.innerHTML=viewMissing(); return; }
-    if(state.tab==='setup') app.innerHTML=viewSetup();
-    else if(state.tab==='participate') app.innerHTML=viewParticipate();
-    else if(state.tab==='detail') app.innerHTML=viewResultsDetail();
-    else app.innerHTML=viewResults();
+  let html='';
+  if(state.screen==='loading') html='<div class="empty">불러오는 중…</div>';
+  else if(state.screen==='no-config') html=viewNoConfig();
+  else if(state.screen==='fb-error') html=viewFbError();
+  else if(state.screen==='landing') html=viewLanding();
+  else if(state.screen==='project'){
+    if(!state.config) html=viewMissing();
+    else if(state.tab==='setup') html=viewSetup();
+    else if(state.tab==='participate') html=viewParticipate();
+    else if(state.tab==='detail') html=viewResultsDetail();
+    else html=viewResults();
   }
+  if(state.showHelp) html+=viewHelp();
+  app.innerHTML=html;
+}
+
+function viewHelp(){
+  return `<div class="modal-backdrop" data-act="closehelp">
+    <div class="modal" data-act="modal-noop">
+      <div class="modal-head">
+        <h2>📖 사용법</h2>
+        <button class="modal-x" data-act="closehelp" title="닫기">×</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="tut-section">
+          <h3>🎯 한눈에 보는 흐름</h3>
+          <p>밴드/그룹 합주 일정을 모두가 같이 정하는 도구입니다.</p>
+          <ol>
+            <li><b>리더</b>가 프로젝트를 만들고 6자리 <b>코드</b>를 멤버들에게 공유</li>
+            <li><b>각 멤버</b>가 안 되는 시간을 입력하고 작성 완료 체크</li>
+            <li>리더(또는 같이)가 시간표를 짜고, 모두가 결과를 받아갑니다</li>
+          </ol>
+        </div>
+
+        <div class="tut-section">
+          <h3>🛠️ 프로젝트 만드는 사람</h3>
+          <ol>
+            <li>메인 화면에서 <b>"+ 새 프로젝트 만들기"</b> 클릭. 6자리 코드가 자동 생성됩니다.</li>
+            <li><b>설정</b> 탭에서:
+              <ul>
+                <li>프로젝트 이름</li>
+                <li>합주 가능한 <b>날짜 범위</b>와 <b>시간 범위</b>, 칸 단위 (30분 또는 1시간)</li>
+                <li><b>곡 목록</b>과 <b>멤버 목록</b> 추가</li>
+                <li><b>담당표</b> — 각 곡에 누가 참여하는지 체크</li>
+              </ul>
+            </li>
+            <li><b>코드 공유</b>: 헤더의 코드 칩을 클릭하면 클립보드에 복사됩니다.
+              현재 URL(<code>?p=ABC123</code>)을 직접 공유해도 됩니다.</li>
+            <li>곡·멤버를 다 받았으면 <b>🔒 설정 잠그기</b>로 멤버들이 실수로 못 바꾸게 막을 수 있습니다.</li>
+          </ol>
+        </div>
+
+        <div class="tut-section">
+          <h3>👤 멤버로 초대받았다면</h3>
+          <ol>
+            <li>받은 코드를 메인 화면 코드 입력란에 넣거나, 받은 링크 클릭으로 입장합니다.</li>
+            <li><b>입력</b> 탭에서 <b>내 이름</b>을 고릅니다.</li>
+            <li>합주가 <span style="color:var(--accent);font-weight:700">불가능한 시간 칸</span>을 클릭하거나 드래그로 칠합니다.
+              빨갛게 표시된 칸이 "안 됨"입니다.
+              <ul>
+                <li>PC: 박스 드래그로 여러 칸을 한 번에</li>
+                <li>모바일: 칸을 탭해서 하나씩</li>
+              </ul>
+            </li>
+            <li>다 입력했으면 우상단 <b>"작성 완료 체크"</b>를 눌러주세요. 다른 멤버들도 누가 끝났는지 봅니다.</li>
+            <li>멤버 현황 칩 클릭으로 다른 사람 시간표로 바로 이동할 수 있습니다.</li>
+          </ol>
+        </div>
+
+        <div class="tut-section">
+          <h3>📊 시간표 짜기 (결과 탭)</h3>
+          <p>날짜 × 곡 sub-col × 시간으로 펼쳐진 간트 그리드가 보입니다. 칸 색의 의미:</p>
+          <ul>
+            <li><b>옅은 색</b> — 가능 (그 시간에 그 곡 합주 OK)</li>
+            <li><b>짙은 색</b> — 실제로 배정됨</li>
+            <li><b>회색 빗금</b> — 멤버가 안 됨</li>
+            <li><b>흰 빗금</b> — 같은 시간에 다른 곡 이미 배정</li>
+          </ul>
+          <p>조작:</p>
+          <ul>
+            <li>가능한 칸 <b>클릭</b> = 배정 / 해제 토글</li>
+            <li>같은 sub-col(곡×날짜) 안에서 <b>세로 드래그</b> = 연속 시간 한 번에 배정</li>
+            <li>위쪽 토글 <b>"같은 시간에 여러 곡 허용"</b>:
+              꺼짐(기본) = 한 슬롯에 한 곡만 / 켜짐 = 멤버 안 겹치면 동시 가능</li>
+          </ul>
+        </div>
+
+        <div class="tut-section">
+          <h3>📅 결과 공유 & 캘린더 내보내기</h3>
+          <ul>
+            <li><b>곡별 합주 요약</b> — 각 곡이 몇 회 / 몇 시간 / 언제 합주하는지 정리</li>
+            <li><b>최종 캘린더</b> — 배정된 합주를 캘린더 모양으로 시각화</li>
+            <li><b>멤버 필터</b> — 드롭다운에서 본인 선택하면 본인 일정만 표시</li>
+            <li><b>📷 PNG</b> — 그 화면 그대로 이미지로 저장</li>
+            <li><b>📅 .ics</b> — Google/Apple/Outlook 캘린더로 가져갈 수 있는 파일 다운로드</li>
+          </ul>
+        </div>
+
+        <div class="tut-section">
+          <h3>🔍 상세 탭</h3>
+          <p>곡 하나를 고르면 그 곡 멤버들의 시간대별 가능/불가능을 한눈에 봅니다.
+             멤버별 안 되는 칸 비율 막대도 함께 표시 — <b>"이 곡은 누구 때문에 안 되는지"</b> 빠르게 파악 가능합니다.</p>
+        </div>
+
+        <div class="tut-section tut-tip">
+          <h3>💡 자주 묻는 것</h3>
+          <ul>
+            <li><b>코드를 잃어버렸어요</b> — 다른 멤버에게 다시 물어보세요. 헤더 코드 칩 클릭으로 공유.</li>
+            <li><b>기본 구성이 뭐예요?</b> — 곡과 멤버가 둘 다 비었을 때 나오는 "기본 구성 불러오기" 버튼. 미리 정의된 10곡·14명 셋업이 한 번에 들어갑니다 (탈무드 밴드 기본값).</li>
+            <li><b>다른 기기에서 같은 프로젝트를 열려면?</b> — 코드 입력 또는 링크로 들어가면 됩니다. 메인 화면 "최근 프로젝트" 목록은 그 기기에서 들어가본 것만 보입니다.</li>
+            <li><b>설정 잠그면 뭐가 잠기나요?</b> — 곡·멤버 추가/이름 변경, 날짜/시간 범위 변경이 막힙니다. 시간 입력과 배정은 그대로 가능.</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>`;
 }
 
 function viewNoConfig(){
@@ -1748,6 +1899,9 @@ function bindEvents(){
     const act=t.dataset.act;
     if(act==='home'){location.href=location.pathname;return;}
     if(act==='copycode'){copyCode();return;}
+    if(act==='help'){state.showHelp=true;render();return;}
+    if(act==='closehelp'){state.showHelp=false;render();return;}
+    if(act==='modal-noop') return;
     if(act==='new'){createProject();return;}
     if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
     if(act==='forget'){
