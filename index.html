@@ -246,6 +246,39 @@
   button.mstat{cursor:pointer;color:var(--ink);font-family:inherit;}
   button.mstat:hover{border-color:var(--ink);}
   button.mstat.done:hover{border-color:var(--ok);}
+
+  /* 간트 그리드 */
+  table.gantt th.gnt-corner{position:sticky;top:0;left:0;z-index:6;
+    background:var(--ink);color:var(--paper);font-size:11px;font-weight:600;
+    padding:8px 10px;letter-spacing:.04em;}
+  table.gantt th.gnt-day{position:sticky;top:0;z-index:4;background:var(--ink);
+    color:var(--paper);font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+    font-size:11px;padding:6px 4px;text-align:center;
+    border-right:2px solid #000;}
+  table.gantt th.gnt-day .wd{display:inline-block;font-size:10px;opacity:.65;
+    font-family:'Archivo';font-weight:400;margin-left:2px;}
+  table.gantt th.gnt-day.sat{color:#9ac8e8;}
+  table.gantt th.gnt-day.sun{color:#e89c92;}
+  table.gantt th.gnt-sub{position:sticky;top:24px;z-index:3;background:var(--ink);
+    color:var(--paper);font-family:'Bricolage Grotesque',sans-serif;font-weight:600;
+    font-size:9.5px;padding:5px 1px 4px;text-align:center;min-width:14px;
+    white-space:nowrap;letter-spacing:-.01em;border-bottom:1px solid #000;}
+  table.gantt th.gnt-sub::before{content:'';display:block;height:3px;width:100%;
+    background:var(--sc,#888);margin-bottom:3px;border-radius:2px;}
+  table.gantt th.gnt-sub.day-end{border-right:2px solid #000;}
+  table.gantt td.gnt-cell{width:14px;height:26px;cursor:pointer;padding:0;
+    border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    transition:filter 80ms ease;}
+  table.gantt td.gnt-cell.day-end{border-right:2px solid var(--line-2);}
+  table.gantt td.gnt-cell.feasible:hover, table.gantt td.gnt-cell.has:hover{filter:brightness(.88);}
+  table.gantt td.gnt-cell.infeasible{cursor:not-allowed;
+    background:repeating-linear-gradient(135deg, var(--surface) 0 3px,
+      rgba(26,24,20,.04) 3px 6px) !important;}
+  table.gantt td.gnt-cell.conflict{cursor:not-allowed;
+    background-image:repeating-linear-gradient(135deg,
+      rgba(255,255,255,.65) 0 3px, transparent 3px 6px);}
+  table.gantt td.gnt-cell.preview-outline{outline:2px solid var(--ink);
+    outline-offset:-2px;}
   th.col.out{opacity:.4;}
   td.cell.out{background:repeating-linear-gradient(135deg,
     transparent 0 4px,rgba(26,24,20,.025) 4px 8px);cursor:default;}
@@ -505,6 +538,34 @@ function songColorLight(sid){
   return `hsl(${hue},75%,90%)`;
 }
 
+/* ---- schedule 스키마: 신버전 schedule[sid][slotKey]=true / 구버전 schedule[slotKey]=sid ---- */
+function normalizeSchedule(raw){
+  if(!raw||typeof raw!=='object') return {};
+  const isOld=Object.keys(raw).some(k=>/^\d{4}-\d{2}-\d{2}\|/.test(k));
+  if(!isOld) return raw;
+  const out={};
+  for(const k in raw){
+    const sid=raw[k];
+    if(typeof sid!=='string') continue;
+    (out[sid]=out[sid]||{})[k]=true;
+  }
+  return out;
+}
+function isAssigned(sid,slotKey){
+  return !!(state.schedule&&state.schedule[sid]&&state.schedule[sid][slotKey]);
+}
+function slotConflicts(sid,slotKey){
+  const mine=new Set(songMembers(sid));
+  const out=[];
+  for(const other in state.schedule){
+    if(other===sid) continue;
+    if(!state.schedule[other][slotKey]) continue;
+    const shared=songMembers(other).filter(u=>mine.has(u));
+    if(shared.length) out.push({sid:other,shared});
+  }
+  return out;
+}
+
 /* ---- 주 단위 그리드 (월~일) ---- */
 function weekStart(dateStr){
   const d=new Date(dateStr+'T00:00:00');
@@ -556,7 +617,7 @@ function subscribeProject(pid){
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
     if(state.screen==='project') render(); });
-  FB.onValue(R('projects/'+pid+'/schedule'),s=>{ state.schedule=s.val()||{};
+  FB.onValue(R('projects/'+pid+'/schedule'),s=>{ state.schedule=normalizeSchedule(s.val());
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/done'),s=>{ state.done=s.val()||{};
     if(state.screen==='project') render(); });
@@ -695,37 +756,48 @@ function autoSchedule(){
     return ra-rb;
   });
 
-  const used={}; // slotKey -> sid
+  // 멤버 단위 점유 — 멤버 겹치지 않으면 같은 시간에 여러 곡 병렬 허용
+  const busy={}; // uid -> { slotKey -> sid }
+  const newSchedule={}; // sid -> { slotKey -> true }
   const fails=[];
+  let totalBlocks=0;
   for(const sid of order){
+    const members=songMembers(sid);
     let need=targets[sid];
     for(const i of okStarts[sid]){
       if(need<=0) break;
-      let free=true;
-      for(let j=0;j<blockLen;j++) if(used[allSlots[i+j].k]){ free=false; break; }
-      if(free){
-        for(let j=0;j<blockLen;j++) used[allSlots[i+j].k]=sid;
-        need--;
+      // 이 블록에서 멤버 충돌 없는지
+      let ok=true;
+      for(let j=0;j<blockLen && ok;j++){
+        const k=allSlots[i+j].k;
+        for(const u of members){ if(busy[u]&&busy[u][k]){ ok=false; break; } }
       }
+      if(!ok) continue;
+      // 배정
+      for(let j=0;j<blockLen;j++){
+        const k=allSlots[i+j].k;
+        for(const u of members){ (busy[u]=busy[u]||{})[k]=sid; }
+        (newSchedule[sid]=newSchedule[sid]||{})[k]=true;
+      }
+      need--; totalBlocks++;
     }
     if(need>0) fails.push({sid,missing:need});
   }
 
-  FB.set(R('projects/'+state.pid+'/schedule'),used);
-  const blocks=Object.keys(used).length/blockLen;
+  FB.set(R('projects/'+state.pid+'/schedule'),newSchedule);
   if(fails.length){
     const names=fails.map(f=>esc(itemName(c.songs[f.sid]))+'('+f.missing+'회)').join(', ');
-    toast(`${blocks}회 배정. 부족: ${names}`);
+    toast(`${totalBlocks}회 배정. 부족: ${names}`);
   } else {
-    toast(`${blocks}회 모두 배정 완료 (각 2시간)`);
+    toast(`${totalBlocks}회 모두 배정 완료 (각 2시간)`);
   }
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, rtPainting=false;
+let deferRender=false, painting=false, gPainting=false;
 function render(){
   const a=document.activeElement;
-  if(painting||rtPainting){deferRender=true;return;}
+  if(painting||gPainting){deferRender=true;return;}
   if(a&&a.tagName==='INPUT'&&a.type==='text'&&$('app').contains(a)){
     deferRender=true;return;}
   doRender();
@@ -997,20 +1069,22 @@ function viewParticipate(){
 
   let gridHtml='';
   if(active){
-    let head2='<th class="corner">날짜 \\ 시간</th>'+
-      times.map(t=>`<th class="col-time">${t}</th>`).join('');
-    let rows=active.dates.map((day,ri)=>{
-      if(!day.inRange) return '';
-      const w=wdOf(day.date);
-      const wdCls=w===6?'sat':w===0?'sun':'';
-      const cells=times.map((t,ci)=>{
+    const WD_MON=['월','화','수','목','금','토','일'];
+    let head2='<th class="corner">시간</th>'+active.dates.map((day,di)=>{
+      const isSat=di===5,isSun=di===6;
+      const cls='col '+(isSat?'sat':'')+(isSun?'sun':'')+(day.inRange?'':' out');
+      return `<th class="${cls}">${mdLabel(day.date)}<span class="wd">${WD_MON[di]}</span></th>`;
+    }).join('');
+    let rows=times.map((t,ri)=>{
+      const cells=active.dates.map((day,ci)=>{
+        if(!day.inRange) return `<td class="cell out"></td>`;
         const k=slotKey(day.date,t);
         const no=!!mine[k];
         const others=unavailCount(k)-(no?1:0);
         return `<td class="cell ${no?'no':''}" data-cell="1" data-slot="${k}" data-r="${ri}" data-c="${ci}">
           ${others>0?`<span class="cnt">${others}</span>`:''}</td>`;
       }).join('');
-      return `<tr><td class="rh-date ${wdCls}"><span class="wd">${WD[w]}</span>${mdLabel(day.date)}</td>${cells}</tr>`;
+      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
     }).join('');
     gridHtml=`<div class="scroll grid-touch"><table class="grid">
       <thead><tr>${head2}</tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1092,69 +1166,8 @@ function viewResults(){
       </label>`;}).join('')}
   </div>`;
 
-  // 도구 팔레트
-  const tool=state.tool;
-  const toolChips=activeSongs.map(s=>{
-    const on=tool&&tool.kind==='paint'&&tool.sid===s;
-    const col=songColor(s);
-    const sty=on?`background:${col};border-color:${col};color:#fff`:'';
-    return `<button class="tool-chip ${on?'on':''}" data-act="picktool" data-sid="${s}" style="${sty}">
-      <span class="csw" style="background:${col}"></span>${esc(itemName(c.songs[s]))}</button>`;
-  }).join('');
-  const eraseOn=tool&&tool.kind==='erase';
-  const toolBar=activeSongs.length?`<div class="tool-bar">
-    <span class="lbl">배정 도구</span>
-    ${toolChips}
-    <span class="sp"></span>
-    <button class="tool-chip eraser ${eraseOn?'on':''}" data-act="picktool" data-erase="1">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5l4.5-4.5 5 5L8 17.5H3v-5z" transform="translate(0 -2)"/><path d="M7.5 8L11 4.5l3.5 3.5"/></svg>
-      지우개
-    </button>
-  </div>`:'';
-
-  // 셀 렌더 함수
-  function cellLeft(d,t){
-    const k=slotKey(d,t);
-    const asg=schedule[k];
-    if(asg && isShown(asg)){
-      return `<td class="cell assigned" title="${esc(itemName(c.songs[asg]))} (배정됨)" style="background:${songColor(asg)}">
-        <span class="asg">${esc(shortName(itemName(c.songs[asg])))}</span></td>`;
-    }
-    const okSids=activeSongs.filter(s=>isShown(s)&&slotOkForSong(s,k));
-    if(!okSids.length){
-      return `<td class="cell" style="cursor:default;background:var(--surface)"></td>`;
-    }
-    const fullNames=okSids.map(s=>itemName(c.songs[s])).join(', ');
-    const shorts=okSids.map(s=>shortName(itemName(c.songs[s]))).join(' ');
-    const ratio=okSids.length/Math.max(activeSongs.length,1);
-    const bg=`rgba(47,125,82,${(0.10+ratio*0.45).toFixed(2)})`;
-    return `<td class="cell" style="background:${bg};cursor:default"
-      title="${esc(fullNames)}">
-      ${okSids.length>2?`<span class="nbadge">${okSids.length}</span>`:''}
-      <span class="okn">${esc(shorts)}</span></td>`;
-  }
-  function cellRight(d,t,ri,ci){
-    const k=slotKey(d,t);
-    const asg=schedule[k];
-    let cls='cell rt', label='', title='', style='';
-    if(asg){
-      cls+=' has';
-      const nm=itemName(c.songs[asg])||'';
-      label=`<span class="lab">${esc(shortName(nm))}</span>`;
-      title=nm+' (배정됨)';
-      style=`background:${songColor(asg)}`;
-      if(tool&&tool.kind==='erase') cls+=' erasable';
-    } else if(tool&&tool.kind==='paint'){
-      const feasible=slotOkForSong(tool.sid,k);
-      if(feasible){
-        cls+=' feasible';
-        style=`background:${songColorLight(tool.sid)}`;
-      } else {
-        cls+=' infeasible';
-      }
-    }
-    return `<td class="${cls}" data-rt="1" data-slot="${k}" data-r="${ri}" data-c="${ci}" title="${esc(title)}"${style?` style="${style}"`:''}>${label}</td>`;
-  }
+  // 표시할 곡 (활성 + 안 숨김)
+  const visibleSongs=activeSongs.filter(isShown);
 
   const wks=buildWeeks(dates).map((w,i)=>{
     const range=w.filter(d=>d.inRange).map(d=>d.date);
@@ -1172,45 +1185,73 @@ function viewResults(){
     }).join('')}
   </div>`:'';
 
-  function renderWeekGridT(week, cellFn, classExtra){
-    let head='<th class="corner">날짜 \\ 시간</th>'+
-      times.map(t=>`<th class="col-time">${t}</th>`).join('');
-    let rows=week.map((day,ri)=>{
-      if(!day.inRange) return '';
-      const w=wdOf(day.date);
-      const wdCls=w===6?'sat':w===0?'sun':'';
-      const cells=times.map((t,ci)=>cellFn(day.date,t,ri,ci)).join('');
-      return `<tr><td class="rh-date ${wdCls}"><span class="wd">${WD[w]}</span>${mdLabel(day.date)}</td>${cells}</tr>`;
-    }).join('');
-    return `<div class="scroll ${classExtra||''}"><table class="grid">
-      <thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  function ganttCell(sid, k, ri, di, si, isDayEnd){
+    const assigned=isAssigned(sid,k);
+    const feasible=slotOkForSong(sid,k);
+    const cfs=(feasible && !assigned)?slotConflicts(sid,k):[];
+    let cls='gnt-cell'+(isDayEnd?' day-end':'');
+    let style='';
+    let title='';
+    if(assigned){
+      cls+=' has';
+      style=`background:${songColor(sid)}`;
+      title=`${itemName(c.songs[sid])} 배정 · 클릭하면 해제`;
+    } else if(!feasible){
+      cls+=' infeasible';
+      title='이 시간엔 멤버가 안 됩니다';
+    } else if(cfs.length){
+      cls+=' conflict';
+      const nm=cfs.map(x=>itemName(c.songs[x.sid])).join(', ');
+      title=`멤버 겹침: ${nm}`;
+    } else {
+      cls+=' feasible';
+      style=`background:${songColorLight(sid)}`;
+      title=`${itemName(c.songs[sid])} 클릭하면 배정`;
+    }
+    return `<td class="${cls}" data-gantt="1" data-sid="${sid}" data-slot="${k}" data-r="${ri}" data-col="${di}-${si}" title="${esc(title)}"${style?` style="${style}"`:''}></td>`;
   }
 
-  const toolHint=tool
-    ? (tool.kind==='erase'
-        ? '<span class="hint">· 지우개 활성: 우측 칸 드래그하면 배정 제거</span>'
-        : `<span class="hint">· ${esc(itemName(c.songs[tool.sid]))} 선택: 가능한 칸 드래그</span>`)
-    : '';
+  function renderGantt(week){
+    const days=week.filter(d=>d.inRange);
+    if(!days.length) return '<div class="empty">표시할 날짜가 없습니다.</div>';
+    if(!visibleSongs.length) return '<div class="empty">표시할 곡을 위에서 체크하세요.</div>';
+    const N=visibleSongs.length;
+    let dayHead='<th class="gnt-corner" rowspan="2">시간</th>';
+    let subHead='';
+    days.forEach(day=>{
+      const w=wdOf(day.date);
+      const wdCls=w===0?'sun':(w===6?'sat':'');
+      dayHead+=`<th class="gnt-day ${wdCls}" colspan="${N}">
+        ${mdLabel(day.date)} <span class="wd">${WD[w]}</span></th>`;
+      visibleSongs.forEach((sid,si)=>{
+        const last=si===N-1?'day-end':'';
+        subHead+=`<th class="gnt-sub ${last}" style="--sc:${songColor(sid)}" title="${esc(itemName(c.songs[sid]))}">${esc(shortName(itemName(c.songs[sid])))}</th>`;
+      });
+    });
+    let rows=times.map((t,ri)=>{
+      let cells='';
+      days.forEach((day,di)=>{
+        visibleSongs.forEach((sid,si)=>{
+          const k=slotKey(day.date,t);
+          cells+=ganttCell(sid,k,ri,di,si,si===N-1);
+        });
+      });
+      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+    }).join('');
+    return `<div class="scroll grid-touch"><table class="grid gantt">
+      <thead><tr>${dayHead}</tr><tr>${subHead}</tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
 
-  const weekContent = active ? `<div class="week-pair">
-    <div class="week-pane">
-      <div class="pane-title">가능 시간</div>
-      ${renderWeekGridT(active.dates,cellLeft)}
-    </div>
-    <div class="week-pane">
-      <div class="pane-title">내 배정 ${toolHint}</div>
-      ${renderWeekGridT(active.dates,cellRight,'rt-grid')}
-    </div>
-  </div>` : '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>';
+  const ganttHtml = active ? renderGantt(active.dates) : '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>';
 
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
-        <h2>시간표 — 가능 시간 & 내 배정</h2>
-        <div class="sub">좌측은 그 시간에 가능한 곡(약어). 우측은 실제 배정 — 도구바에서 곡을 선택하고 우측 그리드를 드래그해 직접 배정할 수 있습니다.</div>
+        <h2>시간표 — 가능 시간 & 배정</h2>
+        <div class="sub">각 날짜가 곡별 sub-col로 나뉘어 있습니다. <b>옅은 색</b> = 가능한 시간, <b>짙은 색</b> = 실제 배정, 빗금 = 멤버 안 됨, 흰빗금 = 다른 곡과 멤버 겹침. <b>칸을 클릭/드래그</b>하면 직접 배정·해제됩니다.</div>
         ${tabsHtml}
-        ${toolBar}
         ${toggleHtml}
-        ${weekContent}
+        ${ganttHtml}
       </div>`
     : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
 
@@ -1242,17 +1283,6 @@ function bindEvents(){
     if(act==='delproject'){delProject();return;}
     if(act==='autoschedule'){autoSchedule();return;}
     if(act==='clearschedule'){clearSchedule();return;}
-    if(act==='picktool'){
-      const erase=t.dataset.erase==='1';
-      if(erase){
-        state.tool=(state.tool&&state.tool.kind==='erase')?null:{kind:'erase'};
-      } else {
-        const sid=t.dataset.sid;
-        const cur=state.tool;
-        state.tool=(cur&&cur.kind==='paint'&&cur.sid===sid)?null:{kind:'paint',sid};
-      }
-      render();return;
-    }
     if(act==='pickweek'){state.activeWeek=+t.dataset.w;render();return;}
     if(act==='pickmember'){
       const uid=t.dataset.uid;
@@ -1398,136 +1428,124 @@ function bindEvents(){
     }
   });
 
-  /* 우측(내 배정) 그리드 — 박스 드래그 */
-  let rtGrid=null;
-  let rtR0=0,rtC0=0,rtR1=0,rtC1=0;
-  let rtSnap={}, rtTouchCell=null, rtSx=0, rtSy=0;
+  /* 간트 sub-cell — 같은 sub-col(곡×날짜) 안에서 세로 드래그로 시간 범위 토글 */
+  let gGrid=null, gSid='', gCol='', gR0=0, gR1=0;
+  let gSnap={}, gFlipTo=true;
+  let gTouchCell=null, gSx=0, gSy=0;
 
-  function rtCellRender(td,newAsg){
-    td.classList.remove('has','feasible','infeasible','erasable');
-    td.style.background='';
-    const k=td.dataset.slot;
-    if(newAsg){
-      td.classList.add('has');
-      const nm=itemName(state.config.songs?.[newAsg])||'';
-      td.innerHTML=`<span class="lab">${esc(shortName(nm))}</span>`;
-      td.title=nm+' (배정됨)';
-      td.style.background=songColor(newAsg);
-      if(state.tool&&state.tool.kind==='erase') td.classList.add('erasable');
-    } else {
-      td.innerHTML=''; td.title='';
-      if(state.tool&&state.tool.kind==='paint'){
-        if(slotOkForSong(state.tool.sid,k)){
-          td.classList.add('feasible');
-          td.style.background=songColorLight(state.tool.sid);
-        } else {
-          td.classList.add('infeasible');
-        }
-      }
-    }
+  function canAssignAt(sid,k){
+    return slotOkForSong(sid,k) && slotConflicts(sid,k).length===0;
   }
-  function applyRtBox(){
-    if(!rtGrid||!state.tool) return;
-    const minR=Math.min(rtR0,rtR1), maxR=Math.max(rtR0,rtR1);
-    const minC=Math.min(rtC0,rtC1), maxC=Math.max(rtC0,rtC1);
-    rtGrid.querySelectorAll('td.cell.rt[data-rt]').forEach(td=>{
-      const r=+td.dataset.r, c=+td.dataset.c;
-      const inBox=r>=minR&&r<=maxR&&c>=minC&&c<=maxC;
+  function renderGanttCell(td,sid,k,assigned){
+    td.classList.remove('has','feasible','infeasible','conflict');
+    td.style.background='';
+    if(assigned){
+      td.classList.add('has'); td.style.background=songColor(sid); return;
+    }
+    if(!slotOkForSong(sid,k)){ td.classList.add('infeasible'); return; }
+    if(slotConflicts(sid,k).length){ td.classList.add('conflict'); return; }
+    td.classList.add('feasible'); td.style.background=songColorLight(sid);
+  }
+  function applyGanttDrag(){
+    if(!gGrid) return;
+    const minR=Math.min(gR0,gR1), maxR=Math.max(gR0,gR1);
+    gGrid.querySelectorAll(`td.gnt-cell[data-col="${gCol}"]`).forEach(td=>{
+      const r=+td.dataset.r;
       const k=td.dataset.slot;
-      const orig=rtSnap[k]||null;
-      let next;
-      if(!inBox) next=orig;
-      else if(state.tool.kind==='erase') next=null;
-      else {
-        const feasible=slotOkForSong(state.tool.sid,k);
-        next=feasible?state.tool.sid:orig;
-      }
-      rtCellRender(td,next);
+      const wasAssigned=!!gSnap[k];
+      let nowAssigned;
+      if(r<minR||r>maxR) nowAssigned=wasAssigned;
+      else if(gFlipTo) nowAssigned = canAssignAt(gSid,k) ? true : wasAssigned;
+      else nowAssigned=false;
+      renderGanttCell(td,gSid,k,nowAssigned);
     });
   }
-  function commitRtBox(){
-    if(!rtGrid||!state.tool) return;
-    const minR=Math.min(rtR0,rtR1), maxR=Math.max(rtR0,rtR1);
-    const minC=Math.min(rtC0,rtC1), maxC=Math.max(rtC0,rtC1);
+  function commitGanttDrag(){
+    if(!gGrid) return;
+    const minR=Math.min(gR0,gR1), maxR=Math.max(gR0,gR1);
     const updates={};
-    rtGrid.querySelectorAll('td.cell.rt[data-rt]').forEach(td=>{
-      const r=+td.dataset.r, c=+td.dataset.c;
-      if(r<minR||r>maxR||c<minC||c>maxC) return;
+    gGrid.querySelectorAll(`td.gnt-cell[data-col="${gCol}"]`).forEach(td=>{
+      const r=+td.dataset.r;
+      if(r<minR||r>maxR) return;
       const k=td.dataset.slot;
-      const orig=rtSnap[k]||null;
-      let next;
-      if(state.tool.kind==='erase') next=null;
-      else {
-        const feasible=slotOkForSong(state.tool.sid,k);
-        next=feasible?state.tool.sid:orig;
-      }
-      if(next!==orig) updates[k]=next; // null=remove
+      const wasAssigned=!!gSnap[k];
+      const target = gFlipTo ? canAssignAt(gSid,k) : false;
+      if(target!==wasAssigned) updates[k]= target?true:null;
     });
     if(!Object.keys(updates).length) return;
-    state.schedule=state.schedule||{};
+    state.schedule[gSid]=state.schedule[gSid]||{};
     for(const k in updates){
-      if(updates[k]) state.schedule[k]=updates[k];
-      else delete state.schedule[k];
+      if(updates[k]) state.schedule[gSid][k]=true;
+      else delete state.schedule[gSid][k];
     }
-    FB.update(R('projects/'+state.pid+'/schedule'),updates);
+    FB.update(R('projects/'+state.pid+'/schedule/'+gSid),updates);
   }
-  function rtSingleTap(td){
-    if(!state.tool) return;
-    const k=td.dataset.slot;
-    const cur=state.schedule&&state.schedule[k];
-    let next;
-    if(state.tool.kind==='erase'){
-      if(!cur) return;
-      next=null;
-    } else {
-      if(!slotOkForSong(state.tool.sid,k)) return;
-      next=state.tool.sid;
+  function ganttSingleTap(td){
+    const sid=td.dataset.sid, k=td.dataset.slot;
+    const cur=isAssigned(sid,k);
+    if(cur){
+      state.schedule[sid]=state.schedule[sid]||{};
+      delete state.schedule[sid][k];
+      FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:null});
+      return;
     }
-    if(next===cur) return;
-    state.schedule=state.schedule||{};
-    if(next) state.schedule[k]=next;
-    else delete state.schedule[k];
-    FB.update(R('projects/'+state.pid+'/schedule'),{[k]:next});
+    if(!slotOkForSong(sid,k)){ toast('이 시간엔 멤버가 안 됩니다'); return; }
+    const cfs=slotConflicts(sid,k);
+    if(cfs.length){
+      const nm=cfs.map(x=>itemName(state.config.songs[x.sid])).join(', ');
+      toast(`멤버 겹침: ${nm}`); return;
+    }
+    state.schedule[sid]=state.schedule[sid]||{};
+    state.schedule[sid][k]=true;
+    FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:true});
   }
 
   app.addEventListener('pointerdown',e=>{
-    const td=e.target.closest('td.cell.rt[data-rt]'); if(!td||!state.tool) return;
+    const td=e.target.closest('td.gnt-cell[data-gantt]'); if(!td) return;
     if(e.pointerType==='mouse'){
       e.preventDefault();
-      rtR0=rtR1=+td.dataset.r;
-      rtC0=rtC1=+td.dataset.c;
-      rtSnap={...(state.schedule||{})};
-      rtGrid=td.closest('table');
-      rtPainting=true;
-      applyRtBox();
+      gSid=td.dataset.sid;
+      gCol=td.dataset.col;
+      gR0=gR1=+td.dataset.r;
+      gGrid=td.closest('table');
+      gSnap={...(state.schedule[gSid]||{})};
+      // 시작 셀이 has면 erase 모드, 아니면 paint 모드
+      gFlipTo=!td.classList.contains('has');
+      // infeasible/conflict 시작은 무시
+      if(td.classList.contains('infeasible')||td.classList.contains('conflict')){
+        gGrid=null; return;
+      }
+      gPainting=true;
+      applyGanttDrag();
     } else {
-      rtTouchCell=td; rtSx=e.clientX; rtSy=e.clientY;
+      gTouchCell=td; gSx=e.clientX; gSy=e.clientY;
     }
   });
   app.addEventListener('pointerover',e=>{
-    if(!rtPainting) return;
-    const td=e.target.closest('td.cell.rt[data-rt]'); if(!td) return;
-    if(td.closest('table')!==rtGrid) return;
-    const r=+td.dataset.r, c=+td.dataset.c;
-    if(r===rtR1&&c===rtC1) return;
-    rtR1=r; rtC1=c;
-    applyRtBox();
+    if(!gPainting) return;
+    const td=e.target.closest('td.gnt-cell[data-gantt]'); if(!td) return;
+    if(td.closest('table')!==gGrid) return;
+    if(td.dataset.col!==gCol) return; // 같은 sub-col 안에서만
+    const r=+td.dataset.r;
+    if(r===gR1) return;
+    gR1=r;
+    applyGanttDrag();
   });
   window.addEventListener('pointerup',e=>{
-    if(rtPainting){
-      rtPainting=false;
-      commitRtBox();
-      rtGrid=null;
+    if(gPainting){
+      gPainting=false;
+      commitGanttDrag();
+      gGrid=null;
       if(deferRender){deferRender=false;render();}
       return;
     }
-    if(rtTouchCell){
-      const moved=Math.abs(e.clientX-rtSx)+Math.abs(e.clientY-rtSy);
+    if(gTouchCell){
+      const moved=Math.abs(e.clientX-gSx)+Math.abs(e.clientY-gSy);
       const td=document.elementFromPoint(e.clientX,e.clientY);
-      if(moved<12&&td&&td.closest('td.cell.rt')===rtTouchCell){
-        rtSingleTap(rtTouchCell);
+      if(moved<12&&td&&td.closest('td.gnt-cell')===gTouchCell){
+        ganttSingleTap(gTouchCell);
       }
-      rtTouchCell=null;
+      gTouchCell=null;
     }
   });
 }
