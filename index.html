@@ -214,14 +214,38 @@
     max-width:100%;overflow:hidden;text-overflow:ellipsis;}
   td.cell .nbadge{position:absolute;top:1px;left:3px;font-size:8px;
     font-weight:700;color:var(--muted);}
-  /* 주 단위 그리드 */
-  .week-label{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px;
-    padding-bottom:8px;border-bottom:1px solid var(--line);
-    font-family:'Bricolage Grotesque',sans-serif;}
-  .week-label:first-of-type{margin-top:8px;}
-  .week-label .wk{font-weight:800;font-size:15px;color:var(--ink);
-    letter-spacing:-.02em;}
-  .week-label .wkr{font-size:13px;color:var(--muted);font-weight:500;}
+  /* 주차 탭 */
+  .week-tabs{display:inline-flex;flex-wrap:wrap;gap:2px;margin:6px 0 14px;
+    padding:4px;background:var(--paper);border-radius:9px;
+    border:1px solid var(--line);}
+  .week-tab{font-family:'Bricolage Grotesque',sans-serif;font-weight:600;
+    font-size:12px;padding:6px 14px;background:transparent;border:none;
+    cursor:pointer;color:var(--muted);border-radius:6px;line-height:1.2;
+    text-align:center;transition:color var(--t),background var(--t),box-shadow var(--t);}
+  .week-tab:hover{color:var(--ink);}
+  .week-tab.on{color:var(--ink);background:var(--surface);box-shadow:var(--shadow-sm);}
+  .week-tab .wkn{display:block;font-size:10px;color:var(--muted-2);
+    font-family:'Archivo';font-weight:400;margin-top:1px;letter-spacing:.02em;}
+  .week-tab.on .wkn{color:var(--muted);}
+
+  /* transpose 그리드 — 날짜가 행, 시간이 열 */
+  td.rh-date{position:sticky;left:0;z-index:3;background:var(--ink);
+    color:var(--paper);font-family:'Bricolage Grotesque',sans-serif;
+    font-weight:700;font-size:11px;padding:0 12px;white-space:nowrap;
+    text-align:right;min-width:88px;line-height:1.1;}
+  td.rh-date .wd{font-size:10px;opacity:.6;font-family:'Archivo';
+    font-weight:400;margin-right:5px;}
+  td.rh-date.sat{color:#9ac8e8;}
+  td.rh-date.sun{color:#e89c92;}
+  th.col-time{position:sticky;top:0;z-index:4;background:var(--ink);
+    color:var(--paper);font-family:ui-monospace,Menlo,monospace;
+    font-weight:600;font-size:10.5px;padding:7px 4px;min-width:50px;
+    white-space:nowrap;letter-spacing:.01em;}
+
+  /* 멤버 칩 클릭 가능하게 */
+  button.mstat{cursor:pointer;color:var(--ink);font-family:inherit;}
+  button.mstat:hover{border-color:var(--ink);}
+  button.mstat.done:hover{border-color:var(--ok);}
   th.col.out{opacity:.4;}
   td.cell.out{background:repeating-linear-gradient(135deg,
     transparent 0 4px,rgba(26,24,20,.025) 4px 8px);cursor:default;}
@@ -401,7 +425,8 @@ const PRESET = {
 let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
-  schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */ };
+  schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
+  activeWeek:0 };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -891,8 +916,8 @@ function viewParticipate(){
     const n=state.avail[u]?Object.keys(state.avail[u]).length:0;
     const isMe=u===state.me;
     const done=n>0;
-    return `<span class="mstat ${done?'done':''} ${isMe?'me':''}" title="${done?n+'칸 표시함':'미입력'}">
-      <span class="dot"></span>${esc(itemName(c.people[u]))}${done?`<span class="ct">${n}</span>`:''}</span>`;
+    return `<button class="mstat ${done?'done':''} ${isMe?'me':''}" data-act="pickmember" data-uid="${u}" title="${done?n+'칸 표시함 · 클릭하면 이 사람 일정으로 이동':'미입력 · 클릭하면 이 사람 일정으로 이동'}">
+      <span class="dot"></span>${esc(itemName(c.people[u]))}${done?`<span class="ct">${n}</span>`:''}</button>`;
   }).join('');
   const doneCount=pIds.filter(u=>state.avail[u]&&Object.keys(state.avail[u]).length>0).length;
 
@@ -900,7 +925,7 @@ function viewParticipate(){
     <div class="card-head">
       <div>
         <h2>안 되는 시간 입력</h2>
-        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 합주가 <b>불가능한 칸</b>을 칠하세요. PC는 드래그로 여러 칸 선택 가능.</div>
+        <div class="sub" style="margin:4px 0 0">본인 이름을 고르고, 합주가 <b>불가능한 칸</b>을 칠하세요. PC는 박스 드래그로 여러 칸 한 번에 선택 가능.</div>
       </div>
     </div>
     <label class="fld" style="max-width:280px;margin-bottom:0">
@@ -920,47 +945,51 @@ function viewParticipate(){
 
   const mine=state.avail[state.me]||{};
   const myCount=Object.keys(mine).length;
-  const weeks=buildWeeks(dates);
-  const WD_MON=['월','화','수','목','금','토','일'];
+  const wks=buildWeeks(dates).map((w,i)=>{
+    const range=w.filter(d=>d.inRange).map(d=>d.date);
+    return {idx:i, dates:w, range};
+  }).filter(w=>w.range.length>0);
+  const activeIdx=Math.min(Math.max(state.activeWeek||0,0), wks.length-1);
+  const active=wks[activeIdx]||null;
+  const tabsHtml=wks.length>1?`<div class="week-tabs">
+    ${wks.map((w,i)=>{
+      const rng=w.range.length>1
+        ?`${mdLabel(w.range[0])} ~ ${mdLabel(w.range[w.range.length-1])}`
+        :mdLabel(w.range[0]);
+      return `<button class="week-tab ${i===activeIdx?'on':''}" data-act="pickweek" data-w="${i}">
+        ${w.idx+1}주차<span class="wkn">${rng}</span></button>`;
+    }).join('')}
+  </div>`:'';
 
-  const weekBlocks=weeks.map((week,wi)=>{
-    const inDates=week.filter(d=>d.inRange).map(d=>d.date);
-    if(!inDates.length) return '';
-    const rangeLabel=inDates.length>1
-      ? `${mdLabel(inDates[0])} ~ ${mdLabel(inDates[inDates.length-1])}`
-      : mdLabel(inDates[0]);
-    let wHead='<th class="corner">시간</th>'+week.map((day,di)=>{
-      const isSat=di===5, isSun=di===6;
-      const cls='col '+(isSat?'sat':'')+(isSun?'sun':'')+(day.inRange?'':' out');
-      return `<th class="${cls}">${mdLabel(day.date)}
-        <span class="wd">${WD_MON[di]}</span></th>`;
-    }).join('');
-    let wRows=times.map((t,ri)=>{
-      const cells=week.map((day,ci)=>{
-        if(!day.inRange) return `<td class="cell out"></td>`;
+  let gridHtml='';
+  if(active){
+    let head2='<th class="corner">날짜 \\ 시간</th>'+
+      times.map(t=>`<th class="col-time">${t}</th>`).join('');
+    let rows=active.dates.map((day,ri)=>{
+      if(!day.inRange) return '';
+      const w=wdOf(day.date);
+      const wdCls=w===6?'sat':w===0?'sun':'';
+      const cells=times.map((t,ci)=>{
         const k=slotKey(day.date,t);
         const no=!!mine[k];
         const others=unavailCount(k)-(no?1:0);
         return `<td class="cell ${no?'no':''}" data-cell="1" data-slot="${k}" data-r="${ri}" data-c="${ci}">
           ${others>0?`<span class="cnt">${others}</span>`:''}</td>`;
       }).join('');
-      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+      return `<tr><td class="rh-date ${wdCls}"><span class="wd">${WD[w]}</span>${mdLabel(day.date)}</td>${cells}</tr>`;
     }).join('');
-    return `<div class="week-label">
-        <span class="wk">${wi+1}주차</span>
-        <span class="wkr">${rangeLabel}</span>
-      </div>
-      <div class="scroll grid-touch"><table class="grid">
-        <thead><tr>${wHead}</tr></thead><tbody>${wRows}</tbody></table></div>`;
-  }).join('');
+    gridHtml=`<div class="scroll grid-touch"><table class="grid">
+      <thead><tr>${head2}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
 
   return head+`<div class="card">
     <div class="card-head" style="margin-bottom:10px">
       <h2 style="font-size:15px">${esc(itemName(c.people[state.me]))} 님의 일정</h2>
       <span class="badge" style="color:${myCount?'var(--accent)':'var(--muted)'}">표시한 시간 ${myCount}칸</span>
     </div>
-    ${weekBlocks}
-    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 멤버 수. PC에서는 박스 드래그(상하좌우)로 여러 칸 한 번에 선택할 수 있습니다.</div>
+    ${tabsHtml}
+    ${gridHtml || '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>'}
+    <div class="note">빨간 칸 = 내가 안 되는 시간. 칸 모서리의 숫자 = 같은 시간에 안 되는 다른 멤버 수. PC에서는 박스 드래그로 여러 칸 한 번에 선택할 수 있습니다.</div>
   </div>`;
 }
 
@@ -1086,25 +1115,34 @@ function viewResults(){
     return `<td class="${cls}" data-rt="1" data-slot="${k}" data-r="${ri}" data-c="${ci}" title="${esc(title)}"${style?` style="${style}"`:''}>${label}</td>`;
   }
 
-  const weeks=buildWeeks(dates);
-  const WD_MON=['월','화','수','목','금','토','일'];
+  const wks=buildWeeks(dates).map((w,i)=>{
+    const range=w.filter(d=>d.inRange).map(d=>d.date);
+    return {idx:i, dates:w, range};
+  }).filter(w=>w.range.length>0);
+  const activeIdx=Math.min(Math.max(state.activeWeek||0,0), wks.length-1);
+  const active=wks[activeIdx]||null;
+  const tabsHtml=wks.length>1?`<div class="week-tabs">
+    ${wks.map((w,i)=>{
+      const rng=w.range.length>1
+        ?`${mdLabel(w.range[0])} ~ ${mdLabel(w.range[w.range.length-1])}`
+        :mdLabel(w.range[0]);
+      return `<button class="week-tab ${i===activeIdx?'on':''}" data-act="pickweek" data-w="${i}">
+        ${w.idx+1}주차<span class="wkn">${rng}</span></button>`;
+    }).join('')}
+  </div>`:'';
 
-  function renderWeekGrid(week, cellFn, classExtra){
-    let wHead='<th class="corner">시간</th>'+week.map((day,di)=>{
-      const isSat=di===5, isSun=di===6;
-      const cls='col '+(isSat?'sat':'')+(isSun?'sun':'')+(day.inRange?'':' out');
-      return `<th class="${cls}">${mdLabel(day.date)}
-        <span class="wd">${WD_MON[di]}</span></th>`;
-    }).join('');
-    let wRows=times.map((t,ri)=>{
-      const cells=week.map((day,ci)=>{
-        if(!day.inRange) return `<td class="cell out"></td>`;
-        return cellFn(day.date,t,ri,ci);
-      }).join('');
-      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+  function renderWeekGridT(week, cellFn, classExtra){
+    let head='<th class="corner">날짜 \\ 시간</th>'+
+      times.map(t=>`<th class="col-time">${t}</th>`).join('');
+    let rows=week.map((day,ri)=>{
+      if(!day.inRange) return '';
+      const w=wdOf(day.date);
+      const wdCls=w===6?'sat':w===0?'sun':'';
+      const cells=times.map((t,ci)=>cellFn(day.date,t,ri,ci)).join('');
+      return `<tr><td class="rh-date ${wdCls}"><span class="wd">${WD[w]}</span>${mdLabel(day.date)}</td>${cells}</tr>`;
     }).join('');
     return `<div class="scroll ${classExtra||''}"><table class="grid">
-      <thead><tr>${wHead}</tr></thead><tbody>${wRows}</tbody></table></div>`;
+      <thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   const toolHint=tool
@@ -1113,35 +1151,25 @@ function viewResults(){
         : `<span class="hint">· ${esc(itemName(c.songs[tool.sid]))} 선택: 가능한 칸 드래그</span>`)
     : '';
 
-  const weekBlocks=weeks.map((week,wi)=>{
-    const inDates=week.filter(d=>d.inRange).map(d=>d.date);
-    if(!inDates.length) return '';
-    const rangeLabel=inDates.length>1
-      ? `${mdLabel(inDates[0])} ~ ${mdLabel(inDates[inDates.length-1])}`
-      : mdLabel(inDates[0]);
-    return `<div class="week-label">
-        <span class="wk">${wi+1}주차</span>
-        <span class="wkr">${rangeLabel}</span>
-      </div>
-      <div class="week-pair">
-        <div class="week-pane">
-          <div class="pane-title">가능 시간</div>
-          ${renderWeekGrid(week,cellLeft)}
-        </div>
-        <div class="week-pane">
-          <div class="pane-title">내 배정 ${toolHint}</div>
-          ${renderWeekGrid(week,cellRight,'rt-grid')}
-        </div>
-      </div>`;
-  }).join('');
+  const weekContent = active ? `<div class="week-pair">
+    <div class="week-pane">
+      <div class="pane-title">가능 시간</div>
+      ${renderWeekGridT(active.dates,cellLeft)}
+    </div>
+    <div class="week-pane">
+      <div class="pane-title">내 배정 ${toolHint}</div>
+      ${renderWeekGridT(active.dates,cellRight,'rt-grid')}
+    </div>
+  </div>` : '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>';
 
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 내 배정</h2>
         <div class="sub">좌측은 그 시간에 가능한 곡(약어). 우측은 실제 배정 — 도구바에서 곡을 선택하고 우측 그리드를 드래그해 직접 배정할 수 있습니다.</div>
+        ${tabsHtml}
         ${toolBar}
         ${toggleHtml}
-        ${weekBlocks}
+        ${weekContent}
       </div>`
     : `<div class="card"><div class="note">날짜·시간 범위를 설정하세요.</div></div>`;
 
@@ -1182,6 +1210,13 @@ function bindEvents(){
         const cur=state.tool;
         state.tool=(cur&&cur.kind==='paint'&&cur.sid===sid)?null:{kind:'paint',sid};
       }
+      render();return;
+    }
+    if(act==='pickweek'){state.activeWeek=+t.dataset.w;render();return;}
+    if(act==='pickmember'){
+      const uid=t.dataset.uid;
+      state.me=uid;
+      if(state.pid) lsSet('me_'+state.pid,uid);
       render();return;
     }
     if(act==='toggleall'){
