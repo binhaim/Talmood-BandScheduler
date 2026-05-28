@@ -606,6 +606,8 @@
   .room-nav{display:flex;align-items:center;gap:10px;margin:4px 0 12px;flex-wrap:wrap;}
   .room-nav .room-range{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
     font-size:14px;color:var(--ink);}
+  .room-nav .room-date{padding:5px 8px;font-size:12px;border:1px solid var(--line-2);
+    border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
   table.rooms-table td.room-cell{cursor:pointer;background:var(--surface);
     min-width:46px;font-size:10px;line-height:1.1;padding:1px 2px;
     transition:filter 80ms ease,background 80ms ease;}
@@ -644,9 +646,11 @@
     background:repeating-linear-gradient(45deg,var(--accent-soft) 0 5px,rgba(207,61,30,.16) 5px 10px);}
   td.gnt-cell.roombusy::after{content:'🔒';font-size:9px;opacity:.7;}
 
-  /* 예약 모달 슬롯 라벨 */
-  .rm-slot{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;
-    color:var(--ink);letter-spacing:-.01em;}
+  /* 칸 인라인 입력 */
+  table.rooms-table td.room-cell.editing{padding:0;background:var(--surface);
+    box-shadow:inset 0 0 0 2px var(--accent);}
+  .rc-in{width:100%;border:none;background:transparent;padding:2px 3px;
+    font-size:11px;font-family:'Archivo',sans-serif;color:var(--ink);outline:none;}
 
   /* 드래그 중 모바일 스크롤 막기 */
   body.dragging{user-select:none;-webkit-user-select:none;}
@@ -1272,7 +1276,7 @@ function shortName(s){
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, gPainting=false;
+let deferRender=false, painting=false, gPainting=false, roomInlineAdvancing=false;
 function render(){
   const a=document.activeElement;
   if(painting||gPainting){deferRender=true;return;}
@@ -1519,10 +1523,15 @@ function viewRooms(){
     return `<th class="gnt-sub ${last}" title="${esc(r)}">${esc(r)}</th>`;
   }).join('')).join('');
 
+  const ed=state.roomEdit;
   const cell=(d,r,t,isDayEnd)=>{
     const mk=roomMonthKey(d), k=roomSlotKey(d,r,t);
     const v=roomVal(mk,k);
     const nm=roomName(v), auto=roomIsAuto(v);
+    const editing=ed&&ed.date===d&&ed.room===r&&ed.time===t;
+    if(editing){ // 칸에 바로 입력
+      return `<td class="gnt-cell room-cell editing${isDayEnd?' day-end':''}"><input class="rc-in" id="roomNameIn" value="${esc(nm)}" autocomplete="off" maxlength="20"></td>`;
+    }
     const cls='gnt-cell room-cell'+(isDayEnd?' day-end':'')+(auto?' auto':(v!=null?' booked':''));
     const label=nm?`<span class="rc-name">${esc(shortName2(nm))}</span>`:'';
     const title=nm?esc((auto?'합주 · ':'')+nm):'';
@@ -1554,66 +1563,47 @@ function viewRooms(){
       <button class="btn ghost sm" data-act="roomweek" data-dir="-1">◀ 이전 주</button>
       <span class="room-range">${rangeLabel}</span>
       <button class="btn ghost sm" data-act="roomweek" data-dir="1">다음 주 ▶</button>
+      <input type="date" class="room-date" data-act="roomdate" value="${weekDates[0]}" title="날짜로 이동 (년·월·일)">
       <button class="btn ghost sm" data-act="roomweek" data-dir="0" style="margin-left:auto">이번 주</button>
     </div>
     <div class="scroll grid-touch"><table class="grid gantt rooms-table">
       <thead><tr>${dayHead}</tr><tr>${subHead}</tr></thead>
       <tbody>${dawnToggle}${dawnRows}${mainRows}</tbody></table></div>
-  </div>${viewRoomModal()}`;
+  </div>`;
 }
 function shortName2(s){ // 동방 셀: 4글자까지 표시
   s=s||''; return s.length>4?s.slice(0,4):s;
 }
-function viewRoomModal(){
-  const e=state.roomEdit; if(!e) return '';
-  const w=wdOf(e.date), wd=WD[w];
-  const last=lsGet('roomName')||'';
-  const initial=e.current!=null?roomName(e.current):last;
-  const isAuto=roomIsAuto(e.current);
-  return `<div class="modal-backdrop" data-act="roomcancel">
-    <div class="modal" data-act="modal-noop" style="max-width:420px">
-      <div class="modal-head">
-        <h2>예약</h2>
-        <button class="modal-x" data-act="roomcancel" title="닫기">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="rm-slot">${mdLabel(e.date)} (${wd}) · <b>${esc(e.room)}</b> · ${esc(e.time)}</div>
-        ${isAuto?`<div class="note">이 칸은 <b>${esc(roomName(e.current))}</b> 일정 조율(합주)에서 <b>자동 등록</b>된 항목입니다. 여기서는 수정할 수 없고, 해당 프로젝트의 결과 탭에서 배정을 바꾸면 자동으로 갱신됩니다.</div>
-        <div style="display:flex;margin-top:16px"><button class="btn ghost sm" data-act="roomcancel" style="margin-left:auto">닫기</button></div>`
-        :`<label class="fld" style="margin:12px 0 0">
-          <span class="lab">이름</span>
-          <input type="text" id="roomNameIn" value="${esc(initial)}" placeholder="예: 46 정은우" style="width:100%" autocomplete="off">
-        </label>
-        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-          <button class="btn" data-act="roomsave">저장</button>
-          ${e.current!=null?`<button class="btn danger sm" data-act="roomclear">비우기</button>`:''}
-          <button class="btn ghost sm" data-act="roomcancel" style="margin-left:auto">취소</button>
-        </div>`}
-      </div>
-    </div>
-  </div>`;
-}
+/* 칸 인라인 편집 — 클릭하면 그 칸이 입력란이 됨 (모달 없음) */
 function openRoomEdit(date,room,time){
   const mk=roomMonthKey(date), k=roomSlotKey(date,room,time);
-  state.roomEdit={date,room,time,monthKey:mk,slotKey:k,current:roomVal(mk,k)};
-  render();
-  setTimeout(()=>{const i=$('roomNameIn'); if(i){i.focus();i.select();}},20);
+  const v=roomVal(mk,k);
+  if(roomIsAuto(v)){ toast(`자동 등록(합주): ${roomName(v)} — 해당 프로젝트 결과 탭에서 변경`); return; }
+  state.roomEdit={date,room,time,monthKey:mk,slotKey:k};
+  deferRender=false; doRender();
+  const i=$('roomNameIn'); if(i){i.focus();i.select();}
 }
-function saveRoomBooking(){
+function roomWrite(mk,slotK,name){
+  state.roomsData[mk]=state.roomsData[mk]||{};
+  if(name){ state.roomsData[mk][slotK]=name; FB.set(R('rooms/'+mk+'/'+slotK),name); }
+  else { delete state.roomsData[mk][slotK]; FB.remove(R('rooms/'+mk+'/'+slotK)); }
+}
+function roomNextCell(e){ // 같은 날짜·방의 다음 시간 칸 (보이는 행 순서)
+  const {main,dawn}=roomTimeRows();
+  const seq=state.roomShowDawn?dawn.concat(main):main;
+  const idx=seq.indexOf(e.time);
+  if(idx<0||idx+1>=seq.length) return null;
+  const t=seq[idx+1];
+  return {date:e.date,room:e.room,time:t,monthKey:e.monthKey,slotKey:roomSlotKey(e.date,e.room,t)};
+}
+function saveRoomInline(advance){
   const e=state.roomEdit; if(!e) return;
   const i=$('roomNameIn'); const name=(i?i.value:'').trim();
-  if(!name){ clearRoomBooking(); return; }
-  lsSet('roomName',name);
-  state.roomsData[e.monthKey]=state.roomsData[e.monthKey]||{};
-  state.roomsData[e.monthKey][e.slotKey]=name;
-  FB.set(R('rooms/'+e.monthKey+'/'+e.slotKey),name);
-  state.roomEdit=null; render();
-}
-function clearRoomBooking(){
-  const e=state.roomEdit; if(!e) return;
-  if(state.roomsData[e.monthKey]) delete state.roomsData[e.monthKey][e.slotKey];
-  FB.remove(R('rooms/'+e.monthKey+'/'+e.slotKey));
-  state.roomEdit=null; render();
+  if(name) lsSet('roomName',name);
+  roomWrite(e.monthKey,e.slotKey,name);   // 빈 값이면 삭제
+  state.roomEdit=advance?roomNextCell(e):null;
+  roomInlineAdvancing=true; deferRender=false; doRender(); roomInlineAdvancing=false;
+  if(state.roomEdit){ const ni=$('roomNameIn'); if(ni){ni.focus();ni.select();} }
 }
 
 function viewLanding(){
@@ -2318,9 +2308,6 @@ function bindEvents(){
     if(act==='gotorooms'){location.href=location.pathname+'?view=rooms';return;}
     if(act==='gotoschedule'){location.href=location.pathname+'?view=schedule';return;}
     if(act==='roomcell'){openRoomEdit(t.dataset.date,t.dataset.room,t.dataset.time);return;}
-    if(act==='roomsave'){saveRoomBooking();return;}
-    if(act==='roomclear'){clearRoomBooking();return;}
-    if(act==='roomcancel'){state.roomEdit=null;render();return;}
     if(act==='roomdawn'){state.roomShowDawn=!state.roomShowDawn;lsSet('roomShowDawn',state.roomShowDawn?'1':'0');render();return;}
     if(act==='roomweek'){
       const dir=+t.dataset.dir;
@@ -2416,9 +2403,13 @@ function bindEvents(){
     else if(act==='toggleparallel'){
       cfgUpdate({allowParallel:!!t.checked});
     }
+    else if(act==='roomdate'){
+      if(v){ state.roomWeekStart=weekDatesSun(v)[0]; subscribeRooms(roomVisibleMonths()); render(); }
+    }
   });
 
   app.addEventListener('blur',e=>{
+    if(e.target.id==='roomNameIn'){ if(!roomInlineAdvancing) saveRoomInline(false); return; }
     if(e.target.tagName==='INPUT'&&e.target.type==='text'&&deferRender){
       deferRender=false; setTimeout(render,30);
     }
@@ -2426,9 +2417,13 @@ function bindEvents(){
 
   /* Enter 키로 다음 입력란 / 새 항목 추가 */
   app.addEventListener('keydown',e=>{
-    if(e.key!=='Enter') return;
     const t=e.target;
-    if(t.id==='roomNameIn'){ e.preventDefault(); saveRoomBooking(); return; }
+    if(t.id==='roomNameIn'){
+      if(e.key==='Enter'){ e.preventDefault(); saveRoomInline(true); }   // 저장 후 아래 칸으로
+      else if(e.key==='Escape'){ e.preventDefault(); state.roomEdit=null; deferRender=false; doRender(); }
+      return;
+    }
+    if(e.key!=='Enter') return;
     if(t.tagName!=='INPUT') return;
     const act=t.dataset.act;
     if(act!=='songname'&&act!=='personname') return;
