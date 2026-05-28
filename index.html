@@ -590,68 +590,6 @@
   .fmt-group{background:var(--paper);border:1px solid var(--line);
     border-radius:var(--r-sm);padding:14px 14px 12px;margin-top:4px;}
 
-  /* 홈 허브 */
-  .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
-  .hub-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
-    text-align:left;padding:22px;border:1.5px solid var(--line-2);border-radius:var(--r);
-    background:var(--surface);cursor:pointer;transition:border-color var(--t),transform var(--t),box-shadow var(--t);
-    font-family:inherit;}
-  .hub-card:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow);}
-  .hub-card .hc-icon{font-size:30px;line-height:1;}
-  .hub-card .hc-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
-    font-size:18px;letter-spacing:-.02em;color:var(--ink);}
-  .hub-card .hc-desc{font-size:13px;color:var(--muted);line-height:1.5;}
-
-  /* 전체 시간표(동방) */
-  .room-nav{display:flex;align-items:center;gap:10px;margin:4px 0 12px;flex-wrap:wrap;}
-  .room-nav .room-range{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
-    font-size:14px;color:var(--ink);}
-  .room-nav .room-date{padding:5px 8px;font-size:12px;border:1px solid var(--line-2);
-    border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
-  table.rooms-table td.room-cell{cursor:pointer;background:var(--surface);
-    min-width:46px;font-size:10px;line-height:1.1;padding:1px 2px;
-    transition:filter 80ms ease,background 80ms ease;}
-  table.rooms-table td.room-cell:hover{background:var(--paper);}
-  table.rooms-table td.room-cell.booked{background:var(--ok-soft);}
-  table.rooms-table td.room-cell.booked:hover{filter:brightness(.96);}
-  table.rooms-table td.room-cell.auto{background:var(--accent-soft);}
-  table.rooms-table td.room-cell .rc-name{font-weight:600;color:var(--ink-2);
-    display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  table.rooms-table td.room-cell.auto .rc-name{color:var(--accent-d);}
-  tr.room-dawn-toggle td{background:var(--paper);border-bottom:2px solid var(--line-2);padding:0;}
-  .rd-btn{position:sticky;left:0;display:inline-flex;align-items:center;gap:8px;
-    border:none;background:transparent;cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;
-    font-weight:600;font-size:12px;color:var(--muted);padding:7px 10px;}
-  .rd-btn:hover{color:var(--ink);}
-  .rd-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:600;
-    padding:1px 8px;border-radius:999px;letter-spacing:.02em;}
-  tr.room-dawn-row td.rh{background:#3a3631;}
-  tr.room-dawn-row td.room-cell{background:rgba(26,24,20,.015);}
-  tr.room-dawn-row td.room-cell.booked{background:var(--ok-soft);}
-  tr.room-dawn-row td.room-cell.auto{background:var(--accent-soft);}
-
-  /* 활동 장소 토글 (설정 탭) */
-  .loc-toggle{border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
-    font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:11px;
-    padding:4px 9px;border-radius:999px;color:var(--muted);flex-shrink:0;
-    transition:background var(--t),border-color var(--t),color var(--t);}
-  .loc-toggle.in{color:var(--ok);border-color:var(--ok-soft);background:var(--ok-soft);}
-  .loc-toggle.ext{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft);}
-  .loc-toggle:disabled{opacity:.5;cursor:not-allowed;}
-  .gnt-sub .loc-mk{display:inline-block;font-size:8px;font-weight:700;color:#ffd9cf;
-    margin-left:1px;vertical-align:super;}
-
-  /* 결과 그리드 — 동방 방 점유로 막힌 칸 */
-  td.gnt-cell.roombusy{cursor:not-allowed;
-    background:repeating-linear-gradient(45deg,var(--accent-soft) 0 5px,rgba(207,61,30,.16) 5px 10px);}
-  td.gnt-cell.roombusy::after{content:'🔒';font-size:9px;opacity:.7;}
-
-  /* 칸 인라인 입력 */
-  table.rooms-table td.room-cell.editing{padding:0;background:var(--surface);
-    box-shadow:inset 0 0 0 2px var(--accent);}
-  .rc-in{width:100%;border:none;background:transparent;padding:2px 3px;
-    font-size:11px;font-family:'Archivo',sans-serif;color:var(--ink);outline:none;}
-
   /* 드래그 중 모바일 스크롤 막기 */
   body.dragging{user-select:none;-webkit-user-select:none;}
   body.dragging .scroll, body.dragging td{touch-action:none;}
@@ -735,19 +673,10 @@ const FB_VERSION = "10.7.1"; // 로딩 실패 시 Firebase 콘솔 스니펫의 �
 
 /* ---------------- 상태 ---------------- */
 let DB=null, FB={}, fbReady=false;
-/* 동방 연습실 6개 방 — '일정'이 합주(메인) 방. 열 수/콜스팬은 ROOMS.length로 파생 */
-const ROOMS=['일정','V','D','K','G','B'];
-const ENS_ROOM='일정'; // 합주(메인) 방 = 스케줄러가 점유/체크하는 방
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false,
-  /* 전체(동방) 시간표 */
-  roomsData:{},      // { 'YYYY-MM': { slotKey: 값 } }  값=string(수동) | {n,p,s,g}(자동)
-  roomSubs:{},       // { 'YYYY-MM': {loaded:bool} }  중복 구독 방지
-  roomWeekStart:'',  // 보이는 주의 일요일 (YYYY-MM-DD)
-  roomEdit:null,     // 예약 모달 대상 {date,room,time,monthKey,slotKey,current}
-  roomShowDawn:false };
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false };
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -953,37 +882,6 @@ function buildWeeks(dates){
   return out;
 }
 
-/* ---------------- 전체(동방) 시간표 헬퍼 ---------------- */
-const roomSlotKey=(date,room,time)=>date+'|'+room+'|'+time;
-const roomMonthKey=date=>date.slice(0,7);
-const roomName=v=>typeof v==='string'?v:(v&&v.n)||'';
-const roomIsAuto=v=>!!(v&&typeof v==='object'&&v.g===true);
-function roomVal(monthKey,slotK){ const m=state.roomsData[monthKey]; return m?m[slotK]:undefined; }
-function weekDatesSun(dateStr){ // 그 날짜가 속한 주의 일요일~토요일 7일
-  const d=new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()-d.getDay()); // 일요일로
-  const out=[]; for(let i=0;i<7;i++){ out.push(fmtDate(d)); d.setDate(d.getDate()+1); } return out;
-}
-function monthsBetween(startDate,endDate){ // startDate~endDate가 걸치는 'YYYY-MM' 목록
-  const out=[]; if(!startDate||!endDate) return out;
-  let y=+startDate.slice(0,4), m=+startDate.slice(5,7);
-  const ey=+endDate.slice(0,4), em=+endDate.slice(5,7);
-  let g=0;
-  while((y<ey||(y===ey&&m<=em))&&g<60){ out.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} g++; }
-  return out;
-}
-/* 프로젝트 슬롯(시각+분길이)이 덮는 30분 토큰들. +30이 24:00 넘으면 '24시이후' */
-function roomTokensFor(time,slotMinutes){
-  const out=[]; const start=parseTime(time); const n=Math.max(1,Math.round((slotMinutes||60)/30));
-  for(let i=0;i<n;i++){ const mm=start+i*30; out.push(mm>=24*60?'24시이후':fmtTime(mm)); }
-  return out;
-}
-function roomVisibleMonths(){ // 현재 보이는 주가 걸친 월들
-  if(!state.roomWeekStart) return [];
-  const ds=weekDatesSun(state.roomWeekStart);
-  return [...new Set(ds.map(roomMonthKey))];
-}
-
 /* ---------------- Firebase ---------------- */
 async function initFirebase(){
   if(String(firebaseConfig.apiKey).includes('PASTE')) return 'no-config';
@@ -992,7 +890,7 @@ async function initFirebase(){
     const d=await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-database.js`);
     const app=a.initializeApp(firebaseConfig);
     DB=d.getDatabase(app);
-    FB={ref:d.ref,onValue:d.onValue,set:d.set,get:d.get,update:d.update,remove:d.remove,runTransaction:d.runTransaction};
+    FB={ref:d.ref,onValue:d.onValue,set:d.set,get:d.get,update:d.update,remove:d.remove};
     fbReady=true; return 'ok';
   }catch(e){ console.error('Firebase load failed',e); return 'error'; }
 }
@@ -1004,7 +902,6 @@ function subscribeIndex(){
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
-    if(state.config) subscribeRooms(monthsBetween(state.config.startDate,state.config.endDate));
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
     if(state.screen==='project') render(); });
@@ -1012,17 +909,6 @@ function subscribeProject(pid){
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/done'),s=>{ state.done=s.val()||{};
     if(state.screen==='project') render(); });
-}
-function subscribeRooms(monthKeys){
-  (monthKeys||[]).forEach(m=>{
-    if(state.roomSubs[m]) return;            // 이미 구독 중
-    state.roomSubs[m]={loaded:false};
-    FB.onValue(R('rooms/'+m),s=>{
-      state.roomsData[m]=s.val()||{};
-      state.roomSubs[m].loaded=true;
-      if(state.screen==='rooms'||state.screen==='project') render();
-    });
-  });
 }
 
 /* ---------------- 쓰기 동작 ---------------- */
@@ -1061,13 +947,9 @@ function addSong(){
   FB.set(R('projects/'+state.pid+'/config/songs/'+sid),obj);
   return sid;
 }
-async function delSong(sid){
-  await mirrorUnassignSlots(sid,assignedSlotsOf(sid)); // 동방 시간표 자동기입 정리 (삭제 전 슬롯 기준)
+function delSong(sid){
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
-  FB.remove(R('projects/'+state.pid+'/schedule/'+sid)); // 배정도 삭제
-  FB.remove(R('projects/'+state.pid+'/config/ext/'+sid)); // 장소 플래그 삭제
-  if(state.schedule) delete state.schedule[sid];
 }
 function addPerson(){
   const uid=genId('u');
@@ -1163,8 +1045,6 @@ function matrixToggle(sid,uid){
 function toggleLock(){ cfgUpdate({locked:!state.config.locked}); }
 async function delProject(){
   if(!confirm('이 프로젝트를 완전히 삭제합니다. 되돌릴 수 없습니다.\n계속할까요?'))return;
-  // 동방 시간표에 자동기입된 이 프로젝트 항목 정리 (삭제 전)
-  for(const sid in (state.schedule||{})) await mirrorUnassignSlots(sid,assignedSlotsOf(sid));
   await FB.remove(R('projects/'+state.pid));
   await FB.remove(R('projectIndex/'+state.pid));
   lsDel('v_'+state.pid);
@@ -1179,94 +1059,6 @@ function songMembers(sid){
 function slotOkForSong(sid,key){
   return songMembers(sid).every(u=>!(state.avail[u]&&state.avail[u][key]));
 }
-/* ---- 활동 장소 (동방=내부 기본 / 외부) + 동방 방 점유 ---- */
-function isExternal(sid){ return !!(state.config&&state.config.ext&&state.config.ext[sid]); }
-/* slotKey(=date|time)에서 동방 '일정' 방이 (본인 sid 자동기입 제외하고) 점유됐는지 → 점유자명 or '' */
-function roomBusyAt(slotK,selfSid){
-  const c=state.config; if(!c) return '';
-  const [date,time]=slotK.split('|'); if(!date||!time) return '';
-  const mk=roomMonthKey(date);
-  const toks=roomTokensFor(time,c.slotMinutes||60);
-  for(const tok of toks){
-    const v=roomVal(mk,roomSlotKey(date,ENS_ROOM,tok));
-    if(v==null) continue;
-    if(roomIsAuto(v)&&v.p===state.pid&&v.s===selfSid) continue; // 내 자동기입은 점유로 안 침
-    return roomName(v)||'(예약)';
-  }
-  return '';
-}
-/* 내부 활동의 한 배정 슬롯이 덮는 동방 '일정' 칸 좌표들 [{mk,key,tok}] */
-function ensCellsFor(sid,slotK){
-  const c=state.config; const [date,time]=slotK.split('|');
-  const mk=roomMonthKey(date);
-  return roomTokensFor(time,c.slotMinutes||60).map(tok=>({mk,tok,key:roomSlotKey(date,ENS_ROOM,tok)}));
-}
-/* 동방 '일정' 칸을 트랜잭션으로 점유(빈 칸이거나 내 것일 때만) → 성공 여부 */
-async function claimEnsCell(mk,key,sid,nm){
-  try{
-    const res=await FB.runTransaction(R('rooms/'+mk+'/'+key),cv=>{
-      if(cv==null||(cv&&cv.g===true&&cv.p===state.pid&&cv.s===sid)) return {n:nm,p:state.pid,s:sid,g:true};
-      return; // abort — 남이 점유 중
-    });
-    const val=res&&res.snapshot&&res.snapshot.val&&res.snapshot.val();
-    return !!(res&&res.committed&&val&&val.g===true&&val.p===state.pid&&val.s===sid);
-  }catch(_){ return false; }
-}
-/* 내 자동기입 칸이면 비움(남의 칸은 그대로) → 트랜잭션 커밋 성공 여부 반환(재시도 1회) */
-async function releaseEnsCell(mk,key,sid){
-  for(let attempt=0;attempt<2;attempt++){
-    try{
-      const res=await FB.runTransaction(R('rooms/'+mk+'/'+key),cv=>{
-        if(cv&&cv.g===true&&cv.p===state.pid&&cv.s===sid) return null; return cv;
-      });
-      if(res&&res.committed) return true;
-    }catch(_){}
-  }
-  return false;
-}
-/* 내부 활동 슬롯들을 동방 시간표에 반영. 방이 겹쳐 못 잡으면 그 슬롯 배정 롤백 */
-async function mirrorAssignSlots(sid,slotKeys){
-  if(!state.pid||isExternal(sid)||!slotKeys||!slotKeys.length) return;
-  const nm=itemName(state.config.songs&&state.config.songs[sid])||'';
-  let failed=0;
-  for(const slotK of slotKeys){
-    const cells=ensCellsFor(sid,slotK); const done=[]; let ok=true;
-    for(const cell of cells){
-      if(await claimEnsCell(cell.mk,cell.key,sid,nm)) done.push(cell);
-      else { ok=false; break; }
-    }
-    if(!ok){
-      failed++;
-      for(const cell of done) await releaseEnsCell(cell.mk,cell.key,sid);
-      if(state.schedule[sid]) delete state.schedule[sid][slotK];
-      FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[slotK]:null});
-    }
-  }
-  if(failed) toast(`동방 '일정' 방이 겹쳐 ${failed}개 슬롯을 배정하지 못했습니다`);
-}
-/* 슬롯들의 내 자동기입 제거 (장소 변경/삭제 시) */
-async function mirrorUnassignSlots(sid,slotKeys){
-  if(!state.pid||!slotKeys||!slotKeys.length) return;
-  let failed=0;
-  for(const slotK of slotKeys)
-    for(const cell of ensCellsFor(sid,slotK))
-      if(!(await releaseEnsCell(cell.mk,cell.key,sid))) failed++;
-  if(failed) toast(`동방 시간표 정리 실패 ${failed}건 — 잠시 후 다시 시도하세요`);
-}
-function assignedSlotsOf(sid){
-  const m=state.schedule&&state.schedule[sid]; if(!m) return [];
-  return Object.keys(m).filter(k=>m[k]);
-}
-async function toggleSongLoc(sid){
-  const wasExt=isExternal(sid);
-  state.config.ext=state.config.ext||{};
-  const slots=assignedSlotsOf(sid);
-  if(wasExt){ delete state.config.ext[sid]; FB.remove(R('projects/'+state.pid+'/config/ext/'+sid)); }
-  else { state.config.ext[sid]=true; FB.set(R('projects/'+state.pid+'/config/ext/'+sid),true); }
-  render();
-  if(wasExt) await mirrorAssignSlots(sid,slots);   // 외부→동방: 가능한 칸 점유, 겹치면 롤백+토스트
-  else await mirrorUnassignSlots(sid,slots);        // 동방→외부: 동방 시간표에서 제거
-}
 function unavailCount(key){
   let n=0;for(const u in state.avail) if(state.avail[u][key]) n++;return n;
 }
@@ -1276,7 +1068,7 @@ function shortName(s){
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, gPainting=false, roomInlineAdvancing=false;
+let deferRender=false, painting=false, gPainting=false;
 function render(){
   const a=document.activeElement;
   if(painting||gPainting){deferRender=true;return;}
@@ -1310,8 +1102,6 @@ function renderHeader(){
       h+='<button class="tab '+(state.tab===k?'on':'')+'" data-act="tab" data-tab="'+k+'">'+l+'</button>';
     });
     h+='</div>';
-  } else if(state.screen==='rooms'){
-    h+='<div class="crumb"><span class="pname">전체 시간표</span></div>';
   }
   h+='<button class="help-btn" data-act="help" title="사용법">?</button>';
   $('hbar').innerHTML=h;
@@ -1323,8 +1113,6 @@ function renderBody(){
   if(state.screen==='loading') html='<div class="empty">불러오는 중…</div>';
   else if(state.screen==='no-config') html=viewNoConfig();
   else if(state.screen==='fb-error') html=viewFbError();
-  else if(state.screen==='hub') html=viewHub();
-  else if(state.screen==='rooms') html=viewRooms();
   else if(state.screen==='landing') html=viewLanding();
   else if(state.screen==='project'){
     if(!state.config) html=viewMissing();
@@ -1471,141 +1259,6 @@ function viewMissing(){
     <button class="btn" data-act="home">프로젝트 목록으로</button></div>`;
 }
 
-/* ---------------- 홈 허브 ---------------- */
-function viewHub(){
-  return `<div class="card" style="padding:32px">
-    <div class="hero">무엇을 할까요<span class="dot">?</span></div>
-    <p class="sub" style="margin-bottom:22px;font-size:14.5px;max-width:560px">전체 연습실 예약 현황을 보거나, 여럿이 모이는 일정을 함께 맞출 수 있습니다.</p>
-    <div class="hub-grid">
-      <button class="hub-card" data-act="gotorooms">
-        <div class="hc-icon">🗓️</div>
-        <div class="hc-title">전체 시간표</div>
-        <div class="hc-desc">동방 연습실 예약 현황을 한눈에 보고 직접 예약</div>
-      </button>
-      <button class="hub-card" data-act="gotoschedule">
-        <div class="hc-icon">🎯</div>
-        <div class="hc-title">일정 조율</div>
-        <div class="hc-desc">각자 안 되는 시간을 모아 모두 가능한 시간으로 일정 짜기</div>
-      </button>
-    </div>
-  </div>`;
-}
-
-/* ---------------- 전체(동방) 시간표 ---------------- */
-function roomTimeRows(){
-  // 메인(상시): 12:00~23:30 + '24시이후'  /  새벽(접힘): '12시이전' + 00:00~11:30
-  const main=timeList(12,24,30).concat(['24시이후']);
-  const dawn=['12시이전'].concat(timeList(0,12,30));
-  return {main,dawn};
-}
-function countDawnBookings(weekDates){
-  const {dawn}=roomTimeRows();
-  let n=0;
-  weekDates.forEach(d=>{ const mk=roomMonthKey(d);
-    ROOMS.forEach(r=>dawn.forEach(t=>{ if(roomVal(mk,roomSlotKey(d,r,t))!=null) n++; })); });
-  return n;
-}
-function viewRooms(){
-  if(!state.roomWeekStart) state.roomWeekStart=weekDatesSun(fmtDate(new Date()))[0];
-  const weekDates=weekDatesSun(state.roomWeekStart);
-  // 보이는 주가 걸친 월 구독 보장
-  subscribeRooms([...new Set(weekDates.map(roomMonthKey))]);
-  const {main,dawn}=roomTimeRows();
-  const N=ROOMS.length;
-  const colTotal=1+weekDates.length*N;
-
-  const dayHead='<th class="gnt-corner" rowspan="2">시간</th>'+weekDates.map(d=>{
-    const w=wdOf(d), wdCls=w===0?'sun':(w===6?'sat':'');
-    return `<th class="gnt-day ${wdCls}" colspan="${N}">${mdLabel(d)} <span class="wd">${WD[w]}</span></th>`;
-  }).join('');
-  const subHead=weekDates.map(d=>ROOMS.map((r,si)=>{
-    const last=si===N-1?'day-end':'';
-    return `<th class="gnt-sub ${last}" title="${esc(r)}">${esc(r)}</th>`;
-  }).join('')).join('');
-
-  const ed=state.roomEdit;
-  const cell=(d,r,t,isDayEnd)=>{
-    const mk=roomMonthKey(d), k=roomSlotKey(d,r,t);
-    const v=roomVal(mk,k);
-    const nm=roomName(v), auto=roomIsAuto(v);
-    const editing=ed&&ed.date===d&&ed.room===r&&ed.time===t;
-    if(editing){ // 칸에 바로 입력
-      return `<td class="gnt-cell room-cell editing${isDayEnd?' day-end':''}"><input class="rc-in" id="roomNameIn" value="${esc(nm)}" autocomplete="off" maxlength="20"></td>`;
-    }
-    const cls='gnt-cell room-cell'+(isDayEnd?' day-end':'')+(auto?' auto':(v!=null?' booked':''));
-    const label=nm?`<span class="rc-name">${esc(shortName2(nm))}</span>`:'';
-    const title=nm?esc((auto?'합주 · ':'')+nm):'';
-    return `<td class="${cls}" data-act="roomcell" data-date="${d}" data-room="${esc(r)}" data-time="${esc(t)}" title="${title}">${label}</td>`;
-  };
-  const rowFor=(t,isDawn)=>{
-    let cells='';
-    weekDates.forEach(d=>ROOMS.forEach((r,si)=>{ cells+=cell(d,r,t,si===N-1); }));
-    return `<tr class="${isDawn?'room-dawn-row':''}"><td class="rh">${t}</td>${cells}</tr>`;
-  };
-  const dawnN=countDawnBookings(weekDates);
-  const dawnToggle=`<tr class="room-dawn-toggle"><td colspan="${colTotal}">
-    <button class="rd-btn" data-act="roomdawn" role="button" aria-expanded="${state.roomShowDawn}">
-      ${state.roomShowDawn?'▾ 새벽 시간대 접기 (00:00~11:30)':'▸ 새벽 시간대 펼치기 (00:00~11:30)'}
-      ${(!state.roomShowDawn&&dawnN>0)?`<span class="rd-badge">새벽 예약 ${dawnN}건</span>`:''}
-    </button></td></tr>`;
-  const dawnRows=state.roomShowDawn?dawn.map(t=>rowFor(t,true)).join(''):'';
-  const mainRows=main.map(t=>rowFor(t,false)).join('');
-
-  const rangeLabel=`${mdLabel(weekDates[0])} ~ ${mdLabel(weekDates[6])}`;
-  return `<div class="card">
-    <div class="card-head">
-      <div>
-        <h2>전체 시간표 — 동방 연습실 예약</h2>
-        <div class="sub" style="margin:4px 0 0">칸을 클릭해 예약하세요. 방: <b>${ROOMS.join(' · ')}</b> (일정=합주방). 예약 후 못 오게 되면 이름을 꼭 지워주세요.</div>
-      </div>
-    </div>
-    <div class="room-nav">
-      <button class="btn ghost sm" data-act="roomweek" data-dir="-1">◀ 이전 주</button>
-      <span class="room-range">${rangeLabel}</span>
-      <button class="btn ghost sm" data-act="roomweek" data-dir="1">다음 주 ▶</button>
-      <input type="date" class="room-date" data-act="roomdate" value="${weekDates[0]}" title="날짜로 이동 (년·월·일)">
-      <button class="btn ghost sm" data-act="roomweek" data-dir="0" style="margin-left:auto">이번 주</button>
-    </div>
-    <div class="scroll grid-touch"><table class="grid gantt rooms-table">
-      <thead><tr>${dayHead}</tr><tr>${subHead}</tr></thead>
-      <tbody>${dawnToggle}${dawnRows}${mainRows}</tbody></table></div>
-  </div>`;
-}
-function shortName2(s){ // 동방 셀: 4글자까지 표시
-  s=s||''; return s.length>4?s.slice(0,4):s;
-}
-/* 칸 인라인 편집 — 클릭하면 그 칸이 입력란이 됨 (모달 없음) */
-function openRoomEdit(date,room,time){
-  const mk=roomMonthKey(date), k=roomSlotKey(date,room,time);
-  const v=roomVal(mk,k);
-  if(roomIsAuto(v)){ toast(`자동 등록(합주): ${roomName(v)} — 해당 프로젝트 결과 탭에서 변경`); return; }
-  state.roomEdit={date,room,time,monthKey:mk,slotKey:k};
-  deferRender=false; doRender();
-  const i=$('roomNameIn'); if(i){i.focus();i.select();}
-}
-function roomWrite(mk,slotK,name){
-  state.roomsData[mk]=state.roomsData[mk]||{};
-  if(name){ state.roomsData[mk][slotK]=name; FB.set(R('rooms/'+mk+'/'+slotK),name); }
-  else { delete state.roomsData[mk][slotK]; FB.remove(R('rooms/'+mk+'/'+slotK)); }
-}
-function roomNextCell(e){ // 같은 날짜·방의 다음 시간 칸 (보이는 행 순서)
-  const {main,dawn}=roomTimeRows();
-  const seq=state.roomShowDawn?dawn.concat(main):main;
-  const idx=seq.indexOf(e.time);
-  if(idx<0||idx+1>=seq.length) return null;
-  const t=seq[idx+1];
-  return {date:e.date,room:e.room,time:t,monthKey:e.monthKey,slotKey:roomSlotKey(e.date,e.room,t)};
-}
-function saveRoomInline(advance){
-  const e=state.roomEdit; if(!e) return;
-  const i=$('roomNameIn'); const name=(i?i.value:'').trim();
-  if(name) lsSet('roomName',name);
-  roomWrite(e.monthKey,e.slotKey,name);   // 빈 값이면 삭제
-  state.roomEdit=advance?roomNextCell(e):null;
-  roomInlineAdvancing=true; deferRender=false; doRender(); roomInlineAdvancing=false;
-  if(state.roomEdit){ const ni=$('roomNameIn'); if(ni){ni.focus();ni.select();} }
-}
-
 function viewLanding(){
   const idx=state.index||{};
   const visited=getVisited()
@@ -1643,14 +1296,12 @@ function viewSetup(){
   const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
     o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
 
-  let songRows=sIds.length? sIds.map((id,i)=>{
-    const ext=!!(c.ext&&c.ext[id]);
-    return `<div class="list-item"><span class="idx">${i+1}</span>
+  let songRows=sIds.length? sIds.map((id,i)=>
+    `<div class="list-item"><span class="idx">${i+1}</span>
       <input type="text" value="${esc(itemName(songs[id]))}" ${dis}
         data-act="songname" data-sid="${id}">
-      <button class="loc-toggle ${ext?'ext':'in'}" data-act="togglesongloc" data-sid="${id}" ${dis?'disabled':''} title="${ext?'외부 합주실 (동방 시간표 무시)':'동방 사용 (동방 시간표에 반영)'}">${ext?'외부':'동방'}</button>
       <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`;}).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
+    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
 
   let pplRows=pIds.length? pIds.map((id,i)=>
     `<div class="list-item"><span class="idx">${i+1}</span>
@@ -1920,9 +1571,6 @@ function viewResults(){
       cls+=' conflict';
       const nm=cfs.map(x=>itemName(c.songs[x.sid])).join(', ');
       title=`참여자 겹침: ${nm}`;
-    } else if(!isExternal(sid) && roomBusyAt(k,sid)){
-      cls+=' roombusy';
-      title=`동방 '일정' 방 예약됨: ${roomBusyAt(k,sid)} — 외부 합주실이면 이 활동을 '외부'로`;
     } else {
       cls+=' feasible';
       style=`background:${songColorLight(sid)}`;
@@ -1945,8 +1593,7 @@ function viewResults(){
         ${mdLabel(day.date)} <span class="wd">${WD[w]}</span></th>`;
       visibleSongs.forEach((sid,si)=>{
         const last=si===N-1?'day-end':'';
-        const extMk=isExternal(sid)?'<span class="loc-mk" title="외부 합주실">외</span>':'';
-        subHead+=`<th class="gnt-sub ${last}" style="--sc:${songColor(sid)}" title="${esc(itemName(c.songs[sid]))}${isExternal(sid)?' (외부)':''}">${esc(shortName(itemName(c.songs[sid])))}${extMk}</th>`;
+        subHead+=`<th class="gnt-sub ${last}" style="--sc:${songColor(sid)}" title="${esc(itemName(c.songs[sid]))}">${esc(shortName(itemName(c.songs[sid])))}</th>`;
       });
     });
     let rows=times.map((t,ri)=>{
@@ -1979,7 +1626,7 @@ function viewResults(){
         <h2>시간표 — 가능 시간 & 배정</h2>
         <div class="page-intro">
           <div class="pi-h">🎯 이 페이지는?</div>
-          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 모든 참여자 입력이 종합되어 활동별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=참여자 안 됨, <b>자물쇠</b>=동방 '일정' 방이 이미 예약됨. <b>동방 활동</b>은 동방 방이 빈 시간에만 배정되고 동방 시간표에 자동 표시됩니다 — 외부 합주실이면 설정 탭에서 활동을 <b>'외부'</b>로 바꾸세요. 최종 결과는 아래 캘린더 카드에서 PNG·캘린더(.ics)로 받을 수 있습니다.</p>
+          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 모든 참여자 입력이 종합되어 활동별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=참여자 안 됨. 최종 결과는 아래 캘린더 카드에서 PNG·캘린더(.ics)로 받을 수 있습니다.</p>
         </div>
         ${optRow}
         ${tabsHtml}
@@ -2305,17 +1952,6 @@ function bindEvents(){
     const t=e.target.closest('[data-act]'); if(!t)return;
     const act=t.dataset.act;
     if(act==='home'){location.href=location.pathname;return;}
-    if(act==='gotorooms'){location.href=location.pathname+'?view=rooms';return;}
-    if(act==='gotoschedule'){location.href=location.pathname+'?view=schedule';return;}
-    if(act==='roomcell'){openRoomEdit(t.dataset.date,t.dataset.room,t.dataset.time);return;}
-    if(act==='roomdawn'){state.roomShowDawn=!state.roomShowDawn;lsSet('roomShowDawn',state.roomShowDawn?'1':'0');render();return;}
-    if(act==='roomweek'){
-      const dir=+t.dataset.dir;
-      if(dir===0) state.roomWeekStart=weekDatesSun(fmtDate(new Date()))[0];
-      else { const d=new Date(state.roomWeekStart+'T00:00:00'); d.setDate(d.getDate()+dir*7); state.roomWeekStart=fmtDate(d); }
-      subscribeRooms(roomVisibleMonths()); render(); return;
-    }
-    if(act==='togglesongloc'){toggleSongLoc(t.dataset.sid);return;}
     if(act==='copycode'){copyCode();return;}
     if(act==='help'){state.showHelp=true;render();return;}
     if(act==='closehelp'){state.showHelp=false;render();return;}
@@ -2403,13 +2039,9 @@ function bindEvents(){
     else if(act==='toggleparallel'){
       cfgUpdate({allowParallel:!!t.checked});
     }
-    else if(act==='roomdate'){
-      if(v){ state.roomWeekStart=weekDatesSun(v)[0]; subscribeRooms(roomVisibleMonths()); render(); }
-    }
   });
 
   app.addEventListener('blur',e=>{
-    if(e.target.id==='roomNameIn'){ if(!roomInlineAdvancing) saveRoomInline(false); return; }
     if(e.target.tagName==='INPUT'&&e.target.type==='text'&&deferRender){
       deferRender=false; setTimeout(render,30);
     }
@@ -2417,13 +2049,8 @@ function bindEvents(){
 
   /* Enter 키로 다음 입력란 / 새 항목 추가 */
   app.addEventListener('keydown',e=>{
-    const t=e.target;
-    if(t.id==='roomNameIn'){
-      if(e.key==='Enter'){ e.preventDefault(); saveRoomInline(true); }   // 저장 후 아래 칸으로
-      else if(e.key==='Escape'){ e.preventDefault(); state.roomEdit=null; deferRender=false; doRender(); }
-      return;
-    }
     if(e.key!=='Enter') return;
+    const t=e.target;
     if(t.tagName!=='INPUT') return;
     const act=t.dataset.act;
     if(act!=='songname'&&act!=='personname') return;
@@ -2592,19 +2219,16 @@ function bindEvents(){
   let gTouchHoldTimer=null;
 
   function canAssignAt(sid,k){
-    if(!(slotOkForSong(sid,k) && slotConflicts(sid,k).length===0)) return false;
-    if(!isExternal(sid) && roomBusyAt(k,sid)) return false;
-    return true;
+    return slotOkForSong(sid,k) && slotConflicts(sid,k).length===0;
   }
   function renderGanttCell(td,sid,k,assigned){
-    td.classList.remove('has','feasible','infeasible','conflict','roombusy');
+    td.classList.remove('has','feasible','infeasible','conflict');
     td.style.background='';
     if(assigned){
       td.classList.add('has'); td.style.background=songColor(sid); return;
     }
     if(!slotOkForSong(sid,k)){ td.classList.add('infeasible'); return; }
     if(slotConflicts(sid,k).length){ td.classList.add('conflict'); return; }
-    if(!isExternal(sid) && roomBusyAt(k,sid)){ td.classList.add('roombusy'); return; }
     td.classList.add('feasible'); td.style.background=songColorLight(sid);
   }
   function applyGanttDrag(){
@@ -2630,19 +2254,16 @@ function bindEvents(){
       if(r<minR||r>maxR) return;
       const k=td.dataset.slot;
       const wasAssigned=!!gSnap[k];
-      const target = gFlipTo ? (canAssignAt(gSid,k) ? true : wasAssigned) : false; // flip-ON은 추가만, 해제 안 함
+      const target = gFlipTo ? canAssignAt(gSid,k) : false;
       if(target!==wasAssigned) updates[k]= target?true:null;
     });
     if(!Object.keys(updates).length) return;
     state.schedule[gSid]=state.schedule[gSid]||{};
-    const assignedKeys=[], removedKeys=[];
     for(const k in updates){
-      if(updates[k]){ state.schedule[gSid][k]=true; assignedKeys.push(k); }
-      else { delete state.schedule[gSid][k]; removedKeys.push(k); }
+      if(updates[k]) state.schedule[gSid][k]=true;
+      else delete state.schedule[gSid][k];
     }
     FB.update(R('projects/'+state.pid+'/schedule/'+gSid),updates);
-    mirrorAssignSlots(gSid,assignedKeys);
-    mirrorUnassignSlots(gSid,removedKeys);
   }
   function ganttSingleTap(td){
     const sid=td.dataset.sid, k=td.dataset.slot;
@@ -2651,7 +2272,6 @@ function bindEvents(){
       state.schedule[sid]=state.schedule[sid]||{};
       delete state.schedule[sid][k];
       FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:null});
-      mirrorUnassignSlots(sid,[k]);
       return;
     }
     if(!slotOkForSong(sid,k)){ toast('이 시간엔 참여자가 안 됩니다'); return; }
@@ -2661,15 +2281,13 @@ function bindEvents(){
       const allowParallel=!!(state.config&&state.config.allowParallel);
       toast(allowParallel?`참여자 겹침: ${nm}`:`이 시간에 이미 배정됨: ${nm}`); return;
     }
-    if(!isExternal(sid)){ const busy=roomBusyAt(k,sid); if(busy){ toast(`동방 '일정' 방 예약됨: ${busy} — 외부 합주실이면 이 활동을 '외부'로 바꾸세요`); return; } }
     state.schedule[sid]=state.schedule[sid]||{};
     state.schedule[sid][k]=true;
     FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:true});
-    mirrorAssignSlots(sid,[k]);
   }
 
   function startGanttDrag(td){
-    if(td.classList.contains('infeasible')||td.classList.contains('conflict')||td.classList.contains('roombusy')){
+    if(td.classList.contains('infeasible')||td.classList.contains('conflict')){
       gGrid=null; return false;
     }
     gSid=td.dataset.sid;
@@ -2757,27 +2375,18 @@ function bindEvents(){
 
 /* ---------------- 시작 ---------------- */
 async function start(){
-  state.roomShowDawn=lsGet('roomShowDawn')==='1';
   bindEvents(); render();
   const status=await initFirebase();
   if(status==='no-config'){state.screen='no-config';render();return;}
   if(status==='error'){state.screen='fb-error';render();return;}
-  const params=new URLSearchParams(location.search);
-  const pid=params.get('p');
-  const view=params.get('view');
+  const pid=new URLSearchParams(location.search).get('p');
   if(pid){
     state.pid=pid; state.screen='project';
     state.me=lsGet('me_'+pid)||null;
     lsSet('v_'+pid,String(Date.now())); // 코드로 들어왔으면 방문 기록
     subscribeProject(pid);
-  }else if(view==='rooms'){
-    state.screen='rooms';
-    state.roomWeekStart=weekDatesSun(fmtDate(new Date()))[0];
-    subscribeRooms(roomVisibleMonths());
-  }else if(view==='schedule'){
-    state.screen='landing'; subscribeIndex();
   }else{
-    state.screen='hub';
+    state.screen='landing'; subscribeIndex();
   }
   render();
 }
