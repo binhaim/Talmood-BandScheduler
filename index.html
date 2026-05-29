@@ -1495,7 +1495,7 @@ function viewRoomMonth(){
         ? `<input class="rev-in" id="roomEvIn" value="${esc(ev.n)}" autocomplete="off" maxlength="24">`
         : `<span class="rev-label">${esc(ev.n||'(이름)')}</span><span class="rev-time">${calFmt(ev.a)}~${calFmt(ev.b)}</span>`;
       return `<div class="cal-ev${editing?' editing':''}${ev.n?'':' empty'}" data-eid="${ev.eid}"
-        style="top:${top}px;height:${h}px;left:calc(${left}% + 1px);width:calc(${wpct}% - 3px);background:${roomColor(ev.n)}">
+        style="top:${top}px;height:${h}px;left:calc(${left}% + 3px);width:calc(${wpct}% - 6px);background:${roomColor(ev.n)}">
         <div class="rev-rs rev-top"></div>${inner}
         <button class="rev-x" data-act="roomevdel" data-eid="${ev.eid}" title="삭제">×</button>
         <div class="rev-rs rev-bot"></div></div>`;
@@ -2728,7 +2728,7 @@ function bindEvents(){
     if(e.pointerType==='mouse'){
       e.preventDefault(); calDragging=true; enterDrag();
       cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
-      cvGhost.style.left='1px'; cvGhost.style.width='calc(100% - 3px)'; cvGhost.style.background=roomColor('');
+      cvGhost.style.left='3px'; cvGhost.style.width='calc(100% - 6px)'; cvGhost.style.background=roomColor('');
       styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
       try{dayEl.setPointerCapture(e.pointerId);}catch(_){}
     }
@@ -2741,7 +2741,7 @@ function bindEvents(){
     cvOffMin=calRawMin(cvDayEl,e.clientY)-d.a;
     calDragging=true; enterDrag();
     evEl.classList.add('dragging'); evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
-    evEl.style.left='1px'; evEl.style.width='calc(100% - 3px)';
+    evEl.style.left='3px'; evEl.style.width='calc(100% - 6px)';
     try{evEl.setPointerCapture(e.pointerId);}catch(_){}
     if(e.pointerType==='mouse') e.preventDefault();
   }
