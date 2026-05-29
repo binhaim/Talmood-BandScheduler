@@ -643,6 +643,51 @@
     .tab{flex:1;text-align:center;}
     .hbar{gap:10px;}
   }
+
+  /* 홈 허브 */
+  .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+  .hub-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+    padding:22px;border:1.5px solid var(--line-2);border-radius:var(--r);background:var(--surface);
+    cursor:pointer;font-family:inherit;transition:border-color var(--t),transform var(--t),box-shadow var(--t);}
+  .hub-card:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow);}
+  .hub-card .hc-icon{font-size:30px;line-height:1;}
+  .hub-card .hc-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;
+    letter-spacing:-.02em;color:var(--ink);}
+  .hub-card .hc-desc{font-size:13px;color:var(--muted);line-height:1.5;}
+
+  /* 월별 시간표 — 카드 목록 */
+  .month-new{display:flex;gap:8px;align-items:center;margin:12px 0 16px;flex-wrap:wrap;}
+  .month-new input[type=month]{padding:7px 10px;border:1px solid var(--line-2);
+    border-radius:var(--r-sm);background:var(--surface);font-size:14px;}
+  .month-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+  .month-card{position:relative;border:1.5px solid var(--line-2);border-radius:var(--r);
+    background:var(--surface);padding:18px 16px;cursor:pointer;
+    transition:border-color var(--t),transform var(--t),box-shadow var(--t);}
+  .month-card:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+  .month-card .mc-label{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+    font-size:17px;letter-spacing:-.02em;color:var(--ink);}
+  .month-card .mc-sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);
+    margin-top:3px;}
+  .month-card .mc-x{position:absolute;top:8px;right:8px;border:none;background:transparent;
+    color:var(--muted-2);font-size:16px;line-height:1;cursor:pointer;padding:3px 6px;border-radius:4px;
+    opacity:0;transition:opacity var(--t),color var(--t),background var(--t);}
+  .month-card:hover .mc-x{opacity:1;}
+  .month-card .mc-x:hover{color:var(--accent);background:var(--accent-soft);}
+
+  /* 월별 시간표 — 그리드 셀 */
+  table.rooms-table td.room-pcell{width:34px;height:28px;cursor:pointer;padding:0 1px;
+    text-align:center;transition:filter 80ms ease;}
+  table.rooms-table td.room-pcell:hover{filter:brightness(.95);}
+  table.rooms-table td.room-pcell .rc-name{display:inline-block;max-width:100%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;font-weight:600;color:#fff;
+    text-shadow:0 1px 1px rgba(0,0,0,.2);line-height:1;}
+  table.rooms-table td.room-pcell.editing{padding:0;box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface);}
+  .rc-in{width:100%;border:none;background:transparent;padding:2px 3px;font-size:10px;
+    font-family:'Archivo',sans-serif;color:var(--ink);outline:none;}
+  table.gantt th.gnt-day.out{opacity:.4;}
+  .tool-chip .rn-x{margin-left:5px;font-size:13px;opacity:.6;line-height:1;}
+  .tool-chip .rn-x:hover{opacity:1;color:#fff;}
+  .tool-chip.on .rn-x{color:#fff;}
 </style>
 </head>
 <body>
@@ -676,7 +721,15 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false };
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false,
+  /* 월별 시간표 */
+  roomMonths:{}, roomNames:{}, roomCells:{}, roomSubs:{},
+  roomYm:'', roomWeekStart:'',
+  roomPaint:null,   // null/'text'=직접 입력 | '<이름>'=이름 칠하기 | 'erase'=지우개
+  roomEditCell:null // {ym,slotKey,date,sess,time} 인라인 텍스트 편집 대상
+};
+/* 월별 시간표 세션(열) — '일정'이 메인 */
+const SESSIONS=['일정','합주','V','G','B','D','K'];
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -900,6 +953,34 @@ function subscribeIndex(){
   FB.onValue(R('projectIndex'),s=>{ state.index=s.val()||{};
     if(state.screen==='landing') render(); });
 }
+/* ---- 월별 시간표 구독 ---- */
+function subscribeRoomMeta(){
+  if(state._roomMetaSub) return; state._roomMetaSub=true;
+  FB.onValue(R('roomMonths'),s=>{ state.roomMonths=s.val()||{};
+    if(state.screen==='roomlist') render(); });
+  FB.onValue(R('roomNames'),s=>{ state.roomNames=s.val()||{};
+    if(state.screen==='roomlist'||state.screen==='roommonth') render(); });
+}
+function subscribeRoomCells(ym){
+  if(state.roomSubs[ym]) return; state.roomSubs[ym]=true;
+  FB.onValue(R('roomCells/'+ym),s=>{ state.roomCells[ym]=s.val()||{};
+    if(state.screen==='roommonth') render(); });
+}
+/* ym(YYYY-MM)의 1일이 속한 주의 일요일 */
+function roomMonthFirstSunday(ym){
+  const first=ym+'-01';
+  const d=new Date(first+'T00:00:00');
+  d.setDate(d.getDate()-d.getDay());
+  return fmtDate(d);
+}
+function roomSlotKey(date,sess,time){ return date+'|'+sess+'|'+time; }
+function roomCellVal(ym,slotK){ const m=state.roomCells[ym]; return m?m[slotK]:undefined; }
+/* 문자열 → 안정적 색상(hue) */
+function roomColor(str){
+  if(!str) return '';
+  let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))>>>0;
+  return `hsl(${h%360},62%,48%)`;
+}
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
     if(state.screen==='project') render(); });
@@ -1068,10 +1149,10 @@ function shortName(s){
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, gPainting=false;
+let deferRender=false, painting=false, gPainting=false, rgPainting=false;
 function render(){
   const a=document.activeElement;
-  if(painting||gPainting){deferRender=true;return;}
+  if(painting||gPainting||rgPainting){deferRender=true;return;}
   if(a&&a.tagName==='INPUT'&&a.type==='text'&&$('app').contains(a)){
     deferRender=true;return;}
   doRender();
@@ -1102,6 +1183,11 @@ function renderHeader(){
       h+='<button class="tab '+(state.tab===k?'on':'')+'" data-act="tab" data-tab="'+k+'">'+l+'</button>';
     });
     h+='</div>';
+  } else if(state.screen==='roomlist'){
+    h+='<div class="crumb"><span class="pname">월별 시간표</span></div>';
+  } else if(state.screen==='roommonth'){
+    h+='<div class="crumb"><button class="btn ghost sm" data-act="roomback">← 목록</button>'
+      +'<span class="pname" style="margin-left:6px">'+esc(roomYmLabel(state.roomYm))+'</span></div>';
   }
   h+='<button class="help-btn" data-act="help" title="사용법">?</button>';
   $('hbar').innerHTML=h;
@@ -1113,6 +1199,9 @@ function renderBody(){
   if(state.screen==='loading') html='<div class="empty">불러오는 중…</div>';
   else if(state.screen==='no-config') html=viewNoConfig();
   else if(state.screen==='fb-error') html=viewFbError();
+  else if(state.screen==='hub') html=viewHub();
+  else if(state.screen==='roomlist') html=viewRoomList();
+  else if(state.screen==='roommonth') html=viewRoomMonth();
   else if(state.screen==='landing') html=viewLanding();
   else if(state.screen==='project'){
     if(!state.config) html=viewMissing();
@@ -1257,6 +1346,199 @@ function viewMissing(){
   return `<div class="card"><div class="hero">프로젝트를 찾을 수 없어요</div>
     <p style="margin-bottom:12px">코드 <b>${state.pid}</b> 에 해당하는 프로젝트가 없습니다.</p>
     <button class="btn" data-act="home">프로젝트 목록으로</button></div>`;
+}
+
+/* ================= 홈 허브 ================= */
+function viewHub(){
+  return `<div class="card" style="padding:32px">
+    <div class="hero">무엇을 할까요<span class="dot">?</span></div>
+    <p class="sub" style="margin-bottom:22px;font-size:14.5px;max-width:560px">월별 동방 시간표를 만들어 함께 채우거나, 여럿이 모이는 일정을 맞출 수 있습니다.</p>
+    <div class="hub-grid">
+      <button class="hub-card" data-act="gotorooms">
+        <div class="hc-icon">🗓️</div>
+        <div class="hc-title">월별 시간표</div>
+        <div class="hc-desc">달마다 시간표를 만들고, 자기 이름을 드래그해 연습실을 예약</div>
+      </button>
+      <button class="hub-card" data-act="gotoschedule">
+        <div class="hc-icon">🎯</div>
+        <div class="hc-title">일정 조율</div>
+        <div class="hc-desc">각자 안 되는 시간을 모아 모두 가능한 시간으로 일정 짜기</div>
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ================= 월별 시간표 ================= */
+function roomYmLabel(ym){ if(!ym) return ''; const [y,m]=ym.split('-'); return `${y}년 ${+m}월`; }
+function roomTimeRows(){ return ['12시이전'].concat(timeList(12,24,30)).concat(['24시이후']); }
+function roomMonthWeeks(ym){
+  const [y,mm]=ym.split('-').map(Number);
+  const lastDay=new Date(y,mm,0).getDate();
+  const lastDate=`${ym}-${String(lastDay).padStart(2,'0')}`;
+  const start=new Date(ym+'-01T00:00:00'); start.setDate(start.getDate()-start.getDay());
+  const out=[]; let cur=new Date(start); let guard=0;
+  while(guard<8){
+    const days=[];
+    for(let i=0;i<7;i++){ const ds=fmtDate(cur); days.push({date:ds,inMonth:ds.slice(0,7)===ym}); cur.setDate(cur.getDate()+1); }
+    out.push(days);
+    if(days[6].date>=lastDate) break;
+    guard++;
+  }
+  return out;
+}
+function viewRoomList(){
+  const ids=Object.keys(state.roomMonths||{}).sort().reverse(); // 최신 월 먼저
+  const cards=ids.length? ids.map(ym=>
+    `<div class="month-card" data-act="openroommonth" data-m="${ym}">
+       <div class="mc-label">${esc(roomYmLabel(ym))}</div>
+       <div class="mc-sub">${ym}</div>
+       <button class="mc-x" data-act="delmonth" data-m="${ym}" title="이 달 시간표 삭제">×</button>
+     </div>`).join('')
+    : '<div class="empty" style="padding:30px 12px">아직 만든 달이 없습니다. 위에서 달을 골라 만들어 보세요.</div>';
+  const now=new Date(); const curYm=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return `<div class="card">
+    <div class="card-head"><h2>월별 시간표</h2></div>
+    <div class="page-intro">
+      <div class="pi-h">🗓️ 이 페이지는?</div>
+      <p>달마다 동방 연습실 시간표를 만드는 곳입니다. 달을 만들면 아래 <b>네모칸</b>으로 나오고, 클릭하면 그 달 시간표가 열립니다. 시간표 안에서 <b>자기 이름을 골라 드래그</b>하면 그 칸에 이름이 들어가고, 다른 사람 이름도 색깔별로 함께 보입니다.</p>
+    </div>
+    <div class="month-new">
+      <input type="month" id="newMonthIn" value="${curYm}">
+      <button class="btn sm" data-act="createmonth">+ 이 달 만들기</button>
+    </div>
+    <div class="month-cards">${cards}</div>
+  </div>`;
+}
+function viewRoomMonth(){
+  const ym=state.roomYm; if(!ym) return '<div class="card"><div class="empty">달을 선택하세요.</div></div>';
+  subscribeRoomCells(ym);
+  const names=Object.keys(state.roomNames||{}).map(id=>state.roomNames[id]).filter(Boolean);
+  const paint=state.roomPaint;
+  const isName=n=>paint===n;
+  // 도구 팔레트
+  const nameChips=names.map(n=>{
+    const on=isName(n); const col=roomColor(n);
+    const sty=on?`background:${col};border-color:${col};color:#fff`:'';
+    return `<button class="tool-chip ${on?'on':''}" data-act="roompickname" data-name="${esc(n)}" style="${sty}">
+      <span class="csw" style="background:${col}"></span>${esc(n)}
+      <span class="rn-x" data-act="roomdelname" data-name="${esc(n)}" title="이름 삭제">×</span></button>`;
+  }).join('');
+  const palette=`<div class="tool-bar">
+    <span class="lbl">내 이름</span>
+    <input type="text" id="newRoomName" placeholder="이름 추가" maxlength="20" style="width:120px">
+    <button class="btn sm" data-act="roomaddname">추가</button>
+    <span class="sp"></span>
+    ${nameChips||'<span style="font-size:12px;color:var(--muted)">이름을 추가하세요</span>'}
+    <span class="sp"></span>
+    <button class="tool-chip ${(paint==='text'||paint==null)?'on':''}" data-act="roomtexttool" title="칸을 클릭해 자유 텍스트 입력">✎ 직접 입력</button>
+    <button class="tool-chip eraser ${paint==='erase'?'on':''}" data-act="roomerasetool">지우개</button>
+  </div>`;
+  const hint=paint&&paint!=='text'&&paint!=='erase'
+    ? `<span class="hint">· '${esc(paint)}' 선택됨 — 칸을 드래그하면 이름이 들어갑니다</span>`
+    : (paint==='erase'?`<span class="hint">· 지우개 — 드래그한 칸이 비워집니다</span>`
+      :`<span class="hint">· 직접 입력 — 칸을 클릭해 자유롭게 적습니다</span>`);
+
+  const times=roomTimeRows();
+  const weeks=roomMonthWeeks(ym);
+  const N=SESSIONS.length;
+  const ed=state.roomEditCell;
+  function cell(date,sess,t,wi,di,si,isDayEnd){
+    const k=roomSlotKey(date,sess,t);
+    const v=roomCellVal(ym,k);
+    const editing=ed&&ed.ym===ym&&ed.slotKey===k;
+    if(editing){
+      return `<td class="gnt-cell room-pcell editing${isDayEnd?' day-end':''}"><input class="rc-in" id="roomCellIn" value="${esc(v||'')}" autocomplete="off" maxlength="20"></td>`;
+    }
+    const cls='gnt-cell room-pcell'+(isDayEnd?' day-end':'')+(v?' filled':'');
+    const sty=v?`background:${roomColor(v)}`:'';
+    const label=v?`<span class="rc-name">${esc(v)}</span>`:'';
+    return `<td class="${cls}" data-room="1" data-ym="${ym}" data-date="${date}" data-sess="${esc(sess)}" data-time="${esc(t)}" data-slot="${esc(k)}" data-col="${wi}-${di}-${si}" data-r="${times.indexOf(t)}" title="${esc(v||'')}"${sty?` style="${sty}"`:''}>${label}</td>`;
+  }
+  const weekBlocks=weeks.map((days,wi)=>{
+    const inDays=days.filter(d=>d.inMonth);
+    const range=`${mdLabel(days[0].date)} ~ ${mdLabel(days[6].date)}`;
+    let dayHead='<th class="gnt-corner" rowspan="2">시간</th>'+days.map(d=>{
+      const w=wdOf(d.date), wdCls=w===0?'sun':(w===6?'sat':'');
+      const dim=d.inMonth?'':' out';
+      return `<th class="gnt-day ${wdCls}${dim}" colspan="${N}">${mdLabel(d.date)} <span class="wd">${WD[w]}</span></th>`;
+    }).join('');
+    let subHead=days.map(d=>SESSIONS.map((s,si)=>{
+      const last=si===N-1?'day-end':'';
+      return `<th class="gnt-sub ${last}" title="${esc(s)}">${esc(s)}</th>`;
+    }).join('')).join('');
+    let rows=times.map(t=>{
+      let cells='';
+      days.forEach((d,di)=>SESSIONS.forEach((s,si)=>{ cells+=cell(d.date,s,t,wi,di,si,si===N-1); }));
+      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
+    }).join('');
+    return `<div class="week-label"><span class="wk">${wi+1}주차</span><span class="wkr">${range}</span></div>
+      <div class="scroll grid-touch"><table class="grid gantt rooms-table">
+        <thead><tr>${dayHead}</tr><tr>${subHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="card-head"><h2>${esc(roomYmLabel(ym))} 시간표</h2>
+      <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div>
+    <div class="page-intro"><div class="pi-h">✍️ 어떻게?</div>
+      <p>아래 <b>내 이름</b>에서 이름을 고른 뒤, 시간표의 원하는 칸(요일·세션·시간)을 <b>세로로 드래그</b>하면 그 칸에 이름이 들어갑니다. 같은 칸을 다시 드래그하면 지워집니다. <b>일정</b>처럼 자유 텍스트가 필요하면 <b>✎ 직접 입력</b>을 고르고 칸을 클릭해 적으세요. ${hint}</p>
+    </div>
+    ${palette}
+    <div id="room-snapshot">${weekBlocks}</div>
+  </div>`;
+}
+function roomCellInline(date,sess,time){
+  const ym=state.roomYm; const k=roomSlotKey(date,sess,time);
+  state.roomEditCell={ym,slotKey:k,date,sess,time};
+  deferRender=false; doRender();
+  const i=$('roomCellIn'); if(i){i.focus();i.select();}
+}
+function roomCellWrite(ym,k,val){
+  state.roomCells[ym]=state.roomCells[ym]||{};
+  if(val){ state.roomCells[ym][k]=val; FB.set(R('roomCells/'+ym+'/'+k),val); }
+  else { delete state.roomCells[ym][k]; FB.remove(R('roomCells/'+ym+'/'+k)); }
+}
+function saveRoomCellInline(){
+  const e=state.roomEditCell; if(!e) return;
+  const i=$('roomCellIn'); const val=i?i.value.trim():'';
+  roomCellWrite(e.ym,e.slotKey,val);
+  state.roomEditCell=null; deferRender=false; doRender();
+}
+function createRoomMonth(){
+  const i=$('newMonthIn'); const ym=i?i.value:''; if(!ym){ toast('달을 고르세요'); return; }
+  FB.set(R('roomMonths/'+ym),{createdAt:Date.now()});
+  location.href=location.pathname+'?view=rooms&m='+ym;
+}
+function delRoomMonth(ym){
+  if(!confirm(`${roomYmLabel(ym)} 시간표를 삭제할까요? 이 달의 모든 예약이 지워집니다.`)) return;
+  FB.remove(R('roomMonths/'+ym));
+  FB.remove(R('roomCells/'+ym));
+  delete state.roomCells[ym];
+  if(state.roomYm===ym){ state.roomYm=''; state.screen='roomlist'; }
+  render();
+}
+function addRoomName(){
+  const i=$('newRoomName'); const nm=i?i.value.trim():''; if(!nm){ return; }
+  const exists=Object.values(state.roomNames||{}).includes(nm);
+  if(!exists){ const id=genId('rn'); FB.set(R('roomNames/'+id),nm); state.roomNames=state.roomNames||{}; state.roomNames[id]=nm; }
+  state.roomPaint=nm; lsSet('roomMyName',nm);
+  deferRender=false; doRender();
+  const ni=$('newRoomName'); if(ni) ni.value='';
+}
+function delRoomName(nm){
+  if(!confirm(`'${nm}' 이름을 목록에서 지울까요? (이미 적힌 칸은 남습니다)`)) return;
+  for(const id in (state.roomNames||{})) if(state.roomNames[id]===nm){ FB.remove(R('roomNames/'+id)); delete state.roomNames[id]; }
+  if(state.roomPaint===nm) state.roomPaint='text';
+  render();
+}
+async function exportRoomPNG(){
+  const el=$('room-snapshot'); if(!el){ toast('저장할 내용이 없습니다'); return; }
+  toast('PNG 생성 중...');
+  try{ const h2c=await ensureH2c();
+    const canvas=await h2c(el,{backgroundColor:'#fffdf7',scale:2});
+    const link=document.createElement('a');
+    link.download=`동방시간표-${state.roomYm}.png`;
+    link.href=canvas.toDataURL('image/png'); link.click();
+  }catch(e){ console.error(e); toast('PNG 저장 실패'); }
 }
 
 function viewLanding(){
@@ -1952,6 +2234,18 @@ function bindEvents(){
     const t=e.target.closest('[data-act]'); if(!t)return;
     const act=t.dataset.act;
     if(act==='home'){location.href=location.pathname;return;}
+    if(act==='gotorooms'){location.href=location.pathname+'?view=rooms';return;}
+    if(act==='gotoschedule'){location.href=location.pathname+'?view=schedule';return;}
+    if(act==='roomback'){location.href=location.pathname+'?view=rooms';return;}
+    if(act==='openroommonth'){location.href=location.pathname+'?view=rooms&m='+t.dataset.m;return;}
+    if(act==='createmonth'){createRoomMonth();return;}
+    if(act==='delmonth'){e.stopPropagation();delRoomMonth(t.dataset.m);return;}
+    if(act==='roomaddname'){addRoomName();return;}
+    if(act==='roomdelname'){e.stopPropagation();delRoomName(t.dataset.name);return;}
+    if(act==='roompickname'){state.roomPaint=(state.roomPaint===t.dataset.name)?'text':t.dataset.name;render();return;}
+    if(act==='roomtexttool'){state.roomPaint='text';render();return;}
+    if(act==='roomerasetool'){state.roomPaint=(state.roomPaint==='erase')?'text':'erase';render();return;}
+    if(act==='roompng'){exportRoomPNG();return;}
     if(act==='copycode'){copyCode();return;}
     if(act==='help'){state.showHelp=true;render();return;}
     if(act==='closehelp'){state.showHelp=false;render();return;}
@@ -2371,6 +2665,115 @@ function bindEvents(){
     }
     gTouchCell=null;
   });
+
+  /* ===== 월별 시간표 — 이름 드래그 칠하기 + 직접 입력 ===== */
+  let rgGrid=null, rgCol='', rgR0=0, rgR1=0, rgSnap={}, rgSetVal=null, rgYm='';
+  let rgTouch=null, rgSx=0, rgSy=0, rgHold=null;
+  function rgRenderCell(td,val){
+    td.classList.toggle('filled',!!val);
+    td.style.background=val?roomColor(val):'';
+    td.innerHTML=val?`<span class="rc-name">${esc(val)}</span>`:'';
+    td.title=val||'';
+  }
+  function applyRoomDrag(){
+    if(!rgGrid) return;
+    const minR=Math.min(rgR0,rgR1),maxR=Math.max(rgR0,rgR1);
+    rgGrid.querySelectorAll(`td.gnt-cell[data-col="${rgCol}"]`).forEach(td=>{
+      const r=+td.dataset.r, k=td.dataset.slot;
+      const was=rgSnap[k]||'';
+      rgRenderCell(td,(r<minR||r>maxR)?was:(rgSetVal||''));
+    });
+  }
+  function commitRoomDrag(){
+    if(!rgGrid) return;
+    const minR=Math.min(rgR0,rgR1),maxR=Math.max(rgR0,rgR1);
+    const updates={};
+    rgGrid.querySelectorAll(`td.gnt-cell[data-col="${rgCol}"]`).forEach(td=>{
+      const r=+td.dataset.r; if(r<minR||r>maxR) return;
+      const k=td.dataset.slot; const was=rgSnap[k]||''; const now=rgSetVal||'';
+      if(now!==was) updates[k]=now||null;
+    });
+    if(!Object.keys(updates).length) return;
+    state.roomCells[rgYm]=state.roomCells[rgYm]||{};
+    for(const k in updates){ if(updates[k]) state.roomCells[rgYm][k]=updates[k]; else delete state.roomCells[rgYm][k]; }
+    FB.update(R('roomCells/'+rgYm),updates);
+  }
+  function startRoomDrag(td){
+    const p=state.roomPaint;
+    rgYm=td.dataset.ym; rgCol=td.dataset.col; rgR0=rgR1=+td.dataset.r; rgGrid=td.closest('table');
+    rgSnap={...(state.roomCells[rgYm]||{})};
+    const cur=rgSnap[td.dataset.slot]||'';
+    rgSetVal=(p==='erase')?null:(cur===p?null:p); // 같은 이름이면 지우기 토글
+    rgPainting=true; enterDrag(); applyRoomDrag();
+  }
+  function roomTapPaint(td){
+    const p=state.roomPaint; const ym=td.dataset.ym, k=td.dataset.slot;
+    const cur=(state.roomCells[ym]||{})[k]||'';
+    const val=(p==='erase')?'':(cur===p?'':p);
+    roomCellWrite(ym,k,val); render();
+  }
+  app.addEventListener('pointerdown',e=>{
+    const td=e.target.closest('td.gnt-cell[data-room]'); if(!td) return;
+    const textTool=(state.roomPaint==='text'||state.roomPaint==null);
+    if(textTool){ rgTouch=td; rgSx=e.clientX; rgSy=e.clientY; return; } // 클릭→인라인 편집(pointerup)
+    if(e.pointerType==='mouse'){ e.preventDefault(); startRoomDrag(td); }
+    else {
+      rgTouch=td; rgSx=e.clientX; rgSy=e.clientY;
+      if(rgHold)clearTimeout(rgHold);
+      const pid=e.pointerId;
+      rgHold=setTimeout(()=>{ rgHold=null; try{td.setPointerCapture(pid);}catch(_){}
+        startRoomDrag(td); if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
+      },LONG_PRESS_MS);
+    }
+  });
+  app.addEventListener('pointermove',e=>{
+    if(rgHold){ if(Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy)>10){ clearTimeout(rgHold);rgHold=null; } return; }
+    if(!rgPainting||e.pointerType==='mouse') return;
+    e.preventDefault();
+    const el=document.elementFromPoint(e.clientX,e.clientY); if(!el) return;
+    const td=el.closest('td.gnt-cell[data-room]'); if(!td) return;
+    if(td.closest('table')!==rgGrid||td.dataset.col!==rgCol) return;
+    const r=+td.dataset.r; if(r===rgR1) return; rgR1=r; applyRoomDrag();
+  },{passive:false});
+  app.addEventListener('pointerover',e=>{
+    if(!rgPainting||e.pointerType!=='mouse') return;
+    const td=e.target.closest('td.gnt-cell[data-room]'); if(!td) return;
+    if(td.closest('table')!==rgGrid||td.dataset.col!==rgCol) return;
+    const r=+td.dataset.r; if(r===rgR1) return; rgR1=r; applyRoomDrag();
+  });
+  window.addEventListener('pointerup',e=>{
+    if(rgHold){
+      clearTimeout(rgHold);rgHold=null;
+      if(rgTouch){
+        const moved=Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy);
+        const td=document.elementFromPoint(e.clientX,e.clientY);
+        if(moved<12&&td&&td.closest('td.gnt-cell')===rgTouch){
+          const textTool=(state.roomPaint==='text'||state.roomPaint==null);
+          if(textTool) roomCellInline(rgTouch.dataset.date,rgTouch.dataset.sess,rgTouch.dataset.time);
+          else roomTapPaint(rgTouch);
+        }
+      }
+      rgTouch=null; return;
+    }
+    if(rgPainting){ rgPainting=false; commitRoomDrag(); rgGrid=null; exitDrag(); if(deferRender){deferRender=false;render();} return; }
+    if(rgTouch){ // 마우스 텍스트툴 클릭
+      const moved=Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy);
+      const td=document.elementFromPoint(e.clientX,e.clientY);
+      if(moved<12&&td&&td.closest('td.gnt-cell')===rgTouch)
+        roomCellInline(rgTouch.dataset.date,rgTouch.dataset.sess,rgTouch.dataset.time);
+      rgTouch=null;
+    }
+  });
+
+  /* 월별 시간표 셀 인라인 텍스트 (직접 입력) */
+  app.addEventListener('keydown',e=>{
+    if(e.target.id!=='roomCellIn') return;
+    if(e.key==='Enter'){ e.preventDefault(); saveRoomCellInline(); }
+    else if(e.key==='Escape'){ e.preventDefault(); state.roomEditCell=null; deferRender=false; doRender(); }
+  });
+  app.addEventListener('blur',e=>{
+    if(e.target.id==='roomCellIn'){ saveRoomCellInline(); }
+  },true);
 }
 
 /* ---------------- 시작 ---------------- */
@@ -2379,14 +2782,23 @@ async function start(){
   const status=await initFirebase();
   if(status==='no-config'){state.screen='no-config';render();return;}
   if(status==='error'){state.screen='fb-error';render();return;}
-  const pid=new URLSearchParams(location.search).get('p');
+  const params=new URLSearchParams(location.search);
+  const pid=params.get('p');
+  const view=params.get('view');
+  const m=params.get('m');
   if(pid){
     state.pid=pid; state.screen='project';
     state.me=lsGet('me_'+pid)||null;
     lsSet('v_'+pid,String(Date.now())); // 코드로 들어왔으면 방문 기록
     subscribeProject(pid);
-  }else{
+  }else if(view==='rooms'){
+    subscribeRoomMeta();
+    if(m){ state.screen='roommonth'; state.roomYm=m; state.roomWeekStart=roomMonthFirstSunday(m); subscribeRoomCells(m); }
+    else state.screen='roomlist';
+  }else if(view==='schedule'){
     state.screen='landing'; subscribeIndex();
+  }else{
+    state.screen='hub';
   }
   render();
 }
