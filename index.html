@@ -299,8 +299,12 @@
       rgba(255,255,255,.65) 0 3px, transparent 3px 6px);}
   table.gantt td.gnt-cell.preview-outline{outline:2px solid var(--ink);
     outline-offset:-2px;}
+  table.gantt td.gnt-cell.has{position:relative;}
   table.gantt td.gnt-cell.has.ext{background-image:repeating-linear-gradient(135deg,
     rgba(255,255,255,.45) 0 2px, transparent 2px 5px);}
+  table.gantt td.gnt-cell.has.locked{cursor:not-allowed;opacity:.72;}
+  .gnt-ext{position:absolute;top:0;left:0;right:0;text-align:center;font-size:9px;line-height:1.1;
+    pointer-events:none;filter:drop-shadow(0 0 1px rgba(0,0,0,.45));}
   .cal-block.ext{background-image:repeating-linear-gradient(135deg,
     rgba(255,255,255,.28) 0 3px, transparent 3px 7px);}
 
@@ -1669,11 +1673,13 @@ function viewResults(){
     let cls='gnt-cell'+(isDayEnd?' day-end':'');
     let style='';
     let title='';
+    let content='';
     if(assigned){
       const ext=slotIsExt(sid,k);
-      cls+=' has'+(ext?' ext':'');
+      cls+=' has'+(ext?' ext':'')+((ext!==roomModeExt())?' locked':'');
       style=`background:${songColor(sid)}`;
-      title=`${itemName(c.songs[sid])}${ext?' (외부)':''} 배정 · 클릭하면 해제`;
+      title=`${itemName(c.songs[sid])}${ext?' (외부)':''} 배정 · ${(ext!==roomModeExt())?(ext?'외부':'동방')+' 모드에서 수정':'클릭하면 해제'}`;
+      content=ext?'<span class="gnt-ext">🌐</span>':'';
     } else if(!feasible){
       cls+=' infeasible';
       title='이 시간엔 참여자가 안 됩니다';
@@ -1687,7 +1693,7 @@ function viewResults(){
       style=`background:${songColorLight(sid)}`;
       title=`${itemName(c.songs[sid])} 클릭하면 배정`;
     }
-    return `<td class="${cls}" data-gantt="1" data-sid="${sid}" data-slot="${k}" data-r="${ri}" data-col="${di}-${si}" title="${esc(title)}"${style?` style="${style}"`:''}></td>`;
+    return `<td class="${cls}" data-gantt="1" data-sid="${sid}" data-slot="${k}" data-r="${ri}" data-col="${di}-${si}" title="${esc(title)}"${style?` style="${style}"`:''}>${content}</td>`;
   }
 
   function renderGantt(week){
@@ -2337,11 +2343,14 @@ function bindEvents(){
     return slotOkForSong(sid,k) && slotConflicts(sid,k,roomModeExt()).length===0;
   }
   function renderGanttCell(td,sid,k,assigned,ext){
-    td.classList.remove('has','feasible','infeasible','conflict','ext');
-    td.style.background='';
+    td.classList.remove('has','feasible','infeasible','conflict','ext','locked');
+    td.style.background=''; td.innerHTML='';
     if(assigned){
       td.classList.add('has'); if(ext) td.classList.add('ext');
-      td.style.background=songColor(sid); return;
+      if(ext!==roomModeExt()) td.classList.add('locked');   // 다른 장소 → 현재 모드에선 보호
+      td.style.background=songColor(sid);
+      if(ext) td.innerHTML='<span class="gnt-ext">🌐</span>';
+      return;
     }
     if(!slotOkForSong(sid,k)){ td.classList.add('infeasible'); return; }
     if(slotConflicts(sid,k,roomModeExt()).length){ td.classList.add('conflict'); return; }
@@ -2351,13 +2360,14 @@ function bindEvents(){
     if(!gGrid) return;
     const minR=Math.min(gR0,gR1), maxR=Math.max(gR0,gR1);
     gGrid.querySelectorAll(`td.gnt-cell[data-col="${gCol}"]`).forEach(td=>{
-      const r=+td.dataset.r;
-      const k=td.dataset.slot;
-      const wasAssigned=!!gSnap[k];
-      let nowAssigned, nowExt=(gSnap[k]==='e');
-      if(r<minR||r>maxR) nowAssigned=wasAssigned;
-      else if(gFlipTo){ const ok=canAssignAt(gSid,k); nowAssigned=ok?true:wasAssigned; if(ok) nowExt=roomModeExt(); }
-      else nowAssigned=false;
+      const r=+td.dataset.r, k=td.dataset.slot;
+      const wasVal=gSnap[k], wasAssigned=!!wasVal, wasExt=wasVal==='e';
+      const protectedCell = wasAssigned && (wasExt!==roomModeExt());   // 다른 장소 → 그대로 둠
+      let nowAssigned=wasAssigned, nowExt=wasExt;
+      if(r>=minR&&r<=maxR && !protectedCell){
+        if(gFlipTo){ const ok=canAssignAt(gSid,k); nowAssigned=ok?true:wasAssigned; nowExt=ok?roomModeExt():wasExt; }
+        else nowAssigned=false;
+      }
       renderGanttCell(td,gSid,k,nowAssigned,nowExt);
     });
   }
@@ -2371,6 +2381,7 @@ function bindEvents(){
       if(r<minR||r>maxR) return;
       const k=td.dataset.slot;
       const was=gSnap[k]||null;                       // 원래 값(true|'e'|null)
+      if(was && ((was==='e')!==roomModeExt())) return; // 다른 장소 칸은 보호 — 건드리지 않음
       const target = gFlipTo ? (canAssignAt(gSid,k)?val:was) : null;
       if(target!==was) updates[k]= target;
     });
@@ -2384,8 +2395,11 @@ function bindEvents(){
   }
   function ganttSingleTap(td){
     const sid=td.dataset.sid, k=td.dataset.slot;
-    const cur=isAssigned(sid,k);
-    if(cur){
+    if(isAssigned(sid,k)){
+      if(slotIsExt(sid,k)!==roomModeExt()){            // 다른 장소 배정 → 보호
+        const ce=slotIsExt(sid,k);
+        toast(`${ce?'외부':'동방'} 배정이에요 — ${ce?'외부':'동방'} 모드에서 수정하세요`); return;
+      }
       state.schedule[sid]=state.schedule[sid]||{};
       delete state.schedule[sid][k];
       FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:null});
@@ -2413,7 +2427,9 @@ function bindEvents(){
     gR0=gR1=+td.dataset.r;
     gGrid=td.closest('table');
     gSnap={...(state.schedule[gSid]||{})};
-    gFlipTo=!td.classList.contains('has');
+    const sv=gSnap[td.dataset.slot];                   // true|'e'|undefined
+    const startSameMode = sv && ((sv==='e')===roomModeExt());
+    gFlipTo=!startSameMode;                             // 현재모드 배정칸에서 시작 → 해제, 그 외 → 배정
     gPainting=true;
     enterDrag();
     applyGanttDrag();
