@@ -759,7 +759,7 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false,
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null,
   /* 월별 시간표 (Notion 캘린더식 이벤트 블록) */
   roomMonths:{}, roomEvents:{}, roomSubs:{},
   roomYm:'', roomSess:'일정', roomWeekStart:'',
@@ -1198,6 +1198,69 @@ function exportICS(){
   URL.revokeObjectURL(url);
   toast('캘린더 파일을 받았습니다');
 }
+/* ===== 합주 시간표 → 구글시트 붙여넣기용 TSV (시간 × 일~토, 칸=곡명) ===== */
+function sheetPadHM(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function sheetTimeRows(){
+  const out=['12시이전'];
+  for(let m=720;m<1380;m+=30) out.push(sheetPadHM(m)+'~'+sheetPadHM(m+30)); // 12:00~12:30 … 22:30~23:00
+  out.push('23시이후');
+  return out;
+}
+function sheetRowLabel(m){          // 30분 경계 분 → 시트 행 라벨
+  if(m<720) return '12시이전';
+  if(m>=1380) return '23시이후';
+  return sheetPadHM(m)+'~'+sheetPadHM(m+30);
+}
+function buildSheetTSV(){
+  const c=state.config, sched=state.schedule||{}, sm=c.slotMinutes||60;
+  const cell={}, dates=new Set();
+  for(const sid in sched){
+    const song=c.songs&&c.songs[sid]; if(!song) continue;
+    const nm=itemName(song);
+    for(const k in sched[sid]){ if(!sched[sid][k]) continue;
+      const bar=k.indexOf('|'); const d=k.slice(0,bar), t=k.slice(bar+1), t0=parseTime(t);
+      for(let m=t0;m<t0+sm;m+=30){
+        const key=d+'|'+sheetRowLabel(m); const arr=cell[key]||(cell[key]=[]);
+        if(!arr.includes(nm)) arr.push(nm); dates.add(d);
+      }
+    }
+  }
+  if(!dates.size) return null;
+  const sundays={};
+  dates.forEach(d=>{ const x=new Date(d+'T00:00:00'); x.setDate(x.getDate()-x.getDay()); sundays[fmtDate(x)]=true; });
+  const rows=sheetTimeRows(), lines=[];
+  Object.keys(sundays).sort().forEach((sun,wi)=>{
+    if(wi) lines.push('');
+    const days=[]; const x=new Date(sun+'T00:00:00');
+    for(let i=0;i<7;i++){ days.push(fmtDate(x)); x.setDate(x.getDate()+1); }
+    lines.push(['시간'].concat(days.map(d=>WD[wdOf(d)]+' '+mdLabel(d))).join('\t'));
+    rows.forEach(rl=>lines.push([rl].concat(days.map(d=>{ const a=cell[d+'|'+rl]; return a?a.join(', '):''; })).join('\t')));
+  });
+  return lines.join('\n');
+}
+function viewSheetExport(){
+  const tsv=state.sheetExport; if(!tsv) return '';
+  return `<div class="modal-backdrop" data-act="sheetexportclose">
+    <div class="modal" data-act="modal-noop" style="max-width:580px">
+      <div class="modal-head"><h2>📋 시트로 복사</h2><button class="modal-x" data-act="sheetexportclose" title="닫기">×</button></div>
+      <div class="modal-body">
+        <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:12px">아래 내용을 <b>복사</b>해서 구글 시트의 <b>빈 탭(또는 빈 칸)</b>에 붙여넣으세요 (Ctrl/⌘+V, 모바일은 길게 눌러 <b>붙여넣기</b>). 칸이 자동으로 채워집니다. <b>합주 일정만</b> 들어가며 개인 연습칸은 건드리지 않습니다.</p>
+        <textarea id="sheetTsv" readonly style="width:100%;height:210px;font-family:ui-monospace,Menlo,monospace;font-size:12px;border:1px solid var(--line-2);border-radius:var(--r-sm);padding:8px;white-space:pre;overflow:auto">${esc(tsv)}</textarea>
+        <div class="rf-actions">
+          <button class="btn ghost sm" data-act="sheetexportclose">닫기</button>
+          <button class="btn sm" data-act="sheetcopy">복사</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+async function sheetCopy(){
+  const ta=$('sheetTsv'); const tsv=ta?ta.value:(state.sheetExport||''); if(!tsv) return;
+  let ok=false;
+  try{ await navigator.clipboard.writeText(tsv); ok=true; }
+  catch(_){ if(ta){ ta.focus(); ta.select(); try{ ok=document.execCommand('copy'); }catch(__){} } }
+  toast(ok?'복사됨! 시트에 붙여넣기 하세요':'복사 실패 — 내용을 길게 눌러 직접 복사하세요');
+}
 function matrixToggle(sid,uid){
   const on=state.config.matrix?.[sid]?.[uid];
   const p='projects/'+state.pid+'/config/matrix/'+sid+'/'+uid;
@@ -1292,6 +1355,7 @@ function renderBody(){
   }
   if(state.showHelp) html+=viewHelp();
   if(state.roomForm) html+=viewRoomForm();
+  if(state.sheetExport) html+=viewSheetExport();
   app.innerHTML=html;
 }
 
@@ -2166,6 +2230,7 @@ function viewResults(){
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <select data-act="filtermember">${memberOpts}</select>
+        <button class="btn sm" data-act="sheetexport" ${blocks.length?'':'disabled'}>📋 시트로 복사</button>
         <button class="btn ghost sm" data-act="exportpng" ${blocks.length?'':'disabled'}>📷 PNG</button>
         <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics</button>
       </div>
@@ -2374,6 +2439,9 @@ function bindEvents(){
     if(act==='pickdetailsong'){state.detailSong=t.dataset.sid;render();return;}
     if(act==='exportpng'){exportPNG();return;}
     if(act==='exportics'){exportICS();return;}
+    if(act==='sheetexport'){const tsv=buildSheetTSV();if(!tsv){toast('배정된 합주가 없습니다');return;}state.sheetExport=tsv;render();return;}
+    if(act==='sheetexportclose'){state.sheetExport=null;render();return;}
+    if(act==='sheetcopy'){sheetCopy();return;}
     if(act==='pickmember'){
       const uid=t.dataset.uid;
       state.me=uid;
