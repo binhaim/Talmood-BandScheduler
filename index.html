@@ -135,12 +135,16 @@
   .list-item input[type=text]:hover:not(:disabled){background:var(--surface);
     border-color:var(--line);}
   .list-item input[type=text]:focus{background:var(--surface);border-color:var(--ink);}
-  .loc-btn{flex:none;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
-    font-family:inherit;font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  /* 배정 장소 모드 */
+  .mode-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 14px;
+    padding:9px 13px;background:var(--paper);border-radius:var(--r-sm);border:1px solid var(--line);}
+  .mode-lbl{font-size:12.5px;font-weight:700;color:var(--ink-2);}
+  .mode-btn{border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
+    font-family:inherit;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;
     color:var(--muted);transition:all var(--t);}
-  .loc-btn.in{color:var(--ink);border-color:var(--ink);}
-  .loc-btn.ext{color:#fff;background:#7c5cff;border-color:#7c5cff;}
-  .loc-btn:disabled{opacity:.5;cursor:default;}
+  .mode-btn.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .mode-btn.ext.on{background:#7c5cff;border-color:#7c5cff;}
+  .mode-hint{font-size:11.5px;color:var(--muted);margin-left:2px;}
   .idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
     color:var(--muted-2);font-size:12px;width:24px;text-align:right;}
   .x{border:none;background:none;color:var(--muted);cursor:pointer;
@@ -295,6 +299,10 @@
       rgba(255,255,255,.65) 0 3px, transparent 3px 6px);}
   table.gantt td.gnt-cell.preview-outline{outline:2px solid var(--ink);
     outline-offset:-2px;}
+  table.gantt td.gnt-cell.has.ext{background-image:repeating-linear-gradient(135deg,
+    rgba(255,255,255,.45) 0 2px, transparent 2px 5px);}
+  .cal-block.ext{background-image:repeating-linear-gradient(135deg,
+    rgba(255,255,255,.28) 0 3px, transparent 3px 7px);}
 
   /* 최종 시간표 카드 */
   .fd-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
@@ -683,7 +691,8 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null,
+  roomMode:'in'   // 배정 장소 모드: 'in'=동방 | 'ext'=외부
 };
 
 /* ---------------- 유틸 ---------------- */
@@ -760,10 +769,10 @@ function songColorLight(sid){
   return `hsl(${hue},75%,90%)`;
 }
 
-/* ---- 활동 장소: 외부(외부 합주실)=true, 없으면 동방(기본) ---- */
-const isExt=sid=>!!(state.config&&state.config.ext&&state.config.ext[sid]);
-const extMark=sid=>isExt(sid)?' (외부)':'';
-/* ---- schedule 스키마: 신버전 schedule[sid][slotKey]=true / 구버전 schedule[slotKey]=sid ---- */
+/* ---- 배정 장소: 슬롯 값 true=동방(기본) / 'e'=외부 합주실 ---- */
+const slotIsExt=(sid,k)=>(state.schedule&&state.schedule[sid]&&state.schedule[sid][k])==='e';
+const roomModeExt=()=>state.roomMode==='ext';
+/* ---- schedule 스키마: 신버전 schedule[sid][slotKey]=true|'e' / 구버전 schedule[slotKey]=sid ---- */
 function normalizeSchedule(raw){
   if(!raw||typeof raw!=='object') return {};
   const isOld=Object.keys(raw).some(k=>/^\d{4}-\d{2}-\d{2}\|/.test(k));
@@ -798,17 +807,16 @@ function countInRange(av){
   let n=0; for(const k in av) if(av[k]&&slotInRange(k)) n++; return n;
 }
 
-function slotConflicts(sid,slotKey){
-  // 충돌: 멤버가 겹치거나(어디서든 한 사람이 두 곳 불가),
-  //       둘 다 동방이면(동방은 한 방뿐) 같은 시간 불가. 외부끼리/외부-동방은 방 충돌 없음.
+function slotConflicts(sid,slotKey,asExt){
+  // asExt = 지금 배정하려는 장소가 외부인지. 충돌: 멤버가 겹치거나(한 사람이 두 곳 불가),
+  //         둘 다 동방이면(동방은 한 방뿐) 같은 시간 불가. 외부끼리/외부-동방은 방 충돌 없음.
   const out=[];
   const mine=new Set(songMembers(sid));
-  const sidIn=!isExt(sid);
   for(const other in state.schedule){
     if(other===sid) continue;
-    if(!state.schedule[other][slotKey]) continue;
+    const v=state.schedule[other][slotKey]; if(!v) continue;
     const shared=songMembers(other).filter(u=>mine.has(u));
-    const roomClash=sidIn && !isExt(other);   // 둘 다 동방 → 한 방 충돌
+    const roomClash=!asExt && v!=='e';   // 둘 다 동방 → 한 방 충돌
     if(shared.length||roomClash) out.push({sid:other,shared});
   }
   return out;
@@ -844,15 +852,16 @@ function consolidateBlocks(filterUid){
     });
     for(const date in byDate){
       const times=byDate[date].slice().sort();
-      let runStart=null, prev=null;
+      let runStart=null, prev=null, runExt=false;
       times.forEach(t=>{
-        if(runStart===null){ runStart=t; prev=t; return; }
-        if(parseTime(t)-parseTime(prev)===sm){ prev=t; return; }
-        blocks.push({sid,date,start:runStart,end:fmtTime(parseTime(prev)+sm),members});
-        runStart=t; prev=t;
+        const ext=slotMap[date+'|'+t]==='e';
+        if(runStart===null){ runStart=t; prev=t; runExt=ext; return; }
+        if(parseTime(t)-parseTime(prev)===sm && ext===runExt){ prev=t; return; }
+        blocks.push({sid,date,start:runStart,end:fmtTime(parseTime(prev)+sm),members,ext:runExt});
+        runStart=t; prev=t; runExt=ext;
       });
       if(runStart!==null)
-        blocks.push({sid,date,start:runStart,end:fmtTime(parseTime(prev)+sm),members});
+        blocks.push({sid,date,start:runStart,end:fmtTime(parseTime(prev)+sm),members,ext:runExt});
     }
   }
   blocks.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
@@ -961,15 +970,6 @@ function delSong(sid){
   if(cfgLocked()) return;
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
-  FB.remove(R('projects/'+state.pid+'/config/ext/'+sid));
-}
-function toggleSongLoc(sid){      // 동방(기본) ↔ 외부 합주실
-  if(cfgLocked()) return;
-  state.config.ext=state.config.ext||{};
-  const p='projects/'+state.pid+'/config/ext/'+sid;
-  if(state.config.ext[sid]){ delete state.config.ext[sid]; FB.remove(R(p)); }
-  else { state.config.ext[sid]=true; FB.set(R(p),true); }
-  doRender();
 }
 function addPerson(){
   if(cfgLocked()) return;
@@ -1043,7 +1043,7 @@ function exportICS(){
     lines.push(`DTSTAMP:${dtstamp}`);
     lines.push(`DTSTART:${dstart}`);
     lines.push(`DTEND:${dend}`);
-    lines.push(`SUMMARY:일정 · ${escapeICS(songNm+extMark(b.sid))}`);
+    lines.push(`SUMMARY:일정 · ${escapeICS(songNm+(b.ext?' (외부)':''))}`);
     lines.push(`DESCRIPTION:${escapeICS('참여자: '+memNm)}`);
     lines.push('END:VEVENT');
   });
@@ -1075,9 +1075,8 @@ function buildSheetTSV(){
   const cell={}, dates=new Set();
   for(const sid in sched){
     const song=c.songs&&c.songs[sid]; if(!song) continue;
-    if(isExt(sid)) continue;            // 동방 시트엔 동방 활동만 (외부 제외)
     const nm=itemName(song);
-    for(const k in sched[sid]){ if(!sched[sid][k]) continue;
+    for(const k in sched[sid]){ const sv=sched[sid][k]; if(!sv||sv==='e') continue;   // 외부 슬롯 제외(동방만)
       const bar=k.indexOf('|'); const d=k.slice(0,bar), t=k.slice(bar+1), t0=parseTime(t);
       for(let m=t0;m<t0+sm;m+=30){
         const key=d+'|'+sheetRowLabel(m); const arr=cell[key]||(cell[key]=[]);
@@ -1302,8 +1301,8 @@ function viewHelp(){
           <ul>
             <li>가능한 칸 <b>클릭</b> = 배정 / 해제 토글</li>
             <li>같은 sub-col(활동×날짜) 안에서 <b>세로 드래그</b> = 연속 시간 한 번에 배정</li>
-            <li>위쪽 토글 <b>"같은 시간에 여러 활동 허용"</b>:
-              꺼짐(기본) = 한 슬롯에 한 활동만 / 켜짐 = 참여자 안 겹치면 동시 가능</li>
+            <li>위쪽 <b>배정 장소</b>(🏠 동방 / 🌐 외부)를 고르고 배정:
+              <b>동방</b> = 같은 시간에 한 활동만(동방은 한 곳) / <b>외부</b> = 다른 활동과 겹쳐 배정 가능 (단, 참여자가 겹치면 어느 경우든 불가). 외부 배정은 빗금으로 표시되고 동방 시트 복사에선 빠집니다.</li>
           </ul>
         </div>
 
@@ -1406,14 +1405,12 @@ function viewSetup(){
   const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
     o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
 
-  let songRows=sIds.length? sIds.map((id,i)=>{
-    const ext=isExt(id);
-    return `<div class="list-item"><span class="idx">${i+1}</span>
+  let songRows=sIds.length? sIds.map((id,i)=>
+    `<div class="list-item"><span class="idx">${i+1}</span>
       <input type="text" value="${esc(itemName(songs[id]))}" ${dis}
         data-act="songname" data-sid="${id}">
-      <button class="loc-btn ${ext?'ext':'in'}" data-act="songloc" data-sid="${id}" ${dis} title="동방/외부 합주실 전환">${ext?'외부':'동방'}</button>
       <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`;}).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
+    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
 
   let pplRows=pIds.length? pIds.map((id,i)=>
     `<div class="list-item"><span class="idx">${i+1}</span>
@@ -1642,7 +1639,7 @@ function viewResults(){
       const sty=on?`background:${col};border-color:${col};color:#fff`:'';
       return `<label class="chip-toggle ${on?'on':''}" style="${sty}">
         <input type="checkbox" data-act="togglesong" data-sid="${s}" ${on?'checked':''}>
-        <span class="csw" style="background:${col}"></span>${esc(itemName(c.songs[s]))}${isExt(s)?' (외부)':''}
+        <span class="csw" style="background:${col}"></span>${esc(itemName(c.songs[s]))}
       </label>`;}).join('')}
   </div>`;
 
@@ -1668,14 +1665,15 @@ function viewResults(){
   function ganttCell(sid, k, ri, di, si, isDayEnd){
     const assigned=isAssigned(sid,k);
     const feasible=slotOkForSong(sid,k);
-    const cfs=(feasible && !assigned)?slotConflicts(sid,k):[];
+    const cfs=(feasible && !assigned)?slotConflicts(sid,k,roomModeExt()):[];
     let cls='gnt-cell'+(isDayEnd?' day-end':'');
     let style='';
     let title='';
     if(assigned){
-      cls+=' has';
+      const ext=slotIsExt(sid,k);
+      cls+=' has'+(ext?' ext':'');
       style=`background:${songColor(sid)}`;
-      title=`${itemName(c.songs[sid])}${extMark(sid)} 배정 · 클릭하면 해제`;
+      title=`${itemName(c.songs[sid])}${ext?' (외부)':''} 배정 · 클릭하면 해제`;
     } else if(!feasible){
       cls+=' infeasible';
       title='이 시간엔 참여자가 안 됩니다';
@@ -1726,13 +1724,21 @@ function viewResults(){
 
   const ganttHtml = active ? renderGantt(active.dates) : '<div class="empty">날짜 범위를 설정에서 확인하세요.</div>';
 
+  const ext=roomModeExt();
+  const modeRow=`<div class="mode-row">
+    <span class="mode-lbl">배정 장소</span>
+    <button class="mode-btn ${ext?'':'on'}" data-act="roommode" data-m="in">🏠 동방</button>
+    <button class="mode-btn ext ${ext?'on':''}" data-act="roommode" data-m="ext">🌐 외부</button>
+    <span class="mode-hint">${ext?'외부 합주실로 배정 — 같은 시간에 겹쳐 잡을 수 있어요':'동방으로 배정 — 같은 시간엔 한 활동만'}</span>
+  </div>`;
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 배정</h2>
         <div class="page-intro">
           <div class="pi-h">🎯 이 페이지는?</div>
-          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 모든 참여자 입력이 종합되어 활동별로 가능한 시간이 자동 계산되고, 그 위에서 직접 클릭/드래그로 배정·해제할 수 있습니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨, 빗금=참여자 안 됨. <b>동방</b> 활동끼리는 같은 시간에 함께 못 잡고(동방은 한 곳), <b>외부</b> 활동은 다른 활동과 겹쳐 잡을 수 있습니다.</p>
+          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 참여자 입력이 종합되어 활동별 가능 시간이 자동 계산되고, 클릭/드래그로 배정·해제합니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨(외부는 빗금), 빗금 회색=참여자 안 됨. 배정 전 위에서 <b>동방/외부</b>를 고르세요 — 동방은 같은 시간에 한 활동만, 외부는 겹쳐 잡을 수 있습니다.</p>
         </div>
+        ${modeRow}
         ${tabsHtml}
         ${toggleHtml}
         ${ganttHtml}
@@ -1796,8 +1802,8 @@ function viewResults(){
           return filterUid&&u===filterUid?`<b>${nm}</b>`:nm;
         }).join(' · ');
         const tall=h>50;
-        return `<div class="cal-block" style="background:${songColor(b.sid)};top:${top}px;height:${h}px;left:calc(${leftPct.toFixed(2)}% + 1px);width:calc(${wPct.toFixed(2)}% - 2px)" title="${esc(songNm+extMark(b.sid)+' · '+b.start+'-'+b.end)}">
-          <div class="cb-name">${esc(songNm)}${isExt(b.sid)?'<span class="ext-tag">외부</span>':''}</div>
+        return `<div class="cal-block${b.ext?' ext':''}" style="background:${songColor(b.sid)};top:${top}px;height:${h}px;left:calc(${leftPct.toFixed(2)}% + 1px);width:calc(${wPct.toFixed(2)}% - 2px)" title="${esc(songNm+(b.ext?' (외부)':'')+' · '+b.start+'-'+b.end)}">
+          <div class="cb-name">${esc(songNm)}${b.ext?'<span class="ext-tag">외부</span>':''}</div>
           <div class="cb-time">${b.start} – ${b.end}</div>
           ${tall?`<div class="cb-mem">${memList}</div>`:''}
         </div>`;
@@ -1865,11 +1871,11 @@ function viewResults(){
         .slice().sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))
         .map(b=>{
           const wd=['일','월','화','수','목','금','토'][wdOf(b.date)];
-          return `<span class="fs-sess">${mdLabel(b.date)}(${wd}) ${b.start}–${b.end}</span>`;
+          return `<span class="fs-sess${b.ext?' ext':''}">${mdLabel(b.date)}(${wd}) ${b.start}–${b.end}${b.ext?' 외부':''}</span>`;
         }).join('');
       return `<div class="fs-row" style="--sc:${songColor(sid)}">
         <span class="fs-dot"></span>
-        <span class="fs-name">${esc(songNm)}${isExt(sid)?'<span class="ext-tag">외부</span>':''}</span>
+        <span class="fs-name">${esc(songNm)}</span>
         <span class="fs-count">${e.count}회 · ${fmtDur(e.minutes)}</span>
         <span class="fs-list">${sessionList}</span>
       </div>`;
@@ -2078,7 +2084,6 @@ function bindEvents(){
     if(act==='tab'){state.tab=t.dataset.tab;render();return;}
     if(act==='addsong'){addSong();return;}
     if(act==='delsong'){delSong(t.dataset.sid);return;}
-    if(act==='songloc'){toggleSongLoc(t.dataset.sid);return;}
     if(act==='addperson'){addPerson();return;}
     if(act==='delperson'){delPerson(t.dataset.uid);return;}
     if(act==='mx'){matrixToggle(t.dataset.sid,t.dataset.uid);return;}
@@ -2086,6 +2091,7 @@ function bindEvents(){
     if(act==='delproject'){delProject();return;}
     if(act==='pickweek'){state.activeWeek=+t.dataset.w;render();return;}
     if(act==='pickdetailsong'){state.detailSong=t.dataset.sid;render();return;}
+    if(act==='roommode'){state.roomMode=t.dataset.m==='ext'?'ext':'in';render();return;}
     if(act==='exportpng'){exportPNG();return;}
     if(act==='exportics'){exportICS();return;}
     if(act==='sheetexport'){const tsv=buildSheetTSV();if(!tsv){toast('배정된 합주가 없습니다');return;}state.sheetExport=tsv;render();return;}
@@ -2328,16 +2334,17 @@ function bindEvents(){
   let gTouchHoldTimer=null;
 
   function canAssignAt(sid,k){
-    return slotOkForSong(sid,k) && slotConflicts(sid,k).length===0;
+    return slotOkForSong(sid,k) && slotConflicts(sid,k,roomModeExt()).length===0;
   }
-  function renderGanttCell(td,sid,k,assigned){
-    td.classList.remove('has','feasible','infeasible','conflict');
+  function renderGanttCell(td,sid,k,assigned,ext){
+    td.classList.remove('has','feasible','infeasible','conflict','ext');
     td.style.background='';
     if(assigned){
-      td.classList.add('has'); td.style.background=songColor(sid); return;
+      td.classList.add('has'); if(ext) td.classList.add('ext');
+      td.style.background=songColor(sid); return;
     }
     if(!slotOkForSong(sid,k)){ td.classList.add('infeasible'); return; }
-    if(slotConflicts(sid,k).length){ td.classList.add('conflict'); return; }
+    if(slotConflicts(sid,k,roomModeExt()).length){ td.classList.add('conflict'); return; }
     td.classList.add('feasible'); td.style.background=songColorLight(sid);
   }
   function applyGanttDrag(){
@@ -2347,29 +2354,30 @@ function bindEvents(){
       const r=+td.dataset.r;
       const k=td.dataset.slot;
       const wasAssigned=!!gSnap[k];
-      let nowAssigned;
+      let nowAssigned, nowExt=(gSnap[k]==='e');
       if(r<minR||r>maxR) nowAssigned=wasAssigned;
-      else if(gFlipTo) nowAssigned = canAssignAt(gSid,k) ? true : wasAssigned;
+      else if(gFlipTo){ const ok=canAssignAt(gSid,k); nowAssigned=ok?true:wasAssigned; if(ok) nowExt=roomModeExt(); }
       else nowAssigned=false;
-      renderGanttCell(td,gSid,k,nowAssigned);
+      renderGanttCell(td,gSid,k,nowAssigned,nowExt);
     });
   }
   function commitGanttDrag(){
     if(!gGrid) return;
     const minR=Math.min(gR0,gR1), maxR=Math.max(gR0,gR1);
+    const val=roomModeExt()?'e':true;
     const updates={};
     gGrid.querySelectorAll(`td.gnt-cell[data-col="${gCol}"]`).forEach(td=>{
       const r=+td.dataset.r;
       if(r<minR||r>maxR) return;
       const k=td.dataset.slot;
-      const wasAssigned=!!gSnap[k];
-      const target = gFlipTo ? canAssignAt(gSid,k) : false;
-      if(target!==wasAssigned) updates[k]= target?true:null;
+      const was=gSnap[k]||null;                       // 원래 값(true|'e'|null)
+      const target = gFlipTo ? (canAssignAt(gSid,k)?val:was) : null;
+      if(target!==was) updates[k]= target;
     });
     if(!Object.keys(updates).length) return;
     state.schedule[gSid]=state.schedule[gSid]||{};
     for(const k in updates){
-      if(updates[k]) state.schedule[gSid][k]=true;
+      if(updates[k]) state.schedule[gSid][k]=updates[k];
       else delete state.schedule[gSid][k];
     }
     FB.update(R('projects/'+state.pid+'/schedule/'+gSid),updates);
@@ -2384,15 +2392,16 @@ function bindEvents(){
       return;
     }
     if(!slotOkForSong(sid,k)){ toast('이 시간엔 참여자가 안 됩니다'); return; }
-    const cfs=slotConflicts(sid,k);
+    const cfs=slotConflicts(sid,k,roomModeExt());
     if(cfs.length){
       const nm=cfs.map(x=>itemName(state.config.songs[x.sid])).join(', ');
       const hasShared=cfs.some(x=>x.shared&&x.shared.length);
       toast(hasShared?`참여자 겹침: ${nm}`:`이 시간 동방 사용 중: ${nm}`); return;
     }
+    const val=roomModeExt()?'e':true;
     state.schedule[sid]=state.schedule[sid]||{};
-    state.schedule[sid][k]=true;
-    FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:true});
+    state.schedule[sid][k]=val;
+    FB.update(R('projects/'+state.pid+'/schedule/'+sid),{[k]:val});
   }
 
   function startGanttDrag(td){
