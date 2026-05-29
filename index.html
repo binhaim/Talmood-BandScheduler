@@ -764,7 +764,7 @@ const SESSIONS=['일정','합주','V','G','B','D','K'];
 /* 캘린더 시간축: 09:00~24:00, 30분 슬롯 */
 const CAL_START=540, CAL_END=1440, CAL_SLOT=30, CAL_ROW_H=22;
 const CAL_ROWS=(CAL_END-CAL_START)/CAL_SLOT;
-const CAL_GUT=30;   // 칸 오른쪽 %는 빈 공간으로 비워둠 — 같은 시간에 새 일정 드래그용
+const CAL_GUT=10;   // 칸 좌우 빈 공간 총 % (가운데 정렬) — 같은 시간에 새 일정 드래그용
 try{document.documentElement.style.setProperty('--cal-row-h',CAL_ROW_H+'px');}catch(_){}
 
 /* ---------------- 유틸 ---------------- */
@@ -1491,7 +1491,7 @@ function viewRoomMonth(){
     const blocks=evs.map(ev=>{
       const editing=ed&&ed.eid===ev.eid;
       const top=calMinToY(ev.a), h=Math.max(CAL_ROW_H-3,calMinToY(ev.b)-calMinToY(ev.a)-2);
-      const laneW=(100-CAL_GUT)/ev.lanes, left=ev.lane*laneW;
+      const laneW=(100-CAL_GUT)/ev.lanes, left=CAL_GUT/2+ev.lane*laneW;
       const inner=editing
         ? `<input class="rev-in" id="roomEvIn" value="${esc(ev.n)}" autocomplete="off" maxlength="24">`
         : `<span class="rev-label">${esc(ev.n||'(이름)')}</span><span class="rev-time">${calFmt(ev.a)}~${calFmt(ev.b)}</span>`;
@@ -1510,7 +1510,7 @@ function viewRoomMonth(){
     <div class="card-head"><h2>${esc(roomYmLabel(ym))} 시간표</h2>
       <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div>
     <div class="page-intro"><div class="pi-h">✍️ 어떻게?</div>
-      <p>세션을 고르고 빈 곳을 <b>드래그</b>하면 그 시간만큼 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간이 늘거나 줄고, <b>가운데를 잡고 끌면</b> 다른 시간·요일로 옮겨집니다. 같은 시간에 다른 일정을 더하려면 칸 <b>오른쪽 빈 자리</b>를 드래그하면 나란히 추가돼요. <b>×</b>로 지웁니다. (모바일은 빈 곳을 <b>탭</b>하면 1시간 블록이 생겨요)</p>
+      <p>세션을 고르고 빈 곳을 <b>드래그</b>하면 그 시간만큼 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간이 늘거나 줄고, <b>가운데를 잡고 끌면</b> 다른 시간·요일로 옮겨집니다. 같은 시간에 다른 일정을 더하려면 블록 <b>양옆 빈 자리</b>를 드래그하면 나란히 추가돼요. <b>×</b>로 지웁니다. (모바일은 빈 곳을 <b>탭</b>하면 1시간 블록이 생겨요)</p>
     </div>
     <div class="rs-tabs">${tabs}</div>
     <div class="cal-nav">
@@ -2729,7 +2729,7 @@ function bindEvents(){
     if(e.pointerType==='mouse'){
       e.preventDefault(); calDragging=true; enterDrag();
       cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
-      cvGhost.style.left='3px'; cvGhost.style.width='calc('+(100-CAL_GUT)+'% - 6px)'; cvGhost.style.background=roomColor('');
+      cvGhost.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; cvGhost.style.width='calc('+(100-CAL_GUT)+'% - 6px)'; cvGhost.style.background=roomColor('');
       styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
       try{dayEl.setPointerCapture(e.pointerId);}catch(_){}
     }
@@ -2742,7 +2742,7 @@ function bindEvents(){
     cvOffMin=calRawMin(cvDayEl,e.clientY)-d.a;
     calDragging=true; enterDrag();
     evEl.classList.add('dragging'); evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
-    evEl.style.left='3px'; evEl.style.width='calc('+(100-CAL_GUT)+'% - 6px)';
+    evEl.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; evEl.style.width='calc('+(100-CAL_GUT)+'% - 6px)';
     try{evEl.setPointerCapture(e.pointerId);}catch(_){}
     if(e.pointerType==='mouse') e.preventDefault();
   }
