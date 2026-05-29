@@ -710,7 +710,7 @@
   .cal-ev .rev-label{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     text-shadow:0 1px 1px rgba(0,0,0,.25);}
   .cal-ev .rev-time{font-size:9px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cal-ev .rev-rs{position:absolute;left:0;right:0;height:7px;cursor:ns-resize;z-index:2;}
+  .cal-ev .rev-rs{position:absolute;left:0;right:0;height:9px;cursor:ns-resize;z-index:2;}
   .cal-ev .rev-rs.rev-top{top:0;} .cal-ev .rev-rs.rev-bot{bottom:0;}
   .cal-ev .rev-x{position:absolute;top:1px;right:1px;width:16px;height:16px;line-height:14px;text-align:center;
     border:none;border-radius:4px;background:rgba(0,0,0,.18);color:#fff;font-size:13px;cursor:pointer;
@@ -720,6 +720,12 @@
   .cal-ev .rev-in{width:100%;border:none;background:rgba(255,255,255,.95);border-radius:3px;
     padding:1px 4px;font-size:11px;font-weight:700;font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;}
   body.dragging .cal-body, body.dragging .cal-col, body.dragging .cal-ev{touch-action:none;}
+  /* 직접 추가 폼 */
+  .rf-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .rf-row label{width:48px;flex:none;font-size:13px;font-weight:700;color:var(--muted);}
+  .rf-row input,.rf-row select{flex:1;padding:9px 10px;border:1px solid var(--line-2);border-radius:var(--r-sm);
+    background:var(--surface);font-size:15px;font-family:inherit;color:var(--ink);}
+  .rf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 </style>
 </head>
 <body>
@@ -757,7 +763,8 @@ let state={ screen:'loading', pid:null, tab:'setup',
   /* 월별 시간표 (Notion 캘린더식 이벤트 블록) */
   roomMonths:{}, roomEvents:{}, roomSubs:{},
   roomYm:'', roomSess:'일정', roomWeekStart:'',
-  roomEdit:null   // {ym,eid,isNew} 인라인 라벨 편집 대상
+  roomEdit:null,  // {ym,eid,isNew} 인라인 라벨 편집 대상
+  roomForm:null   // {day,sess,a,b,n} 직접 추가 폼
 };
 /* 월별 시간표 세션 탭 — '일정'이 메인 */
 const SESSIONS=['일정','합주','V','G','B','D','K'];
@@ -1284,6 +1291,7 @@ function renderBody(){
     else html=viewResults();
   }
   if(state.showHelp) html+=viewHelp();
+  if(state.roomForm) html+=viewRoomForm();
   app.innerHTML=html;
 }
 
@@ -1508,9 +1516,11 @@ function viewRoomMonth(){
   const range=`${mdLabel(days[0])} ~ ${mdLabel(days[6])}`;
   return `<div class="card">
     <div class="card-head"><h2>${esc(roomYmLabel(ym))} 시간표</h2>
-      <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm" data-act="roomaddform">+ 직접 추가</button>
+        <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div></div>
     <div class="page-intro"><div class="pi-h">✍️ 어떻게?</div>
-      <p>세션을 고르고 빈 곳을 <b>드래그</b>하면 그 시간만큼 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간이 늘거나 줄고, <b>가운데를 잡고 끌면</b> 다른 시간·요일로 옮겨집니다. 같은 시간에 다른 일정을 더하려면 블록 <b>양옆 빈 자리</b>를 드래그하면 나란히 추가돼요. <b>×</b>로 지웁니다. (모바일은 빈 곳을 <b>탭</b>하면 1시간 블록이 생겨요)</p>
+      <p>세션을 고르고 빈 곳을 <b>드래그</b>(모바일은 <b>탭</b>)하면 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간 조절, <b>가운데를 끌면</b> 이동(모바일은 블록을 <b>길게 눌러</b> 끌기). 같은 시간엔 옆 빈 자리에 나란히 추가돼요. <b>×</b>로 삭제. 드래그가 번거로우면 <b>+ 직접 추가</b>로 이름·요일·시간을 골라 넣으세요.</p>
     </div>
     <div class="rs-tabs">${tabs}</div>
     <div class="cal-nav">
@@ -1567,6 +1577,43 @@ function saveRoomEv(){
   deferRender=false; doRender();
 }
 function calEvDataFor(ym,eid){ const m=state.roomEvents[ym]; return m?m[eid]:null; }
+function viewRoomForm(){
+  const f=state.roomForm; if(!f) return '';
+  const days=roomWeekDates(state.roomWeekStart||roomMonthFirstSunday(state.roomYm));
+  const dayOpts=days.map(d=>`<option value="${d}"${d===f.day?' selected':''}>${mdLabel(d)} (${WD[wdOf(d)]})</option>`).join('');
+  const sessOpts=SESSIONS.map(s=>`<option value="${esc(s)}"${s===f.sess?' selected':''}>${esc(s)}</option>`).join('');
+  let startOpts='',endOpts='';
+  for(let m=CAL_START;m<=CAL_END-CAL_SLOT;m+=CAL_SLOT) startOpts+=`<option value="${m}"${m===f.a?' selected':''}>${calFmt(m)}</option>`;
+  for(let m=CAL_START+CAL_SLOT;m<=CAL_END;m+=CAL_SLOT) endOpts+=`<option value="${m}"${m===f.b?' selected':''}>${calFmt(m)}</option>`;
+  return `<div class="modal-backdrop" data-act="roomformclose">
+    <div class="modal" data-act="modal-noop" style="max-width:400px">
+      <div class="modal-head"><h2>직접 추가</h2><button class="modal-x" data-act="roomformclose" title="닫기">×</button></div>
+      <div class="modal-body">
+        <div class="rf-row"><label>이름</label><input type="text" id="rf-name" maxlength="24" placeholder="이름/내용" value="${esc(f.n||'')}"></div>
+        <div class="rf-row"><label>세션</label><select id="rf-sess">${sessOpts}</select></div>
+        <div class="rf-row"><label>요일</label><select id="rf-day">${dayOpts}</select></div>
+        <div class="rf-row"><label>시작</label><select id="rf-start">${startOpts}</select></div>
+        <div class="rf-row"><label>종료</label><select id="rf-end">${endOpts}</select></div>
+        <div class="rf-actions">
+          <button class="btn ghost sm" data-act="roomformclose">취소</button>
+          <button class="btn sm" data-act="roomformsave">추가</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function saveRoomForm(){
+  const nm=($('rf-name')?.value||'').trim();
+  const sess=$('rf-sess')?.value||state.roomSess;
+  const day=$('rf-day')?.value; const a=+($('rf-start')?.value), b=+($('rf-end')?.value);
+  if(!day||isNaN(a)||isNaN(b)){ toast('값을 확인하세요'); return; }
+  if(b<=a){ toast('종료가 시작보다 늦어야 해요'); return; }
+  const ym=state.roomYm, eid=genId('ev'), obj={s:sess,d:day,a,b,n:nm};
+  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
+  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
+  state.roomForm=null; state.roomSess=sess;   // 추가한 세션으로 전환해 바로 보이게
+  render();
+}
 function createRoomMonth(){
   const i=$('newMonthIn'); const ym=i?i.value:''; if(!ym){ toast('달을 고르세요'); return; }
   FB.set(R('roomMonths/'+ym),{createdAt:Date.now()});
@@ -2291,8 +2338,11 @@ function bindEvents(){
     if(act==='createmonth'){createRoomMonth();return;}
     if(act==='delmonth'){e.stopPropagation();delRoomMonth(t.dataset.m);return;}
     if(act==='roomsess'){state.roomSess=t.dataset.sess;state.roomEdit=null;render();return;}
-    if(act==='roomweek'){state.roomWeekStart=roomWeekShift(state.roomWeekStart,+t.dataset.d);state.roomEdit=null;render();return;}
+    if(act==='roomweek'){state.roomWeekStart=roomWeekShift(state.roomWeekStart,+t.dataset.d);state.roomEdit=null;if(state.roomForm){const nd=roomWeekDates(state.roomWeekStart);if(!nd.includes(state.roomForm.day))state.roomForm.day=nd[0];}render();return;}
     if(act==='roomevdel'){e.stopPropagation();roomEvDel(state.roomYm,t.dataset.eid);return;}
+    if(act==='roomaddform'){const ds=roomWeekDates(state.roomWeekStart||roomMonthFirstSunday(state.roomYm));state.roomForm={day:ds[0],sess:state.roomSess,a:18*60,b:19*60,n:''};render();return;}
+    if(act==='roomformclose'){state.roomForm=null;render();return;}
+    if(act==='roomformsave'){saveRoomForm();return;}
     if(act==='roompng'){exportRoomPNG();return;}
     if(act==='copycode'){copyCode();return;}
     if(act==='help'){state.showHelp=true;render();return;}
@@ -2718,58 +2768,82 @@ function bindEvents(){
   let cvMode=null, cvEl=null, cvEid='', cvDay='', cvName='', cvEdge='', cvSess='';
   let cvA=0, cvB=0, cvDur=0, cvStartMin=0, cvOffMin=0;
   let cvSx=0, cvSy=0, cvMoved=false, cvType='', cvGhost=null, cvDayEl=null;
+  let cvHold=null, cvPendEl=null, cvPendDayEl=null, cvPendKind='', cvPendEdge='';
   const calRawMin=(dayEl,clientY)=>{ const r=dayEl.getBoundingClientRect(); return CAL_START+(clientY-r.top)/CAL_ROW_H*CAL_SLOT; };
   const calMinAt=(dayEl,clientY)=>calClamp(calSnap(calRawMin(dayEl,clientY)));
   const calColAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el?el.closest('.cal-col[data-cal]'):null; };
   const styleBlock=(el,a,b)=>{ el.style.top=calMinToY(a)+'px'; el.style.height=Math.max(CAL_ROW_H-3,calMinToY(b)-calMinToY(a)-2)+'px'; };
-  function startCalCreate(dayEl,e){
-    cvMode='create'; cvDayEl=dayEl; cvDay=dayEl.dataset.day; cvType=e.pointerType;
-    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
-    cvStartMin=calMinAt(dayEl,e.clientY); cvA=cvStartMin; cvB=Math.min(CAL_END,cvStartMin+CAL_SLOT);
-    if(e.pointerType==='mouse'){
-      e.preventDefault(); calDragging=true; enterDrag();
-      cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
-      cvGhost.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; cvGhost.style.width='calc('+(100-CAL_GUT)+'% - 6px)'; cvGhost.style.background=roomColor('');
-      styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
-      try{dayEl.setPointerCapture(e.pointerId);}catch(_){}
-    }
+  const calDist=(x,y)=>Math.abs(x-cvSx)+Math.abs(y-cvSy);
+  const resetCalPend=()=>{ if(cvHold){clearTimeout(cvHold);cvHold=null;} cvPendEl=null; cvPendDayEl=null; cvPendKind=''; cvPendEdge=''; cvType=''; };
+  function startCalCreate(dayEl,cx,cy,ptype,pid){            // 마우스 전용(드래그로 범위 생성)
+    cvMode='create'; cvDayEl=dayEl; cvDay=dayEl.dataset.day; cvType=ptype;
+    cvSx=cx; cvSy=cy; cvMoved=false;
+    cvStartMin=calMinAt(dayEl,cy); cvA=cvStartMin; cvB=Math.min(CAL_END,cvStartMin+CAL_SLOT);
+    calDragging=true; enterDrag();
+    cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
+    cvGhost.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; cvGhost.style.width='calc('+(100-CAL_GUT)+'% - 6px)'; cvGhost.style.background=roomColor('');
+    styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
+    try{dayEl.setPointerCapture(pid);}catch(_){}
   }
-  function startCalMove(evEl,e){
+  function startCalMove(evEl,cx,cy,ptype,pid){
     const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
-    cvMode='move'; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=e.pointerType;
-    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvMode='move'; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=ptype;
+    cvSx=cx; cvSy=cy; cvMoved=false;
     cvA=d.a; cvB=d.b; cvDur=d.b-d.a; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
-    cvOffMin=calRawMin(cvDayEl,e.clientY)-d.a;
+    cvOffMin=calRawMin(cvDayEl,cy)-d.a;
     calDragging=true; enterDrag();
     evEl.classList.add('dragging'); evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
     evEl.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; evEl.style.width='calc('+(100-CAL_GUT)+'% - 6px)';
-    try{evEl.setPointerCapture(e.pointerId);}catch(_){}
-    if(e.pointerType==='mouse') e.preventDefault();
+    try{evEl.setPointerCapture(pid);}catch(_){}
   }
-  function startCalResize(evEl,edge,e){
+  function startCalResize(evEl,edge,cx,cy,ptype,pid){
     const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
-    cvMode='resize'; cvEdge=edge; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=e.pointerType;
-    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvMode='resize'; cvEdge=edge; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=ptype;
+    cvSx=cx; cvSy=cy; cvMoved=false;
     cvA=d.a; cvB=d.b; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
     calDragging=true; enterDrag();
     evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
-    try{evEl.setPointerCapture(e.pointerId);}catch(_){}
-    if(e.pointerType==='mouse') e.preventDefault();
+    try{evEl.setPointerCapture(pid);}catch(_){}
   }
   app.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.rev-x')) return;            // 삭제 버튼 → click 핸들러
     const rs=e.target.closest('.rev-rs');
-    if(rs){ const el=rs.closest('.cal-ev'); if(el&&!el.classList.contains('editing')) startCalResize(el,rs.classList.contains('rev-top')?'top':'bot',e); return; }
-    if(e.target.closest('.rev-x')) return;           // 삭제 버튼 → click 핸들러
     const evEl=e.target.closest('.cal-ev');
-    if(evEl){ if(!evEl.classList.contains('editing')) startCalMove(evEl,e); return; }
+    if(evEl&&evEl.classList.contains('editing')) return;
     const dayEl=e.target.closest('.cal-col[data-cal]');
-    if(dayEl) startCalCreate(dayEl,e);
+    if(!evEl&&!dayEl) return;
+    if(e.pointerType==='mouse'){                      // 마우스: 즉시 시작
+      e.preventDefault();
+      if(rs&&evEl) startCalResize(evEl,rs.classList.contains('rev-top')?'top':'bot',e.clientX,e.clientY,'mouse',e.pointerId);
+      else if(evEl) startCalMove(evEl,e.clientX,e.clientY,'mouse',e.pointerId);
+      else if(dayEl) startCalCreate(dayEl,e.clientX,e.clientY,'mouse',e.pointerId);
+      return;
+    }
+    // ---- 터치: 블록은 길게 눌러야 드래그, 빈칸/짧은 탭은 생성·편집(스크롤 허용) ----
+    cvType='touch'; cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvPendEl=evEl||null; cvPendDayEl=dayEl||null;
+    cvPendKind=evEl?(rs?'resize':'move'):'create';
+    cvPendEdge=rs?(rs.classList.contains('rev-top')?'top':'bot'):'';
+    if(dayEl&&!evEl) cvStartMin=calMinAt(dayEl,e.clientY);
+    if(evEl){
+      const pid=e.pointerId;
+      if(cvHold)clearTimeout(cvHold);
+      cvHold=setTimeout(()=>{ cvHold=null;
+        if(!cvPendEl||!cvPendEl.isConnected){ resetCalPend(); return; }  // 대기 중 재렌더로 떨어진 노드 방지
+        if(cvPendKind==='resize') startCalResize(cvPendEl,cvPendEdge,cvSx,cvSy,'touch',pid);
+        else startCalMove(cvPendEl,cvSx,cvSy,'touch',pid);
+        if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
+      },LONG_PRESS_MS);
+    }
   });
   app.addEventListener('pointermove',e=>{
+    if(cvHold){                                       // 롱프레스 대기 중 움직이면 취소(=스크롤)
+      if(calDist(e.clientX,e.clientY)>10) resetCalPend();
+      return;
+    }
     if(!cvMode) return;
-    if(Math.abs(e.clientX-cvSx)+Math.abs(e.clientY-cvSy)>5) cvMoved=true;
+    if(calDist(e.clientX,e.clientY)>5) cvMoved=true;
     if(cvMode==='create'){
-      if(cvType!=='mouse') return;                   // 터치 생성은 탭만(스크롤 허용)
       e.preventDefault();
       const m=calMinAt(cvDayEl,e.clientY);
       cvA=Math.min(cvStartMin,m); cvB=Math.max(cvStartMin,m);
@@ -2790,24 +2864,33 @@ function bindEvents(){
     }
   },{passive:false});
   window.addEventListener('pointerup',e=>{
-    if(!cvMode) return;
-    const mode=cvMode; cvMode=null; calDragging=false;
-    if(mode==='create'){
-      if(cvGhost){ cvGhost.remove(); cvGhost=null; }
-      exitDrag();
-      if(cvType==='mouse') roomEvNew(cvDay,cvA,cvB);
-      else if(!cvMoved){ roomEvNew(cvDay,cvStartMin,Math.min(CAL_END,cvStartMin+60)); }
-      else if(deferRender){ deferRender=false; render(); }
+    if(cvHold){                                       // 블록 짧은 탭 → 편집
+      const el=cvPendEl, near=calDist(e.clientX,e.clientY)<12;
+      resetCalPend();
+      if(el&&near) roomEvEdit(el.dataset.eid);
       return;
+    }
+    if(!cvMode){                                      // 빈칸 짧은 탭 → 1시간 블록 생성
+      const tap=cvType==='touch'&&cvPendKind==='create'&&cvPendDayEl&&calDist(e.clientX,e.clientY)<12;
+      const day=cvPendDayEl?cvPendDayEl.dataset.day:null, sm=cvStartMin;
+      resetCalPend();
+      if(tap&&day) roomEvNew(day,sm,Math.min(CAL_END,sm+60));
+      return;
+    }
+    const mode=cvMode; cvMode=null; calDragging=false;
+    if(mode==='create'){                              // 마우스 드래그 생성
+      if(cvGhost){ cvGhost.remove(); cvGhost=null; }
+      exitDrag(); resetCalPend(); roomEvNew(cvDay,cvA,cvB); return;
     }
     exitDrag();
     if(cvEl){ cvEl.classList.remove('dragging'); cvEl.style.pointerEvents=''; cvEl.style.zIndex=''; }
     cvEl=null;
-    if(mode==='move' && !cvMoved){ roomEvEdit(cvEid); return; }
+    if(mode==='move' && !cvMoved){ resetCalPend(); roomEvEdit(cvEid); return; }
     roomEvWrite(state.roomYm,cvEid,{s:cvSess,d:cvDay,a:cvA,b:cvB,n:cvName});
-    deferRender=false; render();
+    resetCalPend(); deferRender=false; render();
   });
   window.addEventListener('pointercancel',()=>{
+    resetCalPend();
     if(!cvMode) return;
     cvMode=null; calDragging=false; exitDrag();
     if(cvGhost){ cvGhost.remove(); cvGhost=null; }
