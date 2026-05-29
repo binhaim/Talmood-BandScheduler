@@ -1043,15 +1043,13 @@ function exportICS(){
 }
 /* ===== 합주 시간표 → 구글시트 붙여넣기용 TSV (시간 × 일~토, 칸=곡명) ===== */
 function sheetPadHM(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
-function sheetTimeRows(){
-  const out=['12시이전'];
-  for(let m=720;m<1380;m+=30) out.push(sheetPadHM(m)+'~'+sheetPadHM(m+30)); // 12:00~12:30 … 22:30~23:00
-  out.push('23시이후');
+function sheetTimeRows(){           // 00:00~24:00 전체, 30분
+  const out=[];
+  for(let m=0;m<1440;m+=30) out.push(sheetPadHM(m)+'~'+sheetPadHM(m+30)); // 00:00~00:30 … 23:30~24:00
   return out;
 }
-function sheetRowLabel(m){          // 30분 경계 분 → 시트 행 라벨
-  if(m<720) return '12시이전';
-  if(m>=1380) return '23시이후';
+function sheetRowLabel(m){          // 30분 경계 분 → 시트 행 라벨 (00:00~24:00)
+  if(m<0) m=0; if(m>=1440) m=1410;
   return sheetPadHM(m)+'~'+sheetPadHM(m+30);
 }
 function buildSheetTSV(){
