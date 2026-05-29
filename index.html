@@ -644,87 +644,7 @@
     .hbar{gap:10px;}
   }
 
-  /* 홈 허브 */
-  .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
-  .hub-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
-    padding:22px;border:1.5px solid var(--line-2);border-radius:var(--r);background:var(--surface);
-    cursor:pointer;font-family:inherit;transition:border-color var(--t),transform var(--t),box-shadow var(--t);}
-  .hub-card:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow);}
-  .hub-card .hc-icon{font-size:30px;line-height:1;}
-  .hub-card .hc-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;
-    letter-spacing:-.02em;color:var(--ink);}
-  .hub-card .hc-desc{font-size:13px;color:var(--muted);line-height:1.5;}
-
-  /* 월별 시간표 — 카드 목록 */
-  .month-new{display:flex;gap:8px;align-items:center;margin:12px 0 16px;flex-wrap:wrap;}
-  .month-new input[type=month]{padding:7px 10px;border:1px solid var(--line-2);
-    border-radius:var(--r-sm);background:var(--surface);font-size:14px;}
-  .month-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
-  .month-card{position:relative;border:1.5px solid var(--line-2);border-radius:var(--r);
-    background:var(--surface);padding:18px 16px;cursor:pointer;
-    transition:border-color var(--t),transform var(--t),box-shadow var(--t);}
-  .month-card:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
-  .month-card .mc-label{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
-    font-size:17px;letter-spacing:-.02em;color:var(--ink);}
-  .month-card .mc-sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);
-    margin-top:3px;}
-  .month-card .mc-x{position:absolute;top:8px;right:8px;border:none;background:transparent;
-    color:var(--muted-2);font-size:16px;line-height:1;cursor:pointer;padding:3px 6px;border-radius:4px;
-    opacity:0;transition:opacity var(--t),color var(--t),background var(--t);}
-  .month-card:hover .mc-x{opacity:1;}
-  .month-card .mc-x:hover{color:var(--accent);background:var(--accent-soft);}
-
-  /* 월별 시간표 — Notion 캘린더식 (--cal-row-h 은 JS의 CAL_ROW_H 에서 주입) */
-  .rs-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 12px;}
-  .rs-tab{padding:6px 14px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;
-    font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
-    transition:all var(--t);}
-  .rs-tab:hover{border-color:var(--ink);color:var(--ink);}
-  .rs-tab.on{background:var(--ink);border-color:var(--ink);color:#fff;}
-  .cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;}
-  .cal-range{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--muted);min-width:150px;text-align:center;}
-  .cal-grid{display:grid;grid-template-columns:46px 1fr;grid-template-rows:auto 1fr;min-width:620px;}
-  .cal-corner{border-bottom:1px solid var(--line-2);}
-  .cal-heads{display:flex;border-bottom:1px solid var(--line-2);}
-  .cal-dhead{flex:1 1 0;min-width:78px;text-align:center;padding:6px 2px;font-size:12px;font-weight:700;
-    color:var(--ink);border-left:1px solid var(--line);}
-  .cal-dhead .wd{font-size:11px;color:var(--muted-2);font-weight:600;}
-  .cal-dhead.sun{color:#c0392b;} .cal-dhead.sat{color:#2563eb;}
-  .cal-dhead.out{opacity:.45;}
-  .cal-gutter{position:relative;}
-  .cal-hr{position:absolute;right:5px;transform:translateY(-50%);font-size:10px;color:var(--muted-2);
-    font-family:ui-monospace,Menlo,monospace;}
-  .cal-body{display:flex;position:relative;}
-  .cal-col{flex:1 1 0;min-width:78px;position:relative;border-left:1px solid var(--line);
-    background-image:
-      repeating-linear-gradient(to bottom, rgba(0,0,0,.11) 0 1px, transparent 1px calc(var(--cal-row-h,22px)*2)),
-      repeating-linear-gradient(to bottom, rgba(0,0,0,.05) 0 1px, transparent 1px var(--cal-row-h,22px));}
-  .cal-col.sun{background-color:rgba(192,57,43,.03);} .cal-col.sat{background-color:rgba(37,99,235,.03);}
-  .cal-ev{position:absolute;border-radius:6px;color:#fff;overflow:hidden;cursor:grab;
-    box-shadow:0 1px 3px rgba(0,0,0,.18);padding:2px 5px;box-sizing:border-box;
-    display:flex;flex-direction:column;gap:0;line-height:1.15;user-select:none;}
-  .cal-ev.empty{opacity:.85;}
-  .cal-ev.dragging{cursor:grabbing;opacity:.9;box-shadow:0 4px 12px rgba(0,0,0,.3);}
-  .cal-ev.ghost{background:rgba(60,90,160,.45)!important;border:1.5px dashed rgba(255,255,255,.8);
-    pointer-events:none;z-index:7;}
-  .cal-ev .rev-label{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    text-shadow:0 1px 1px rgba(0,0,0,.25);}
-  .cal-ev .rev-time{font-size:9px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cal-ev .rev-rs{position:absolute;left:0;right:0;height:9px;cursor:ns-resize;z-index:2;}
-  .cal-ev .rev-rs.rev-top{top:0;} .cal-ev .rev-rs.rev-bot{bottom:0;}
-  .cal-ev .rev-x{position:absolute;top:1px;right:1px;width:16px;height:16px;line-height:14px;text-align:center;
-    border:none;border-radius:4px;background:rgba(0,0,0,.18);color:#fff;font-size:13px;cursor:pointer;
-    padding:0;opacity:0;transition:opacity var(--t);z-index:3;}
-  .cal-ev:hover .rev-x{opacity:1;}
-  .cal-ev.editing{cursor:default;overflow:visible;z-index:5;}
-  .cal-ev .rev-in{width:100%;border:none;background:rgba(255,255,255,.95);border-radius:3px;
-    padding:1px 4px;font-size:11px;font-weight:700;font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;}
-  body.dragging .cal-body, body.dragging .cal-col, body.dragging .cal-ev{touch-action:none;}
-  /* 직접 추가 폼 */
-  .rf-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-  .rf-row label{width:48px;flex:none;font-size:13px;font-weight:700;color:var(--muted);}
-  .rf-row input,.rf-row select{flex:1;padding:9px 10px;border:1px solid var(--line-2);border-radius:var(--r-sm);
-    background:var(--surface);font-size:15px;font-family:inherit;color:var(--ink);}
+  /* 모달 액션 줄 (시트로 복사 등) */
   .rf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 </style>
 </head>
@@ -759,20 +679,8 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null,
-  /* 월별 시간표 (Notion 캘린더식 이벤트 블록) */
-  roomMonths:{}, roomEvents:{}, roomSubs:{},
-  roomYm:'', roomSess:'일정', roomWeekStart:'',
-  roomEdit:null,  // {ym,eid,isNew} 인라인 라벨 편집 대상
-  roomForm:null   // {day,sess,a,b,n} 직접 추가 폼
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null
 };
-/* 월별 시간표 세션 탭 — '일정'이 메인 */
-const SESSIONS=['일정','합주','V','G','B','D','K'];
-/* 캘린더 시간축: 09:00~24:00, 30분 슬롯 */
-const CAL_START=540, CAL_END=1440, CAL_SLOT=30, CAL_ROW_H=22;
-const CAL_ROWS=(CAL_END-CAL_START)/CAL_SLOT;
-const CAL_GUT=10;   // 칸 좌우 빈 공간 총 % (가운데 정렬) — 같은 시간에 새 일정 드래그용
-try{document.documentElement.style.setProperty('--cal-row-h',CAL_ROW_H+'px');}catch(_){}
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -995,71 +903,6 @@ const R=p=>FB.ref(DB,p);
 function subscribeIndex(){
   FB.onValue(R('projectIndex'),s=>{ state.index=s.val()||{};
     if(state.screen==='landing') render(); });
-}
-/* ---- 월별 시간표 구독 ---- */
-function subscribeRoomMeta(){
-  if(state._roomMetaSub) return; state._roomMetaSub=true;
-  FB.onValue(R('roomMonths'),s=>{ state.roomMonths=s.val()||{};
-    if(state.screen==='roomlist') render(); });
-}
-function subscribeRoomEvents(ym){
-  if(state.roomSubs[ym]) return; state.roomSubs[ym]=true;
-  FB.onValue(R('roomEvents/'+ym),s=>{ state.roomEvents[ym]=s.val()||{};
-    if(state.screen==='roommonth') render(); });
-}
-/* ym(YYYY-MM)의 1일이 속한 주의 일요일 */
-function roomMonthFirstSunday(ym){
-  const first=ym+'-01';
-  const d=new Date(first+'T00:00:00');
-  d.setDate(d.getDate()-d.getDay());
-  return fmtDate(d);
-}
-/* 일요일 시작 7일 날짜 배열 */
-function roomWeekDates(sunStr){
-  const d=new Date(sunStr+'T00:00:00'); const out=[];
-  for(let i=0;i<7;i++){ out.push(fmtDate(d)); d.setDate(d.getDate()+1); }
-  return out;
-}
-function roomWeekShift(sunStr,deltaDays){
-  const d=new Date(sunStr+'T00:00:00'); d.setDate(d.getDate()+deltaDays); return fmtDate(d);
-}
-/* 분 단위 ↔ 화면 좌표/라벨 */
-function calMinToY(m){ return (m-CAL_START)/CAL_SLOT*CAL_ROW_H; }
-function calFmt(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
-function calClamp(m){ return Math.max(CAL_START,Math.min(CAL_END,m)); }
-function calSnap(m){ return Math.round(m/CAL_SLOT)*CAL_SLOT; }
-/* 특정 날짜·세션의 이벤트들 [{eid,a,b,n}] (시작순) */
-function roomDayEvents(ym,sess,date){
-  const m=state.roomEvents[ym]||{}; const out=[];
-  for(const eid in m){ const e=m[eid]; if(e&&e.s===sess&&e.d===date) out.push({eid,a:e.a,b:e.b,n:e.n||''}); }
-  out.sort((x,y)=> x.a-y.a || x.b-y.b);
-  return out;
-}
-/* 겹치는 이벤트를 lane(나란히 표시)으로 배치 → 각 ev에 lane,lanes 부여 */
-function roomLaneLayout(evs){
-  let i=0;
-  while(i<evs.length){
-    let j=i, maxEnd=evs[i].b;
-    // 연결된 클러스터(겹침 연쇄) 끝 찾기
-    while(j+1<evs.length && evs[j+1].a<maxEnd){ j++; maxEnd=Math.max(maxEnd,evs[j].b); }
-    const cluster=evs.slice(i,j+1);
-    const laneEnds=[]; // 각 lane의 마지막 종료시각
-    cluster.forEach(ev=>{
-      let lane=laneEnds.findIndex(end=>end<=ev.a);
-      if(lane<0){ lane=laneEnds.length; laneEnds.push(ev.b); } else laneEnds[lane]=ev.b;
-      ev.lane=lane;
-    });
-    const lanes=laneEnds.length;
-    cluster.forEach(ev=>{ ev.lanes=lanes; });
-    i=j+1;
-  }
-  return evs;
-}
-/* 문자열 → 안정적 색상(hue) */
-function roomColor(str){
-  if(!str) return 'hsl(220,12%,55%)';
-  let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))>>>0;
-  return `hsl(${h%360},62%,48%)`;
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
@@ -1292,10 +1135,10 @@ function shortName(s){
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, gPainting=false, calDragging=false;
+let deferRender=false, painting=false, gPainting=false;
 function render(){
   const a=document.activeElement;
-  if(painting||gPainting||calDragging){deferRender=true;return;}
+  if(painting||gPainting){deferRender=true;return;}
   if(a&&a.tagName==='INPUT'&&a.type==='text'&&$('app').contains(a)){
     deferRender=true;return;}
   doRender();
@@ -1326,11 +1169,6 @@ function renderHeader(){
       h+='<button class="tab '+(state.tab===k?'on':'')+'" data-act="tab" data-tab="'+k+'">'+l+'</button>';
     });
     h+='</div>';
-  } else if(state.screen==='roomlist'){
-    h+='<div class="crumb"><span class="pname">월별 시간표</span></div>';
-  } else if(state.screen==='roommonth'){
-    h+='<div class="crumb"><button class="btn ghost sm" data-act="roomback">← 목록</button>'
-      +'<span class="pname" style="margin-left:6px">'+esc(roomYmLabel(state.roomYm))+'</span></div>';
   }
   h+='<button class="help-btn" data-act="help" title="사용법">?</button>';
   $('hbar').innerHTML=h;
@@ -1342,9 +1180,6 @@ function renderBody(){
   if(state.screen==='loading') html='<div class="empty">불러오는 중…</div>';
   else if(state.screen==='no-config') html=viewNoConfig();
   else if(state.screen==='fb-error') html=viewFbError();
-  else if(state.screen==='hub') html=viewHub();
-  else if(state.screen==='roomlist') html=viewRoomList();
-  else if(state.screen==='roommonth') html=viewRoomMonth();
   else if(state.screen==='landing') html=viewLanding();
   else if(state.screen==='project'){
     if(!state.config) html=viewMissing();
@@ -1354,7 +1189,6 @@ function renderBody(){
     else html=viewResults();
   }
   if(state.showHelp) html+=viewHelp();
-  if(state.roomForm) html+=viewRoomForm();
   if(state.sheetExport) html+=viewSheetExport();
   app.innerHTML=html;
 }
@@ -1491,215 +1325,6 @@ function viewMissing(){
   return `<div class="card"><div class="hero">프로젝트를 찾을 수 없어요</div>
     <p style="margin-bottom:12px">코드 <b>${state.pid}</b> 에 해당하는 프로젝트가 없습니다.</p>
     <button class="btn" data-act="home">프로젝트 목록으로</button></div>`;
-}
-
-/* ================= 홈 허브 ================= */
-function viewHub(){
-  return `<div class="card" style="padding:32px">
-    <div class="hero">무엇을 할까요<span class="dot">?</span></div>
-    <p class="sub" style="margin-bottom:22px;font-size:14.5px;max-width:560px">월별 동방 시간표를 만들어 함께 채우거나, 여럿이 모이는 일정을 맞출 수 있습니다.</p>
-    <div class="hub-grid">
-      <button class="hub-card" data-act="gotorooms">
-        <div class="hc-icon">🗓️</div>
-        <div class="hc-title">월별 시간표</div>
-        <div class="hc-desc">달마다 시간표를 만들고, 드래그로 블록을 그려 연습실을 예약</div>
-      </button>
-      <button class="hub-card" data-act="gotoschedule">
-        <div class="hc-icon">🎯</div>
-        <div class="hc-title">일정 조율</div>
-        <div class="hc-desc">각자 안 되는 시간을 모아 모두 가능한 시간으로 일정 짜기</div>
-      </button>
-    </div>
-  </div>`;
-}
-
-/* ================= 월별 시간표 (Notion 캘린더식) ================= */
-function roomYmLabel(ym){ if(!ym) return ''; const [y,m]=ym.split('-'); return `${y}년 ${+m}월`; }
-function viewRoomList(){
-  const ids=Object.keys(state.roomMonths||{}).sort().reverse(); // 최신 월 먼저
-  const cards=ids.length? ids.map(ym=>
-    `<div class="month-card" data-act="openroommonth" data-m="${ym}">
-       <div class="mc-label">${esc(roomYmLabel(ym))}</div>
-       <div class="mc-sub">${ym}</div>
-       <button class="mc-x" data-act="delmonth" data-m="${ym}" title="이 달 시간표 삭제">×</button>
-     </div>`).join('')
-    : '<div class="empty" style="padding:30px 12px">아직 만든 달이 없습니다. 위에서 달을 골라 만들어 보세요.</div>';
-  const now=new Date(); const curYm=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return `<div class="card">
-    <div class="card-head"><h2>월별 시간표</h2></div>
-    <div class="page-intro">
-      <div class="pi-h">🗓️ 이 페이지는?</div>
-      <p>달마다 동방 연습실 시간표를 만드는 곳입니다. 달을 만들면 아래 <b>네모칸</b>으로 나오고, 클릭하면 그 달 시간표가 열립니다. 시간표 안에서 세션(일정/합주/…)을 고르고, 빈 곳을 <b>드래그</b>해 블록을 만든 뒤 이름을 적으면 됩니다. 같은 세션에 여러 명이 함께 들어갈 수 있고, 이름별로 색이 구분됩니다.</p>
-    </div>
-    <div class="month-new">
-      <input type="month" id="newMonthIn" value="${curYm}">
-      <button class="btn sm" data-act="createmonth">+ 이 달 만들기</button>
-    </div>
-    <div class="month-cards">${cards}</div>
-  </div>`;
-}
-function viewRoomMonth(){
-  const ym=state.roomYm; if(!ym) return '<div class="card"><div class="empty">달을 선택하세요.</div></div>';
-  subscribeRoomEvents(ym);
-  const sess=state.roomSess;
-  if(!state.roomWeekStart) state.roomWeekStart=roomMonthFirstSunday(ym);
-  const days=roomWeekDates(state.roomWeekStart);
-  const ed=state.roomEdit;
-
-  const tabs=SESSIONS.map(s=>
-    `<button class="rs-tab ${s===sess?'on':''}" data-act="roomsess" data-sess="${esc(s)}">${esc(s)}</button>`).join('');
-
-  // 시간 눈금(정시 라벨)
-  let gutter='';
-  for(let mn=CAL_START;mn<=CAL_END;mn+=60) gutter+=`<div class="cal-hr" style="top:${calMinToY(mn)}px">${calFmt(mn)}</div>`;
-  // 요일 헤더
-  const head=days.map(d=>{
-    const w=wdOf(d), wc=w===0?'sun':(w===6?'sat':''), dim=d.slice(0,7)===ym?'':' out';
-    return `<div class="cal-dhead ${wc}${dim}">${mdLabel(d)} <span class="wd">${WD[w]}</span></div>`;
-  }).join('');
-  // 요일별 컬럼 + 이벤트 블록
-  const bodyCols=days.map(d=>{
-    const evs=roomLaneLayout(roomDayEvents(ym,sess,d));
-    const blocks=evs.map(ev=>{
-      const editing=ed&&ed.eid===ev.eid;
-      const top=calMinToY(ev.a), h=Math.max(CAL_ROW_H-3,calMinToY(ev.b)-calMinToY(ev.a)-2);
-      const laneW=(100-CAL_GUT)/ev.lanes, left=CAL_GUT/2+ev.lane*laneW;
-      const inner=editing
-        ? `<input class="rev-in" id="roomEvIn" value="${esc(ev.n)}" autocomplete="off" maxlength="24">`
-        : `<span class="rev-label">${esc(ev.n||'(이름)')}</span><span class="rev-time">${calFmt(ev.a)}~${calFmt(ev.b)}</span>`;
-      return `<div class="cal-ev${editing?' editing':''}${ev.n?'':' empty'}" data-eid="${ev.eid}"
-        style="top:${top}px;height:${h}px;left:calc(${left}% + 3px);width:calc(${laneW}% - 6px);background:${roomColor(ev.n)}">
-        <div class="rev-rs rev-top"></div>${inner}
-        <button class="rev-x" data-act="roomevdel" data-eid="${ev.eid}" title="삭제">×</button>
-        <div class="rev-rs rev-bot"></div></div>`;
-    }).join('');
-    const w=wdOf(d), wc=w===0?'sun':(w===6?'sat':'');
-    return `<div class="cal-col ${wc}" data-cal="1" data-day="${d}" style="height:${CAL_ROWS*CAL_ROW_H}px">${blocks}</div>`;
-  }).join('');
-
-  const range=`${mdLabel(days[0])} ~ ${mdLabel(days[6])}`;
-  return `<div class="card">
-    <div class="card-head"><h2>${esc(roomYmLabel(ym))} 시간표</h2>
-      <div style="display:flex;gap:6px">
-        <button class="btn sm" data-act="roomaddform">+ 직접 추가</button>
-        <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div></div>
-    <div class="page-intro"><div class="pi-h">✍️ 어떻게?</div>
-      <p>세션을 고르고 빈 곳을 <b>드래그</b>(모바일은 <b>탭</b>)하면 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간 조절, <b>가운데를 끌면</b> 이동(모바일은 블록을 <b>길게 눌러</b> 끌기). 같은 시간엔 옆 빈 자리에 나란히 추가돼요. <b>×</b>로 삭제. 드래그가 번거로우면 <b>+ 직접 추가</b>로 이름·요일·시간을 골라 넣으세요.</p>
-    </div>
-    <div class="rs-tabs">${tabs}</div>
-    <div class="cal-nav">
-      <button class="btn ghost sm" data-act="roomweek" data-d="-7">◀ 이전 주</button>
-      <span class="cal-range">${range}</span>
-      <button class="btn ghost sm" data-act="roomweek" data-d="7">다음 주 ▶</button>
-    </div>
-    <div id="room-snapshot" class="scroll grid-touch">
-      <div class="cal-grid">
-        <div class="cal-corner"></div>
-        <div class="cal-heads">${head}</div>
-        <div class="cal-gutter" style="height:${CAL_ROWS*CAL_ROW_H}px">${gutter}</div>
-        <div class="cal-body">${bodyCols}</div>
-      </div>
-    </div>
-  </div>`;
-}
-function roomEvNew(day,a,b){
-  const ym=state.roomYm, sess=state.roomSess;
-  a=calClamp(calSnap(a)); b=calClamp(calSnap(b));
-  if(a>CAL_END-CAL_SLOT) a=CAL_END-CAL_SLOT;   // 끝 경계 탭 → 0분 블록 방지
-  if(b<a+CAL_SLOT) b=a+CAL_SLOT;
-  if(b>CAL_END) b=CAL_END;
-  const eid=genId('ev'); const obj={s:sess,d:day,a,b,n:''};
-  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
-  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
-  state.roomEdit={ym,eid,isNew:true};
-  deferRender=false; doRender();
-  const i=$('roomEvIn'); if(i){i.focus();i.select();}
-}
-function roomEvWrite(ym,eid,obj){
-  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
-  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
-}
-function roomEvDel(ym,eid){
-  if(state.roomEvents[ym]) delete state.roomEvents[ym][eid];
-  FB.remove(R('roomEvents/'+ym+'/'+eid));
-  if(state.roomEdit&&state.roomEdit.eid===eid) state.roomEdit=null;
-  render();
-}
-function roomEvEdit(eid){
-  state.roomEdit={ym:state.roomYm,eid,isNew:false};
-  deferRender=false; doRender();
-  const i=$('roomEvIn'); if(i){i.focus();i.select();}
-}
-function saveRoomEv(){
-  const ed=state.roomEdit; if(!ed) return;
-  const i=$('roomEvIn'); const val=i?i.value.trim():'';
-  const ev=calEvDataFor(ed.ym,ed.eid);
-  state.roomEdit=null;
-  if(!ev){ doRender(); return; }
-  if(!val && ed.isNew){ roomEvDel(ed.ym,ed.eid); return; }
-  ev.n=val; FB.set(R('roomEvents/'+ed.ym+'/'+ed.eid),ev);
-  deferRender=false; doRender();
-}
-function calEvDataFor(ym,eid){ const m=state.roomEvents[ym]; return m?m[eid]:null; }
-function viewRoomForm(){
-  const f=state.roomForm; if(!f) return '';
-  const days=roomWeekDates(state.roomWeekStart||roomMonthFirstSunday(state.roomYm));
-  const dayOpts=days.map(d=>`<option value="${d}"${d===f.day?' selected':''}>${mdLabel(d)} (${WD[wdOf(d)]})</option>`).join('');
-  const sessOpts=SESSIONS.map(s=>`<option value="${esc(s)}"${s===f.sess?' selected':''}>${esc(s)}</option>`).join('');
-  let startOpts='',endOpts='';
-  for(let m=CAL_START;m<=CAL_END-CAL_SLOT;m+=CAL_SLOT) startOpts+=`<option value="${m}"${m===f.a?' selected':''}>${calFmt(m)}</option>`;
-  for(let m=CAL_START+CAL_SLOT;m<=CAL_END;m+=CAL_SLOT) endOpts+=`<option value="${m}"${m===f.b?' selected':''}>${calFmt(m)}</option>`;
-  return `<div class="modal-backdrop" data-act="roomformclose">
-    <div class="modal" data-act="modal-noop" style="max-width:400px">
-      <div class="modal-head"><h2>직접 추가</h2><button class="modal-x" data-act="roomformclose" title="닫기">×</button></div>
-      <div class="modal-body">
-        <div class="rf-row"><label>이름</label><input type="text" id="rf-name" maxlength="24" placeholder="이름/내용" value="${esc(f.n||'')}"></div>
-        <div class="rf-row"><label>세션</label><select id="rf-sess">${sessOpts}</select></div>
-        <div class="rf-row"><label>요일</label><select id="rf-day">${dayOpts}</select></div>
-        <div class="rf-row"><label>시작</label><select id="rf-start">${startOpts}</select></div>
-        <div class="rf-row"><label>종료</label><select id="rf-end">${endOpts}</select></div>
-        <div class="rf-actions">
-          <button class="btn ghost sm" data-act="roomformclose">취소</button>
-          <button class="btn sm" data-act="roomformsave">추가</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-function saveRoomForm(){
-  const nm=($('rf-name')?.value||'').trim();
-  const sess=$('rf-sess')?.value||state.roomSess;
-  const day=$('rf-day')?.value; const a=+($('rf-start')?.value), b=+($('rf-end')?.value);
-  if(!day||isNaN(a)||isNaN(b)){ toast('값을 확인하세요'); return; }
-  if(b<=a){ toast('종료가 시작보다 늦어야 해요'); return; }
-  const ym=state.roomYm, eid=genId('ev'), obj={s:sess,d:day,a,b,n:nm};
-  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
-  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
-  state.roomForm=null; state.roomSess=sess;   // 추가한 세션으로 전환해 바로 보이게
-  render();
-}
-function createRoomMonth(){
-  const i=$('newMonthIn'); const ym=i?i.value:''; if(!ym){ toast('달을 고르세요'); return; }
-  FB.set(R('roomMonths/'+ym),{createdAt:Date.now()});
-  location.href=location.pathname+'?view=rooms&m='+ym;
-}
-function delRoomMonth(ym){
-  if(!confirm(`${roomYmLabel(ym)} 시간표를 삭제할까요? 이 달의 모든 예약이 지워집니다.`)) return;
-  FB.remove(R('roomMonths/'+ym));
-  FB.remove(R('roomEvents/'+ym));
-  delete state.roomEvents[ym];
-  if(state.roomYm===ym){ state.roomYm=''; state.screen='roomlist'; }
-  render();
-}
-async function exportRoomPNG(){
-  const el=$('room-snapshot'); if(!el){ toast('저장할 내용이 없습니다'); return; }
-  toast('PNG 생성 중...');
-  try{ const h2c=await ensureH2c();
-    const canvas=await h2c(el,{backgroundColor:'#fffdf7',scale:2});
-    const link=document.createElement('a');
-    link.download=`동방시간표-${state.roomYm}.png`;
-    link.href=canvas.toDataURL('image/png'); link.click();
-  }catch(e){ console.error(e); toast('PNG 저장 실패'); }
 }
 
 function viewLanding(){
@@ -2396,19 +2021,6 @@ function bindEvents(){
     const t=e.target.closest('[data-act]'); if(!t)return;
     const act=t.dataset.act;
     if(act==='home'){location.href=location.pathname;return;}
-    if(act==='gotorooms'){location.href=location.pathname+'?view=rooms';return;}
-    if(act==='gotoschedule'){location.href=location.pathname+'?view=schedule';return;}
-    if(act==='roomback'){location.href=location.pathname+'?view=rooms';return;}
-    if(act==='openroommonth'){location.href=location.pathname+'?view=rooms&m='+t.dataset.m;return;}
-    if(act==='createmonth'){createRoomMonth();return;}
-    if(act==='delmonth'){e.stopPropagation();delRoomMonth(t.dataset.m);return;}
-    if(act==='roomsess'){state.roomSess=t.dataset.sess;state.roomEdit=null;render();return;}
-    if(act==='roomweek'){state.roomWeekStart=roomWeekShift(state.roomWeekStart,+t.dataset.d);state.roomEdit=null;if(state.roomForm){const nd=roomWeekDates(state.roomWeekStart);if(!nd.includes(state.roomForm.day))state.roomForm.day=nd[0];}render();return;}
-    if(act==='roomevdel'){e.stopPropagation();roomEvDel(state.roomYm,t.dataset.eid);return;}
-    if(act==='roomaddform'){const ds=roomWeekDates(state.roomWeekStart||roomMonthFirstSunday(state.roomYm));state.roomForm={day:ds[0],sess:state.roomSess,a:18*60,b:19*60,n:''};render();return;}
-    if(act==='roomformclose'){state.roomForm=null;render();return;}
-    if(act==='roomformsave'){saveRoomForm();return;}
-    if(act==='roompng'){exportRoomPNG();return;}
     if(act==='copycode'){copyCode();return;}
     if(act==='help'){state.showHelp=true;render();return;}
     if(act==='closehelp'){state.showHelp=false;render();return;}
@@ -2831,152 +2443,6 @@ function bindEvents(){
     }
     gTouchCell=null;
   });
-
-  /* ===== 월별 시간표 — Notion 캘린더식 블록 (생성/이동/리사이즈) ===== */
-  let cvMode=null, cvEl=null, cvEid='', cvDay='', cvName='', cvEdge='', cvSess='';
-  let cvA=0, cvB=0, cvDur=0, cvStartMin=0, cvOffMin=0;
-  let cvSx=0, cvSy=0, cvMoved=false, cvType='', cvGhost=null, cvDayEl=null;
-  let cvHold=null, cvPendEl=null, cvPendDayEl=null, cvPendKind='', cvPendEdge='';
-  const calRawMin=(dayEl,clientY)=>{ const r=dayEl.getBoundingClientRect(); return CAL_START+(clientY-r.top)/CAL_ROW_H*CAL_SLOT; };
-  const calMinAt=(dayEl,clientY)=>calClamp(calSnap(calRawMin(dayEl,clientY)));
-  const calColAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el?el.closest('.cal-col[data-cal]'):null; };
-  const styleBlock=(el,a,b)=>{ el.style.top=calMinToY(a)+'px'; el.style.height=Math.max(CAL_ROW_H-3,calMinToY(b)-calMinToY(a)-2)+'px'; };
-  const calDist=(x,y)=>Math.abs(x-cvSx)+Math.abs(y-cvSy);
-  const resetCalPend=()=>{ if(cvHold){clearTimeout(cvHold);cvHold=null;} cvPendEl=null; cvPendDayEl=null; cvPendKind=''; cvPendEdge=''; cvType=''; };
-  function startCalCreate(dayEl,cx,cy,ptype,pid){            // 마우스 전용(드래그로 범위 생성)
-    cvMode='create'; cvDayEl=dayEl; cvDay=dayEl.dataset.day; cvType=ptype;
-    cvSx=cx; cvSy=cy; cvMoved=false;
-    cvStartMin=calMinAt(dayEl,cy); cvA=cvStartMin; cvB=Math.min(CAL_END,cvStartMin+CAL_SLOT);
-    calDragging=true; enterDrag();
-    cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
-    cvGhost.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; cvGhost.style.width='calc('+(100-CAL_GUT)+'% - 6px)'; cvGhost.style.background=roomColor('');
-    styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
-    try{dayEl.setPointerCapture(pid);}catch(_){}
-  }
-  function startCalMove(evEl,cx,cy,ptype,pid){
-    const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
-    cvMode='move'; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=ptype;
-    cvSx=cx; cvSy=cy; cvMoved=false;
-    cvA=d.a; cvB=d.b; cvDur=d.b-d.a; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
-    cvOffMin=calRawMin(cvDayEl,cy)-d.a;
-    calDragging=true; enterDrag();
-    evEl.classList.add('dragging'); evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
-    evEl.style.left='calc('+(CAL_GUT/2)+'% + 3px)'; evEl.style.width='calc('+(100-CAL_GUT)+'% - 6px)';
-    try{evEl.setPointerCapture(pid);}catch(_){}
-  }
-  function startCalResize(evEl,edge,cx,cy,ptype,pid){
-    const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
-    cvMode='resize'; cvEdge=edge; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=ptype;
-    cvSx=cx; cvSy=cy; cvMoved=false;
-    cvA=d.a; cvB=d.b; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
-    calDragging=true; enterDrag();
-    evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
-    try{evEl.setPointerCapture(pid);}catch(_){}
-  }
-  app.addEventListener('pointerdown',e=>{
-    if(e.target.closest('.rev-x')) return;            // 삭제 버튼 → click 핸들러
-    const rs=e.target.closest('.rev-rs');
-    const evEl=e.target.closest('.cal-ev');
-    if(evEl&&evEl.classList.contains('editing')) return;
-    const dayEl=e.target.closest('.cal-col[data-cal]');
-    if(!evEl&&!dayEl) return;
-    if(e.pointerType==='mouse'){                      // 마우스: 즉시 시작
-      e.preventDefault();
-      if(rs&&evEl) startCalResize(evEl,rs.classList.contains('rev-top')?'top':'bot',e.clientX,e.clientY,'mouse',e.pointerId);
-      else if(evEl) startCalMove(evEl,e.clientX,e.clientY,'mouse',e.pointerId);
-      else if(dayEl) startCalCreate(dayEl,e.clientX,e.clientY,'mouse',e.pointerId);
-      return;
-    }
-    // ---- 터치: 블록은 길게 눌러야 드래그, 빈칸/짧은 탭은 생성·편집(스크롤 허용) ----
-    cvType='touch'; cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
-    cvPendEl=evEl||null; cvPendDayEl=dayEl||null;
-    cvPendKind=evEl?(rs?'resize':'move'):'create';
-    cvPendEdge=rs?(rs.classList.contains('rev-top')?'top':'bot'):'';
-    if(dayEl&&!evEl) cvStartMin=calMinAt(dayEl,e.clientY);
-    if(evEl){
-      const pid=e.pointerId;
-      if(cvHold)clearTimeout(cvHold);
-      cvHold=setTimeout(()=>{ cvHold=null;
-        if(!cvPendEl||!cvPendEl.isConnected){ resetCalPend(); return; }  // 대기 중 재렌더로 떨어진 노드 방지
-        if(cvPendKind==='resize') startCalResize(cvPendEl,cvPendEdge,cvSx,cvSy,'touch',pid);
-        else startCalMove(cvPendEl,cvSx,cvSy,'touch',pid);
-        if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
-      },LONG_PRESS_MS);
-    }
-  });
-  app.addEventListener('pointermove',e=>{
-    if(cvHold){                                       // 롱프레스 대기 중 움직이면 취소(=스크롤)
-      if(calDist(e.clientX,e.clientY)>10) resetCalPend();
-      return;
-    }
-    if(!cvMode) return;
-    if(calDist(e.clientX,e.clientY)>5) cvMoved=true;
-    if(cvMode==='create'){
-      e.preventDefault();
-      const m=calMinAt(cvDayEl,e.clientY);
-      cvA=Math.min(cvStartMin,m); cvB=Math.max(cvStartMin,m);
-      if(cvB-cvA<CAL_SLOT){ if(cvA+CAL_SLOT<=CAL_END) cvB=cvA+CAL_SLOT; else cvA=cvB-CAL_SLOT; }
-      styleBlock(cvGhost,cvA,cvB); return;
-    }
-    e.preventDefault();
-    if(cvMode==='move'){
-      const tgt=calColAt(e.clientX,e.clientY)||cvDayEl;
-      if(tgt!==cvDayEl){ cvDayEl=tgt; cvDay=tgt.dataset.day; tgt.appendChild(cvEl); }
-      let na=calSnap(calRawMin(cvDayEl,e.clientY)-cvOffMin);
-      na=Math.max(CAL_START,Math.min(CAL_END-cvDur,na));
-      cvA=na; cvB=na+cvDur; styleBlock(cvEl,cvA,cvB);
-    } else {                                          // resize
-      const m=calMinAt(cvDayEl,e.clientY);
-      if(cvEdge==='top') cvA=Math.min(m,cvB-CAL_SLOT); else cvB=Math.max(m,cvA+CAL_SLOT);
-      cvA=calClamp(cvA); cvB=calClamp(cvB); styleBlock(cvEl,cvA,cvB);
-    }
-  },{passive:false});
-  window.addEventListener('pointerup',e=>{
-    if(cvHold){                                       // 블록 짧은 탭 → 편집
-      const el=cvPendEl, near=calDist(e.clientX,e.clientY)<12;
-      resetCalPend();
-      if(el&&near) roomEvEdit(el.dataset.eid);
-      return;
-    }
-    if(!cvMode){                                      // 빈칸 짧은 탭 → 1시간 블록 생성
-      const tap=cvType==='touch'&&cvPendKind==='create'&&cvPendDayEl&&calDist(e.clientX,e.clientY)<12;
-      const day=cvPendDayEl?cvPendDayEl.dataset.day:null, sm=cvStartMin;
-      resetCalPend();
-      if(tap&&day) roomEvNew(day,sm,Math.min(CAL_END,sm+60));
-      return;
-    }
-    const mode=cvMode; cvMode=null; calDragging=false;
-    if(mode==='create'){                              // 마우스 드래그 생성
-      if(cvGhost){ cvGhost.remove(); cvGhost=null; }
-      exitDrag(); resetCalPend(); roomEvNew(cvDay,cvA,cvB); return;
-    }
-    exitDrag();
-    if(cvEl){ cvEl.classList.remove('dragging'); cvEl.style.pointerEvents=''; cvEl.style.zIndex=''; }
-    cvEl=null;
-    if(mode==='move' && !cvMoved){ resetCalPend(); roomEvEdit(cvEid); return; }
-    roomEvWrite(state.roomYm,cvEid,{s:cvSess,d:cvDay,a:cvA,b:cvB,n:cvName});
-    resetCalPend(); deferRender=false; render();
-  });
-  window.addEventListener('pointercancel',()=>{
-    resetCalPend();
-    if(!cvMode) return;
-    cvMode=null; calDragging=false; exitDrag();
-    if(cvGhost){ cvGhost.remove(); cvGhost=null; }
-    if(cvEl){ cvEl.classList.remove('dragging'); cvEl.style.pointerEvents=''; cvEl.style.zIndex=''; cvEl=null; }
-    render();
-  });
-
-  /* 월별 시간표 — 블록 라벨 인라인 편집 */
-  app.addEventListener('keydown',e=>{
-    if(e.target.id!=='roomEvIn') return;
-    if(e.key==='Enter'){ e.preventDefault(); saveRoomEv(); }
-    else if(e.key==='Escape'){ e.preventDefault();
-      const ed=state.roomEdit;
-      if(ed&&ed.isNew) roomEvDel(ed.ym,ed.eid);
-      else { state.roomEdit=null; deferRender=false; doRender(); }
-    }
-  });
-  app.addEventListener('blur',e=>{ if(e.target.id==='roomEvIn') saveRoomEv(); },true);
 }
 
 /* ---------------- 시작 ---------------- */
@@ -2987,21 +2453,13 @@ async function start(){
   if(status==='error'){state.screen='fb-error';render();return;}
   const params=new URLSearchParams(location.search);
   const pid=params.get('p');
-  const view=params.get('view');
-  const m=params.get('m');
   if(pid){
     state.pid=pid; state.screen='project';
     state.me=lsGet('me_'+pid)||null;
     lsSet('v_'+pid,String(Date.now())); // 코드로 들어왔으면 방문 기록
     subscribeProject(pid);
-  }else if(view==='rooms'){
-    subscribeRoomMeta();
-    if(m){ state.screen='roommonth'; state.roomYm=m; state.roomWeekStart=roomMonthFirstSunday(m); subscribeRoomEvents(m); }
-    else state.screen='roomlist';
-  }else if(view==='schedule'){
-    state.screen='landing'; subscribeIndex();
   }else{
-    state.screen='hub';
+    state.screen='landing'; subscribeIndex();
   }
   render();
 }
