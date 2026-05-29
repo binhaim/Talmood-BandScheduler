@@ -674,20 +674,52 @@
   .month-card:hover .mc-x{opacity:1;}
   .month-card .mc-x:hover{color:var(--accent);background:var(--accent-soft);}
 
-  /* 월별 시간표 — 그리드 셀 */
-  table.rooms-table td.room-pcell{width:34px;height:28px;cursor:pointer;padding:0 1px;
-    text-align:center;transition:filter 80ms ease;}
-  table.rooms-table td.room-pcell:hover{filter:brightness(.95);}
-  table.rooms-table td.room-pcell .rc-name{display:inline-block;max-width:100%;overflow:hidden;
-    text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;font-weight:600;color:#fff;
-    text-shadow:0 1px 1px rgba(0,0,0,.2);line-height:1;}
-  table.rooms-table td.room-pcell.editing{padding:0;box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface);}
-  .rc-in{width:100%;border:none;background:transparent;padding:2px 3px;font-size:10px;
-    font-family:'Archivo',sans-serif;color:var(--ink);outline:none;}
-  table.gantt th.gnt-day.out{opacity:.4;}
-  .tool-chip .rn-x{margin-left:5px;font-size:13px;opacity:.6;line-height:1;}
-  .tool-chip .rn-x:hover{opacity:1;color:#fff;}
-  .tool-chip.on .rn-x{color:#fff;}
+  /* 월별 시간표 — Notion 캘린더식 (--cal-row-h 은 JS의 CAL_ROW_H 에서 주입) */
+  .rs-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 12px;}
+  .rs-tab{padding:6px 14px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;
+    font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+    transition:all var(--t);}
+  .rs-tab:hover{border-color:var(--ink);color:var(--ink);}
+  .rs-tab.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;}
+  .cal-range{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--muted);min-width:150px;text-align:center;}
+  .cal-grid{display:grid;grid-template-columns:46px 1fr;grid-template-rows:auto 1fr;min-width:620px;}
+  .cal-corner{border-bottom:1px solid var(--line-2);}
+  .cal-heads{display:flex;border-bottom:1px solid var(--line-2);}
+  .cal-dhead{flex:1 1 0;min-width:78px;text-align:center;padding:6px 2px;font-size:12px;font-weight:700;
+    color:var(--ink);border-left:1px solid var(--line);}
+  .cal-dhead .wd{font-size:11px;color:var(--muted-2);font-weight:600;}
+  .cal-dhead.sun{color:#c0392b;} .cal-dhead.sat{color:#2563eb;}
+  .cal-dhead.out{opacity:.45;}
+  .cal-gutter{position:relative;}
+  .cal-hr{position:absolute;right:5px;transform:translateY(-50%);font-size:10px;color:var(--muted-2);
+    font-family:ui-monospace,Menlo,monospace;}
+  .cal-body{display:flex;position:relative;}
+  .cal-col{flex:1 1 0;min-width:78px;position:relative;border-left:1px solid var(--line);
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,.11) 0 1px, transparent 1px calc(var(--cal-row-h,22px)*2)),
+      repeating-linear-gradient(to bottom, rgba(0,0,0,.05) 0 1px, transparent 1px var(--cal-row-h,22px));}
+  .cal-col.sun{background-color:rgba(192,57,43,.03);} .cal-col.sat{background-color:rgba(37,99,235,.03);}
+  .cal-ev{position:absolute;border-radius:6px;color:#fff;overflow:hidden;cursor:grab;
+    box-shadow:0 1px 3px rgba(0,0,0,.18);padding:2px 5px;box-sizing:border-box;
+    display:flex;flex-direction:column;gap:0;line-height:1.15;user-select:none;}
+  .cal-ev.empty{opacity:.85;}
+  .cal-ev.dragging{cursor:grabbing;opacity:.9;box-shadow:0 4px 12px rgba(0,0,0,.3);}
+  .cal-ev.ghost{background:rgba(60,90,160,.45)!important;border:1.5px dashed rgba(255,255,255,.8);
+    pointer-events:none;z-index:7;}
+  .cal-ev .rev-label{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .cal-ev .rev-time{font-size:9px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-ev .rev-rs{position:absolute;left:0;right:0;height:7px;cursor:ns-resize;z-index:2;}
+  .cal-ev .rev-rs.rev-top{top:0;} .cal-ev .rev-rs.rev-bot{bottom:0;}
+  .cal-ev .rev-x{position:absolute;top:1px;right:1px;width:16px;height:16px;line-height:14px;text-align:center;
+    border:none;border-radius:4px;background:rgba(0,0,0,.18);color:#fff;font-size:13px;cursor:pointer;
+    padding:0;opacity:0;transition:opacity var(--t);z-index:3;}
+  .cal-ev:hover .rev-x{opacity:1;}
+  .cal-ev.editing{cursor:default;overflow:visible;z-index:5;}
+  .cal-ev .rev-in{width:100%;border:none;background:rgba(255,255,255,.95);border-radius:3px;
+    padding:1px 4px;font-size:11px;font-weight:700;font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;}
+  body.dragging .cal-body, body.dragging .cal-col, body.dragging .cal-ev{touch-action:none;}
 </style>
 </head>
 <body>
@@ -722,14 +754,17 @@ let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
   activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false,
-  /* 월별 시간표 */
-  roomMonths:{}, roomNames:{}, roomCells:{}, roomSubs:{},
-  roomYm:'', roomWeekStart:'',
-  roomPaint:null,   // null/'text'=직접 입력 | '<이름>'=이름 칠하기 | 'erase'=지우개
-  roomEditCell:null // {ym,slotKey,date,sess,time} 인라인 텍스트 편집 대상
+  /* 월별 시간표 (Notion 캘린더식 이벤트 블록) */
+  roomMonths:{}, roomEvents:{}, roomSubs:{},
+  roomYm:'', roomSess:'일정', roomWeekStart:'',
+  roomEdit:null   // {ym,eid,isNew} 인라인 라벨 편집 대상
 };
-/* 월별 시간표 세션(열) — '일정'이 메인 */
+/* 월별 시간표 세션 탭 — '일정'이 메인 */
 const SESSIONS=['일정','합주','V','G','B','D','K'];
+/* 캘린더 시간축: 09:00~24:00, 30분 슬롯 */
+const CAL_START=540, CAL_END=1440, CAL_SLOT=30, CAL_ROW_H=22;
+const CAL_ROWS=(CAL_END-CAL_START)/CAL_SLOT;
+try{document.documentElement.style.setProperty('--cal-row-h',CAL_ROW_H+'px');}catch(_){}
 
 /* ---------------- 유틸 ---------------- */
 const $=id=>document.getElementById(id);
@@ -958,12 +993,10 @@ function subscribeRoomMeta(){
   if(state._roomMetaSub) return; state._roomMetaSub=true;
   FB.onValue(R('roomMonths'),s=>{ state.roomMonths=s.val()||{};
     if(state.screen==='roomlist') render(); });
-  FB.onValue(R('roomNames'),s=>{ state.roomNames=s.val()||{};
-    if(state.screen==='roomlist'||state.screen==='roommonth') render(); });
 }
-function subscribeRoomCells(ym){
+function subscribeRoomEvents(ym){
   if(state.roomSubs[ym]) return; state.roomSubs[ym]=true;
-  FB.onValue(R('roomCells/'+ym),s=>{ state.roomCells[ym]=s.val()||{};
+  FB.onValue(R('roomEvents/'+ym),s=>{ state.roomEvents[ym]=s.val()||{};
     if(state.screen==='roommonth') render(); });
 }
 /* ym(YYYY-MM)의 1일이 속한 주의 일요일 */
@@ -973,11 +1006,50 @@ function roomMonthFirstSunday(ym){
   d.setDate(d.getDate()-d.getDay());
   return fmtDate(d);
 }
-function roomSlotKey(date,sess,time){ return date+'|'+sess+'|'+time; }
-function roomCellVal(ym,slotK){ const m=state.roomCells[ym]; return m?m[slotK]:undefined; }
+/* 일요일 시작 7일 날짜 배열 */
+function roomWeekDates(sunStr){
+  const d=new Date(sunStr+'T00:00:00'); const out=[];
+  for(let i=0;i<7;i++){ out.push(fmtDate(d)); d.setDate(d.getDate()+1); }
+  return out;
+}
+function roomWeekShift(sunStr,deltaDays){
+  const d=new Date(sunStr+'T00:00:00'); d.setDate(d.getDate()+deltaDays); return fmtDate(d);
+}
+/* 분 단위 ↔ 화면 좌표/라벨 */
+function calMinToY(m){ return (m-CAL_START)/CAL_SLOT*CAL_ROW_H; }
+function calFmt(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function calClamp(m){ return Math.max(CAL_START,Math.min(CAL_END,m)); }
+function calSnap(m){ return Math.round(m/CAL_SLOT)*CAL_SLOT; }
+/* 특정 날짜·세션의 이벤트들 [{eid,a,b,n}] (시작순) */
+function roomDayEvents(ym,sess,date){
+  const m=state.roomEvents[ym]||{}; const out=[];
+  for(const eid in m){ const e=m[eid]; if(e&&e.s===sess&&e.d===date) out.push({eid,a:e.a,b:e.b,n:e.n||''}); }
+  out.sort((x,y)=> x.a-y.a || x.b-y.b);
+  return out;
+}
+/* 겹치는 이벤트를 lane(나란히 표시)으로 배치 → 각 ev에 lane,lanes 부여 */
+function roomLaneLayout(evs){
+  let i=0;
+  while(i<evs.length){
+    let j=i, maxEnd=evs[i].b;
+    // 연결된 클러스터(겹침 연쇄) 끝 찾기
+    while(j+1<evs.length && evs[j+1].a<maxEnd){ j++; maxEnd=Math.max(maxEnd,evs[j].b); }
+    const cluster=evs.slice(i,j+1);
+    const laneEnds=[]; // 각 lane의 마지막 종료시각
+    cluster.forEach(ev=>{
+      let lane=laneEnds.findIndex(end=>end<=ev.a);
+      if(lane<0){ lane=laneEnds.length; laneEnds.push(ev.b); } else laneEnds[lane]=ev.b;
+      ev.lane=lane;
+    });
+    const lanes=laneEnds.length;
+    cluster.forEach(ev=>{ ev.lanes=lanes; });
+    i=j+1;
+  }
+  return evs;
+}
 /* 문자열 → 안정적 색상(hue) */
 function roomColor(str){
-  if(!str) return '';
+  if(!str) return 'hsl(220,12%,55%)';
   let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))>>>0;
   return `hsl(${h%360},62%,48%)`;
 }
@@ -1149,10 +1221,10 @@ function shortName(s){
 }
 
 /* ---------------- 렌더 ---------------- */
-let deferRender=false, painting=false, gPainting=false, rgPainting=false;
+let deferRender=false, painting=false, gPainting=false, calDragging=false;
 function render(){
   const a=document.activeElement;
-  if(painting||gPainting||rgPainting){deferRender=true;return;}
+  if(painting||gPainting||calDragging){deferRender=true;return;}
   if(a&&a.tagName==='INPUT'&&a.type==='text'&&$('app').contains(a)){
     deferRender=true;return;}
   doRender();
@@ -1357,7 +1429,7 @@ function viewHub(){
       <button class="hub-card" data-act="gotorooms">
         <div class="hc-icon">🗓️</div>
         <div class="hc-title">월별 시간표</div>
-        <div class="hc-desc">달마다 시간표를 만들고, 자기 이름을 드래그해 연습실을 예약</div>
+        <div class="hc-desc">달마다 시간표를 만들고, 드래그로 블록을 그려 연습실을 예약</div>
       </button>
       <button class="hub-card" data-act="gotoschedule">
         <div class="hc-icon">🎯</div>
@@ -1368,24 +1440,8 @@ function viewHub(){
   </div>`;
 }
 
-/* ================= 월별 시간표 ================= */
+/* ================= 월별 시간표 (Notion 캘린더식) ================= */
 function roomYmLabel(ym){ if(!ym) return ''; const [y,m]=ym.split('-'); return `${y}년 ${+m}월`; }
-function roomTimeRows(){ return ['12시이전'].concat(timeList(12,24,30)).concat(['24시이후']); }
-function roomMonthWeeks(ym){
-  const [y,mm]=ym.split('-').map(Number);
-  const lastDay=new Date(y,mm,0).getDate();
-  const lastDate=`${ym}-${String(lastDay).padStart(2,'0')}`;
-  const start=new Date(ym+'-01T00:00:00'); start.setDate(start.getDate()-start.getDay());
-  const out=[]; let cur=new Date(start); let guard=0;
-  while(guard<8){
-    const days=[];
-    for(let i=0;i<7;i++){ const ds=fmtDate(cur); days.push({date:ds,inMonth:ds.slice(0,7)===ym}); cur.setDate(cur.getDate()+1); }
-    out.push(days);
-    if(days[6].date>=lastDate) break;
-    guard++;
-  }
-  return out;
-}
 function viewRoomList(){
   const ids=Object.keys(state.roomMonths||{}).sort().reverse(); // 최신 월 먼저
   const cards=ids.length? ids.map(ym=>
@@ -1400,7 +1456,7 @@ function viewRoomList(){
     <div class="card-head"><h2>월별 시간표</h2></div>
     <div class="page-intro">
       <div class="pi-h">🗓️ 이 페이지는?</div>
-      <p>달마다 동방 연습실 시간표를 만드는 곳입니다. 달을 만들면 아래 <b>네모칸</b>으로 나오고, 클릭하면 그 달 시간표가 열립니다. 시간표 안에서 <b>자기 이름을 골라 드래그</b>하면 그 칸에 이름이 들어가고, 다른 사람 이름도 색깔별로 함께 보입니다.</p>
+      <p>달마다 동방 연습실 시간표를 만드는 곳입니다. 달을 만들면 아래 <b>네모칸</b>으로 나오고, 클릭하면 그 달 시간표가 열립니다. 시간표 안에서 세션(일정/합주/…)을 고르고, 빈 곳을 <b>드래그</b>해 블록을 만든 뒤 이름을 적으면 됩니다. 같은 세션에 여러 명이 함께 들어갈 수 있고, 이름별로 색이 구분됩니다.</p>
     </div>
     <div class="month-new">
       <input type="month" id="newMonthIn" value="${curYm}">
@@ -1411,98 +1467,105 @@ function viewRoomList(){
 }
 function viewRoomMonth(){
   const ym=state.roomYm; if(!ym) return '<div class="card"><div class="empty">달을 선택하세요.</div></div>';
-  subscribeRoomCells(ym);
-  const names=Object.keys(state.roomNames||{}).map(id=>state.roomNames[id]).filter(Boolean);
-  const paint=state.roomPaint;
-  const isName=n=>paint===n;
-  // 도구 팔레트
-  const nameChips=names.map(n=>{
-    const on=isName(n); const col=roomColor(n);
-    const sty=on?`background:${col};border-color:${col};color:#fff`:'';
-    return `<button class="tool-chip ${on?'on':''}" data-act="roompickname" data-name="${esc(n)}" style="${sty}">
-      <span class="csw" style="background:${col}"></span>${esc(n)}
-      <span class="rn-x" data-act="roomdelname" data-name="${esc(n)}" title="이름 삭제">×</span></button>`;
-  }).join('');
-  const palette=`<div class="tool-bar">
-    <span class="lbl">내 이름</span>
-    <input type="text" id="newRoomName" placeholder="이름 추가" maxlength="20" style="width:120px">
-    <button class="btn sm" data-act="roomaddname">추가</button>
-    <span class="sp"></span>
-    ${nameChips||'<span style="font-size:12px;color:var(--muted)">이름을 추가하세요</span>'}
-    <span class="sp"></span>
-    <button class="tool-chip ${(paint==='text'||paint==null)?'on':''}" data-act="roomtexttool" title="칸을 클릭해 자유 텍스트 입력">✎ 직접 입력</button>
-    <button class="tool-chip eraser ${paint==='erase'?'on':''}" data-act="roomerasetool">지우개</button>
-  </div>`;
-  const hint=paint&&paint!=='text'&&paint!=='erase'
-    ? `<span class="hint">· '${esc(paint)}' 선택됨 — 칸을 드래그하면 이름이 들어갑니다</span>`
-    : (paint==='erase'?`<span class="hint">· 지우개 — 드래그한 칸이 비워집니다</span>`
-      :`<span class="hint">· 직접 입력 — 칸을 클릭해 자유롭게 적습니다</span>`);
+  subscribeRoomEvents(ym);
+  const sess=state.roomSess;
+  if(!state.roomWeekStart) state.roomWeekStart=roomMonthFirstSunday(ym);
+  const days=roomWeekDates(state.roomWeekStart);
+  const ed=state.roomEdit;
 
-  const times=roomTimeRows();
-  const weeks=roomMonthWeeks(ym);
-  const N=SESSIONS.length;
-  const ed=state.roomEditCell;
-  function cell(date,sess,t,wi,di,si,isDayEnd){
-    const k=roomSlotKey(date,sess,t);
-    const v=roomCellVal(ym,k);
-    const editing=ed&&ed.ym===ym&&ed.slotKey===k;
-    if(editing){
-      return `<td class="gnt-cell room-pcell editing${isDayEnd?' day-end':''}"><input class="rc-in" id="roomCellIn" value="${esc(v||'')}" autocomplete="off" maxlength="20"></td>`;
-    }
-    const cls='gnt-cell room-pcell'+(isDayEnd?' day-end':'')+(v?' filled':'');
-    const sty=v?`background:${roomColor(v)}`:'';
-    const label=v?`<span class="rc-name">${esc(v)}</span>`:'';
-    return `<td class="${cls}" data-room="1" data-ym="${ym}" data-date="${date}" data-sess="${esc(sess)}" data-time="${esc(t)}" data-slot="${esc(k)}" data-col="${wi}-${di}-${si}" data-r="${times.indexOf(t)}" title="${esc(v||'')}"${sty?` style="${sty}"`:''}>${label}</td>`;
-  }
-  const weekBlocks=weeks.map((days,wi)=>{
-    const inDays=days.filter(d=>d.inMonth);
-    const range=`${mdLabel(days[0].date)} ~ ${mdLabel(days[6].date)}`;
-    let dayHead='<th class="gnt-corner" rowspan="2">시간</th>'+days.map(d=>{
-      const w=wdOf(d.date), wdCls=w===0?'sun':(w===6?'sat':'');
-      const dim=d.inMonth?'':' out';
-      return `<th class="gnt-day ${wdCls}${dim}" colspan="${N}">${mdLabel(d.date)} <span class="wd">${WD[w]}</span></th>`;
+  const tabs=SESSIONS.map(s=>
+    `<button class="rs-tab ${s===sess?'on':''}" data-act="roomsess" data-sess="${esc(s)}">${esc(s)}</button>`).join('');
+
+  // 시간 눈금(정시 라벨)
+  let gutter='';
+  for(let mn=CAL_START;mn<=CAL_END;mn+=60) gutter+=`<div class="cal-hr" style="top:${calMinToY(mn)}px">${calFmt(mn)}</div>`;
+  // 요일 헤더
+  const head=days.map(d=>{
+    const w=wdOf(d), wc=w===0?'sun':(w===6?'sat':''), dim=d.slice(0,7)===ym?'':' out';
+    return `<div class="cal-dhead ${wc}${dim}">${mdLabel(d)} <span class="wd">${WD[w]}</span></div>`;
+  }).join('');
+  // 요일별 컬럼 + 이벤트 블록
+  const bodyCols=days.map(d=>{
+    const evs=roomLaneLayout(roomDayEvents(ym,sess,d));
+    const blocks=evs.map(ev=>{
+      const editing=ed&&ed.eid===ev.eid;
+      const top=calMinToY(ev.a), h=Math.max(CAL_ROW_H-3,calMinToY(ev.b)-calMinToY(ev.a)-2);
+      const wpct=100/ev.lanes, left=ev.lane*wpct;
+      const inner=editing
+        ? `<input class="rev-in" id="roomEvIn" value="${esc(ev.n)}" autocomplete="off" maxlength="24">`
+        : `<span class="rev-label">${esc(ev.n||'(이름)')}</span><span class="rev-time">${calFmt(ev.a)}~${calFmt(ev.b)}</span>`;
+      return `<div class="cal-ev${editing?' editing':''}${ev.n?'':' empty'}" data-eid="${ev.eid}"
+        style="top:${top}px;height:${h}px;left:calc(${left}% + 1px);width:calc(${wpct}% - 3px);background:${roomColor(ev.n)}">
+        <div class="rev-rs rev-top"></div>${inner}
+        <button class="rev-x" data-act="roomevdel" data-eid="${ev.eid}" title="삭제">×</button>
+        <div class="rev-rs rev-bot"></div></div>`;
     }).join('');
-    let subHead=days.map(d=>SESSIONS.map((s,si)=>{
-      const last=si===N-1?'day-end':'';
-      return `<th class="gnt-sub ${last}" title="${esc(s)}">${esc(s)}</th>`;
-    }).join('')).join('');
-    let rows=times.map(t=>{
-      let cells='';
-      days.forEach((d,di)=>SESSIONS.forEach((s,si)=>{ cells+=cell(d.date,s,t,wi,di,si,si===N-1); }));
-      return `<tr><td class="rh">${t}</td>${cells}</tr>`;
-    }).join('');
-    return `<div class="week-label"><span class="wk">${wi+1}주차</span><span class="wkr">${range}</span></div>
-      <div class="scroll grid-touch"><table class="grid gantt rooms-table">
-        <thead><tr>${dayHead}</tr><tr>${subHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    const w=wdOf(d), wc=w===0?'sun':(w===6?'sat':'');
+    return `<div class="cal-col ${wc}" data-cal="1" data-day="${d}" style="height:${CAL_ROWS*CAL_ROW_H}px">${blocks}</div>`;
   }).join('');
 
+  const range=`${mdLabel(days[0])} ~ ${mdLabel(days[6])}`;
   return `<div class="card">
     <div class="card-head"><h2>${esc(roomYmLabel(ym))} 시간표</h2>
       <button class="btn ghost sm" data-act="roompng">📷 PNG 저장</button></div>
     <div class="page-intro"><div class="pi-h">✍️ 어떻게?</div>
-      <p>아래 <b>내 이름</b>에서 이름을 고른 뒤, 시간표의 원하는 칸(요일·세션·시간)을 <b>세로로 드래그</b>하면 그 칸에 이름이 들어갑니다. 같은 칸을 다시 드래그하면 지워집니다. <b>일정</b>처럼 자유 텍스트가 필요하면 <b>✎ 직접 입력</b>을 고르고 칸을 클릭해 적으세요. ${hint}</p>
+      <p>세션을 고르고 빈 곳을 <b>드래그</b>하면 그 시간만큼 블록이 생기고 바로 <b>이름</b>을 적을 수 있어요. 블록 <b>위/아래 끝을 끌면</b> 시간이 늘거나 줄고, <b>가운데를 잡고 끌면</b> 다른 시간·요일로 옮겨집니다. 겹치면 나란히 표시되고 <b>×</b>로 지웁니다. (모바일은 빈 곳을 <b>탭</b>하면 1시간 블록이 생겨요)</p>
     </div>
-    ${palette}
-    <div id="room-snapshot">${weekBlocks}</div>
+    <div class="rs-tabs">${tabs}</div>
+    <div class="cal-nav">
+      <button class="btn ghost sm" data-act="roomweek" data-d="-7">◀ 이전 주</button>
+      <span class="cal-range">${range}</span>
+      <button class="btn ghost sm" data-act="roomweek" data-d="7">다음 주 ▶</button>
+    </div>
+    <div id="room-snapshot" class="scroll grid-touch">
+      <div class="cal-grid">
+        <div class="cal-corner"></div>
+        <div class="cal-heads">${head}</div>
+        <div class="cal-gutter" style="height:${CAL_ROWS*CAL_ROW_H}px">${gutter}</div>
+        <div class="cal-body">${bodyCols}</div>
+      </div>
+    </div>
   </div>`;
 }
-function roomCellInline(date,sess,time){
-  const ym=state.roomYm; const k=roomSlotKey(date,sess,time);
-  state.roomEditCell={ym,slotKey:k,date,sess,time};
+function roomEvNew(day,a,b){
+  const ym=state.roomYm, sess=state.roomSess;
+  a=calClamp(calSnap(a)); b=calClamp(calSnap(b));
+  if(a>CAL_END-CAL_SLOT) a=CAL_END-CAL_SLOT;   // 끝 경계 탭 → 0분 블록 방지
+  if(b<a+CAL_SLOT) b=a+CAL_SLOT;
+  if(b>CAL_END) b=CAL_END;
+  const eid=genId('ev'); const obj={s:sess,d:day,a,b,n:''};
+  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
+  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
+  state.roomEdit={ym,eid,isNew:true};
   deferRender=false; doRender();
-  const i=$('roomCellIn'); if(i){i.focus();i.select();}
+  const i=$('roomEvIn'); if(i){i.focus();i.select();}
 }
-function roomCellWrite(ym,k,val){
-  state.roomCells[ym]=state.roomCells[ym]||{};
-  if(val){ state.roomCells[ym][k]=val; FB.set(R('roomCells/'+ym+'/'+k),val); }
-  else { delete state.roomCells[ym][k]; FB.remove(R('roomCells/'+ym+'/'+k)); }
+function roomEvWrite(ym,eid,obj){
+  state.roomEvents[ym]=state.roomEvents[ym]||{}; state.roomEvents[ym][eid]=obj;
+  FB.set(R('roomEvents/'+ym+'/'+eid),obj);
 }
-function saveRoomCellInline(){
-  const e=state.roomEditCell; if(!e) return;
-  const i=$('roomCellIn'); const val=i?i.value.trim():'';
-  roomCellWrite(e.ym,e.slotKey,val);
-  state.roomEditCell=null; deferRender=false; doRender();
+function roomEvDel(ym,eid){
+  if(state.roomEvents[ym]) delete state.roomEvents[ym][eid];
+  FB.remove(R('roomEvents/'+ym+'/'+eid));
+  if(state.roomEdit&&state.roomEdit.eid===eid) state.roomEdit=null;
+  render();
 }
+function roomEvEdit(eid){
+  state.roomEdit={ym:state.roomYm,eid,isNew:false};
+  deferRender=false; doRender();
+  const i=$('roomEvIn'); if(i){i.focus();i.select();}
+}
+function saveRoomEv(){
+  const ed=state.roomEdit; if(!ed) return;
+  const i=$('roomEvIn'); const val=i?i.value.trim():'';
+  const ev=calEvDataFor(ed.ym,ed.eid);
+  state.roomEdit=null;
+  if(!ev){ doRender(); return; }
+  if(!val && ed.isNew){ roomEvDel(ed.ym,ed.eid); return; }
+  ev.n=val; FB.set(R('roomEvents/'+ed.ym+'/'+ed.eid),ev);
+  deferRender=false; doRender();
+}
+function calEvDataFor(ym,eid){ const m=state.roomEvents[ym]; return m?m[eid]:null; }
 function createRoomMonth(){
   const i=$('newMonthIn'); const ym=i?i.value:''; if(!ym){ toast('달을 고르세요'); return; }
   FB.set(R('roomMonths/'+ym),{createdAt:Date.now()});
@@ -1511,23 +1574,9 @@ function createRoomMonth(){
 function delRoomMonth(ym){
   if(!confirm(`${roomYmLabel(ym)} 시간표를 삭제할까요? 이 달의 모든 예약이 지워집니다.`)) return;
   FB.remove(R('roomMonths/'+ym));
-  FB.remove(R('roomCells/'+ym));
-  delete state.roomCells[ym];
+  FB.remove(R('roomEvents/'+ym));
+  delete state.roomEvents[ym];
   if(state.roomYm===ym){ state.roomYm=''; state.screen='roomlist'; }
-  render();
-}
-function addRoomName(){
-  const i=$('newRoomName'); const nm=i?i.value.trim():''; if(!nm){ return; }
-  const exists=Object.values(state.roomNames||{}).includes(nm);
-  if(!exists){ const id=genId('rn'); FB.set(R('roomNames/'+id),nm); state.roomNames=state.roomNames||{}; state.roomNames[id]=nm; }
-  state.roomPaint=nm; lsSet('roomMyName',nm);
-  deferRender=false; doRender();
-  const ni=$('newRoomName'); if(ni) ni.value='';
-}
-function delRoomName(nm){
-  if(!confirm(`'${nm}' 이름을 목록에서 지울까요? (이미 적힌 칸은 남습니다)`)) return;
-  for(const id in (state.roomNames||{})) if(state.roomNames[id]===nm){ FB.remove(R('roomNames/'+id)); delete state.roomNames[id]; }
-  if(state.roomPaint===nm) state.roomPaint='text';
   render();
 }
 async function exportRoomPNG(){
@@ -2240,11 +2289,9 @@ function bindEvents(){
     if(act==='openroommonth'){location.href=location.pathname+'?view=rooms&m='+t.dataset.m;return;}
     if(act==='createmonth'){createRoomMonth();return;}
     if(act==='delmonth'){e.stopPropagation();delRoomMonth(t.dataset.m);return;}
-    if(act==='roomaddname'){addRoomName();return;}
-    if(act==='roomdelname'){e.stopPropagation();delRoomName(t.dataset.name);return;}
-    if(act==='roompickname'){state.roomPaint=(state.roomPaint===t.dataset.name)?'text':t.dataset.name;render();return;}
-    if(act==='roomtexttool'){state.roomPaint='text';render();return;}
-    if(act==='roomerasetool'){state.roomPaint=(state.roomPaint==='erase')?'text':'erase';render();return;}
+    if(act==='roomsess'){state.roomSess=t.dataset.sess;state.roomEdit=null;render();return;}
+    if(act==='roomweek'){state.roomWeekStart=roomWeekShift(state.roomWeekStart,+t.dataset.d);state.roomEdit=null;render();return;}
+    if(act==='roomevdel'){e.stopPropagation();roomEvDel(state.roomYm,t.dataset.eid);return;}
     if(act==='roompng'){exportRoomPNG();return;}
     if(act==='copycode'){copyCode();return;}
     if(act==='help'){state.showHelp=true;render();return;}
@@ -2666,114 +2713,118 @@ function bindEvents(){
     gTouchCell=null;
   });
 
-  /* ===== 월별 시간표 — 이름 드래그 칠하기 + 직접 입력 ===== */
-  let rgGrid=null, rgCol='', rgR0=0, rgR1=0, rgSnap={}, rgSetVal=null, rgYm='';
-  let rgTouch=null, rgSx=0, rgSy=0, rgHold=null;
-  function rgRenderCell(td,val){
-    td.classList.toggle('filled',!!val);
-    td.style.background=val?roomColor(val):'';
-    td.innerHTML=val?`<span class="rc-name">${esc(val)}</span>`:'';
-    td.title=val||'';
+  /* ===== 월별 시간표 — Notion 캘린더식 블록 (생성/이동/리사이즈) ===== */
+  let cvMode=null, cvEl=null, cvEid='', cvDay='', cvName='', cvEdge='', cvSess='';
+  let cvA=0, cvB=0, cvDur=0, cvStartMin=0, cvOffMin=0;
+  let cvSx=0, cvSy=0, cvMoved=false, cvType='', cvGhost=null, cvDayEl=null;
+  const calRawMin=(dayEl,clientY)=>{ const r=dayEl.getBoundingClientRect(); return CAL_START+(clientY-r.top)/CAL_ROW_H*CAL_SLOT; };
+  const calMinAt=(dayEl,clientY)=>calClamp(calSnap(calRawMin(dayEl,clientY)));
+  const calColAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el?el.closest('.cal-col[data-cal]'):null; };
+  const styleBlock=(el,a,b)=>{ el.style.top=calMinToY(a)+'px'; el.style.height=Math.max(CAL_ROW_H-3,calMinToY(b)-calMinToY(a)-2)+'px'; };
+  function startCalCreate(dayEl,e){
+    cvMode='create'; cvDayEl=dayEl; cvDay=dayEl.dataset.day; cvType=e.pointerType;
+    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvStartMin=calMinAt(dayEl,e.clientY); cvA=cvStartMin; cvB=Math.min(CAL_END,cvStartMin+CAL_SLOT);
+    if(e.pointerType==='mouse'){
+      e.preventDefault(); calDragging=true; enterDrag();
+      cvGhost=document.createElement('div'); cvGhost.className='cal-ev ghost';
+      cvGhost.style.left='1px'; cvGhost.style.width='calc(100% - 3px)'; cvGhost.style.background=roomColor('');
+      styleBlock(cvGhost,cvA,cvB); dayEl.appendChild(cvGhost);
+      try{dayEl.setPointerCapture(e.pointerId);}catch(_){}
+    }
   }
-  function applyRoomDrag(){
-    if(!rgGrid) return;
-    const minR=Math.min(rgR0,rgR1),maxR=Math.max(rgR0,rgR1);
-    rgGrid.querySelectorAll(`td.gnt-cell[data-col="${rgCol}"]`).forEach(td=>{
-      const r=+td.dataset.r, k=td.dataset.slot;
-      const was=rgSnap[k]||'';
-      rgRenderCell(td,(r<minR||r>maxR)?was:(rgSetVal||''));
-    });
+  function startCalMove(evEl,e){
+    const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
+    cvMode='move'; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=e.pointerType;
+    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvA=d.a; cvB=d.b; cvDur=d.b-d.a; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
+    cvOffMin=calRawMin(cvDayEl,e.clientY)-d.a;
+    calDragging=true; enterDrag();
+    evEl.classList.add('dragging'); evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
+    evEl.style.left='1px'; evEl.style.width='calc(100% - 3px)';
+    try{evEl.setPointerCapture(e.pointerId);}catch(_){}
+    if(e.pointerType==='mouse') e.preventDefault();
   }
-  function commitRoomDrag(){
-    if(!rgGrid) return;
-    const minR=Math.min(rgR0,rgR1),maxR=Math.max(rgR0,rgR1);
-    const updates={};
-    rgGrid.querySelectorAll(`td.gnt-cell[data-col="${rgCol}"]`).forEach(td=>{
-      const r=+td.dataset.r; if(r<minR||r>maxR) return;
-      const k=td.dataset.slot; const was=rgSnap[k]||''; const now=rgSetVal||'';
-      if(now!==was) updates[k]=now||null;
-    });
-    if(!Object.keys(updates).length) return;
-    state.roomCells[rgYm]=state.roomCells[rgYm]||{};
-    for(const k in updates){ if(updates[k]) state.roomCells[rgYm][k]=updates[k]; else delete state.roomCells[rgYm][k]; }
-    FB.update(R('roomCells/'+rgYm),updates);
-  }
-  function startRoomDrag(td){
-    const p=state.roomPaint;
-    rgYm=td.dataset.ym; rgCol=td.dataset.col; rgR0=rgR1=+td.dataset.r; rgGrid=td.closest('table');
-    rgSnap={...(state.roomCells[rgYm]||{})};
-    const cur=rgSnap[td.dataset.slot]||'';
-    rgSetVal=(p==='erase')?null:(cur===p?null:p); // 같은 이름이면 지우기 토글
-    rgPainting=true; enterDrag(); applyRoomDrag();
-  }
-  function roomTapPaint(td){
-    const p=state.roomPaint; const ym=td.dataset.ym, k=td.dataset.slot;
-    const cur=(state.roomCells[ym]||{})[k]||'';
-    const val=(p==='erase')?'':(cur===p?'':p);
-    roomCellWrite(ym,k,val); render();
+  function startCalResize(evEl,edge,e){
+    const d=calEvDataFor(state.roomYm,evEl.dataset.eid); if(!d) return;
+    cvMode='resize'; cvEdge=edge; cvEl=evEl; cvEid=evEl.dataset.eid; cvType=e.pointerType;
+    cvSx=e.clientX; cvSy=e.clientY; cvMoved=false;
+    cvA=d.a; cvB=d.b; cvName=d.n||''; cvDay=d.d; cvSess=d.s||state.roomSess; cvDayEl=evEl.parentElement;
+    calDragging=true; enterDrag();
+    evEl.style.pointerEvents='none'; evEl.style.zIndex='6';
+    try{evEl.setPointerCapture(e.pointerId);}catch(_){}
+    if(e.pointerType==='mouse') e.preventDefault();
   }
   app.addEventListener('pointerdown',e=>{
-    const td=e.target.closest('td.gnt-cell[data-room]'); if(!td) return;
-    const textTool=(state.roomPaint==='text'||state.roomPaint==null);
-    if(textTool){ rgTouch=td; rgSx=e.clientX; rgSy=e.clientY; return; } // 클릭→인라인 편집(pointerup)
-    if(e.pointerType==='mouse'){ e.preventDefault(); startRoomDrag(td); }
-    else {
-      rgTouch=td; rgSx=e.clientX; rgSy=e.clientY;
-      if(rgHold)clearTimeout(rgHold);
-      const pid=e.pointerId;
-      rgHold=setTimeout(()=>{ rgHold=null; try{td.setPointerCapture(pid);}catch(_){}
-        startRoomDrag(td); if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
-      },LONG_PRESS_MS);
-    }
+    const rs=e.target.closest('.rev-rs');
+    if(rs){ const el=rs.closest('.cal-ev'); if(el&&!el.classList.contains('editing')) startCalResize(el,rs.classList.contains('rev-top')?'top':'bot',e); return; }
+    if(e.target.closest('.rev-x')) return;           // 삭제 버튼 → click 핸들러
+    const evEl=e.target.closest('.cal-ev');
+    if(evEl){ if(!evEl.classList.contains('editing')) startCalMove(evEl,e); return; }
+    const dayEl=e.target.closest('.cal-col[data-cal]');
+    if(dayEl) startCalCreate(dayEl,e);
   });
   app.addEventListener('pointermove',e=>{
-    if(rgHold){ if(Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy)>10){ clearTimeout(rgHold);rgHold=null; } return; }
-    if(!rgPainting||e.pointerType==='mouse') return;
+    if(!cvMode) return;
+    if(Math.abs(e.clientX-cvSx)+Math.abs(e.clientY-cvSy)>5) cvMoved=true;
+    if(cvMode==='create'){
+      if(cvType!=='mouse') return;                   // 터치 생성은 탭만(스크롤 허용)
+      e.preventDefault();
+      const m=calMinAt(cvDayEl,e.clientY);
+      cvA=Math.min(cvStartMin,m); cvB=Math.max(cvStartMin,m);
+      if(cvB-cvA<CAL_SLOT){ if(cvA+CAL_SLOT<=CAL_END) cvB=cvA+CAL_SLOT; else cvA=cvB-CAL_SLOT; }
+      styleBlock(cvGhost,cvA,cvB); return;
+    }
     e.preventDefault();
-    const el=document.elementFromPoint(e.clientX,e.clientY); if(!el) return;
-    const td=el.closest('td.gnt-cell[data-room]'); if(!td) return;
-    if(td.closest('table')!==rgGrid||td.dataset.col!==rgCol) return;
-    const r=+td.dataset.r; if(r===rgR1) return; rgR1=r; applyRoomDrag();
+    if(cvMode==='move'){
+      const tgt=calColAt(e.clientX,e.clientY)||cvDayEl;
+      if(tgt!==cvDayEl){ cvDayEl=tgt; cvDay=tgt.dataset.day; tgt.appendChild(cvEl); }
+      let na=calSnap(calRawMin(cvDayEl,e.clientY)-cvOffMin);
+      na=Math.max(CAL_START,Math.min(CAL_END-cvDur,na));
+      cvA=na; cvB=na+cvDur; styleBlock(cvEl,cvA,cvB);
+    } else {                                          // resize
+      const m=calMinAt(cvDayEl,e.clientY);
+      if(cvEdge==='top') cvA=Math.min(m,cvB-CAL_SLOT); else cvB=Math.max(m,cvA+CAL_SLOT);
+      cvA=calClamp(cvA); cvB=calClamp(cvB); styleBlock(cvEl,cvA,cvB);
+    }
   },{passive:false});
-  app.addEventListener('pointerover',e=>{
-    if(!rgPainting||e.pointerType!=='mouse') return;
-    const td=e.target.closest('td.gnt-cell[data-room]'); if(!td) return;
-    if(td.closest('table')!==rgGrid||td.dataset.col!==rgCol) return;
-    const r=+td.dataset.r; if(r===rgR1) return; rgR1=r; applyRoomDrag();
-  });
   window.addEventListener('pointerup',e=>{
-    if(rgHold){
-      clearTimeout(rgHold);rgHold=null;
-      if(rgTouch){
-        const moved=Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy);
-        const td=document.elementFromPoint(e.clientX,e.clientY);
-        if(moved<12&&td&&td.closest('td.gnt-cell')===rgTouch){
-          const textTool=(state.roomPaint==='text'||state.roomPaint==null);
-          if(textTool) roomCellInline(rgTouch.dataset.date,rgTouch.dataset.sess,rgTouch.dataset.time);
-          else roomTapPaint(rgTouch);
-        }
-      }
-      rgTouch=null; return;
+    if(!cvMode) return;
+    const mode=cvMode; cvMode=null; calDragging=false;
+    if(mode==='create'){
+      if(cvGhost){ cvGhost.remove(); cvGhost=null; }
+      exitDrag();
+      if(cvType==='mouse') roomEvNew(cvDay,cvA,cvB);
+      else if(!cvMoved){ roomEvNew(cvDay,cvStartMin,Math.min(CAL_END,cvStartMin+60)); }
+      else if(deferRender){ deferRender=false; render(); }
+      return;
     }
-    if(rgPainting){ rgPainting=false; commitRoomDrag(); rgGrid=null; exitDrag(); if(deferRender){deferRender=false;render();} return; }
-    if(rgTouch){ // 마우스 텍스트툴 클릭
-      const moved=Math.abs(e.clientX-rgSx)+Math.abs(e.clientY-rgSy);
-      const td=document.elementFromPoint(e.clientX,e.clientY);
-      if(moved<12&&td&&td.closest('td.gnt-cell')===rgTouch)
-        roomCellInline(rgTouch.dataset.date,rgTouch.dataset.sess,rgTouch.dataset.time);
-      rgTouch=null;
-    }
+    exitDrag();
+    if(cvEl){ cvEl.classList.remove('dragging'); cvEl.style.pointerEvents=''; cvEl.style.zIndex=''; }
+    cvEl=null;
+    if(mode==='move' && !cvMoved){ roomEvEdit(cvEid); return; }
+    roomEvWrite(state.roomYm,cvEid,{s:cvSess,d:cvDay,a:cvA,b:cvB,n:cvName});
+    deferRender=false; render();
+  });
+  window.addEventListener('pointercancel',()=>{
+    if(!cvMode) return;
+    cvMode=null; calDragging=false; exitDrag();
+    if(cvGhost){ cvGhost.remove(); cvGhost=null; }
+    if(cvEl){ cvEl.classList.remove('dragging'); cvEl.style.pointerEvents=''; cvEl.style.zIndex=''; cvEl=null; }
+    render();
   });
 
-  /* 월별 시간표 셀 인라인 텍스트 (직접 입력) */
+  /* 월별 시간표 — 블록 라벨 인라인 편집 */
   app.addEventListener('keydown',e=>{
-    if(e.target.id!=='roomCellIn') return;
-    if(e.key==='Enter'){ e.preventDefault(); saveRoomCellInline(); }
-    else if(e.key==='Escape'){ e.preventDefault(); state.roomEditCell=null; deferRender=false; doRender(); }
+    if(e.target.id!=='roomEvIn') return;
+    if(e.key==='Enter'){ e.preventDefault(); saveRoomEv(); }
+    else if(e.key==='Escape'){ e.preventDefault();
+      const ed=state.roomEdit;
+      if(ed&&ed.isNew) roomEvDel(ed.ym,ed.eid);
+      else { state.roomEdit=null; deferRender=false; doRender(); }
+    }
   });
-  app.addEventListener('blur',e=>{
-    if(e.target.id==='roomCellIn'){ saveRoomCellInline(); }
-  },true);
+  app.addEventListener('blur',e=>{ if(e.target.id==='roomEvIn') saveRoomEv(); },true);
 }
 
 /* ---------------- 시작 ---------------- */
@@ -2793,7 +2844,7 @@ async function start(){
     subscribeProject(pid);
   }else if(view==='rooms'){
     subscribeRoomMeta();
-    if(m){ state.screen='roommonth'; state.roomYm=m; state.roomWeekStart=roomMonthFirstSunday(m); subscribeRoomCells(m); }
+    if(m){ state.screen='roommonth'; state.roomYm=m; state.roomWeekStart=roomMonthFirstSunday(m); subscribeRoomEvents(m); }
     else state.screen='roomlist';
   }else if(view==='schedule'){
     state.screen='landing'; subscribeIndex();
