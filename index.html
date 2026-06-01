@@ -145,34 +145,29 @@
   .mode-btn.on{background:var(--ink);border-color:var(--ink);color:#fff;}
   .mode-btn.ext.on{background:#7c5cff;border-color:#7c5cff;}
   .mode-hint{font-size:11.5px;color:var(--muted);margin-left:2px;}
-  /* 그룹 섹션 */
-  .grp-intro{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
-  .grp-intro b{color:var(--ink);}
-  .grp-box{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:10px;
-    background:var(--surface);transition:border-color var(--t);}
-  .grp-box:hover{border-color:var(--line-2);}
-  .grp-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-  .grp-idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;color:var(--accent);
-    font-size:14px;min-width:18px;}
-  .grp-name{flex:1;border:1px solid transparent;background:transparent;padding:5px 7px;border-radius:4px;
-    font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);}
-  .grp-name:hover:not(:disabled){background:var(--paper);border-color:var(--line);}
-  .grp-name:focus{background:var(--paper);border-color:var(--ink);outline:none;}
-  .grp-row{display:flex;align-items:flex-start;gap:10px;margin:6px 0;}
-  .grp-lbl{flex:none;width:44px;font-size:11.5px;font-weight:700;color:var(--muted);padding-top:6px;}
-  .grp-chips{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
-  .grp-chip{border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
-    font-family:inherit;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;
-    color:var(--muted);transition:all var(--t);}
-  .grp-chip:hover:not(:disabled){border-color:var(--ink);color:var(--ink);}
-  .grp-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .grp-chip:disabled{opacity:.55;cursor:default;}
-  .grp-empty{font-size:12px;color:var(--muted-2);padding:6px 0;}
-  /* 결과 탭 그룹 필터 */
+  /* 결과 탭 그룹 선택 */
   .group-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;
     padding:8px 12px;background:var(--paper);border-radius:var(--r-sm);border:1px solid var(--line);}
   .group-filter select{padding:5px 9px;border:1px solid var(--line-2);border-radius:var(--r-sm);
     background:var(--surface);font-size:13px;font-family:inherit;color:var(--ink);}
+  /* 설정 탭 — 그룹 카드 (활동/참여자/참여표 묶음) */
+  .grp-card{border-left:4px solid var(--accent);}
+  .grp-card .grp-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;
+    padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .grp-card .grp-idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+    font-size:18px;color:var(--accent);min-width:22px;}
+  .grp-card .grp-name{flex:1;border:1px solid transparent;background:transparent;
+    padding:6px 9px;border-radius:4px;font-family:inherit;font-size:15px;font-weight:700;color:var(--ink);}
+  .grp-card .grp-name:hover:not(:disabled){background:var(--paper);border-color:var(--line);}
+  .grp-card .grp-name:focus{background:var(--paper);border-color:var(--ink);outline:none;}
+  .grp-sub{margin:14px 0;padding-top:8px;}
+  .grp-sub + .grp-sub{border-top:1px dashed var(--line);padding-top:14px;}
+  .grp-sub-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;margin-bottom:10px;}
+  .grp-add{display:flex;gap:6px;align-items:center;}
+  .grp-add-in{padding:5px 9px;border:1px solid var(--line-2);border-radius:var(--r-sm);
+    background:var(--surface);font-size:13px;width:120px;font-family:inherit;color:var(--ink);}
+  .grp-add-in:focus{border-color:var(--ink);outline:none;}
   .idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
     color:var(--muted-2);font-size:12px;width:24px;text-align:right;}
   .x{border:none;background:none;color:var(--muted);cursor:pointer;
@@ -949,6 +944,7 @@ function subscribeIndex(){
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
+    if(state.config) migrateLegacyGroups();   // 구버전 데이터 → 그룹 스키마 자동 이전 (멱등)
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
     if(state.screen==='project') render(); });
@@ -965,16 +961,18 @@ async function createProject(){
   const base=Date.now();
   const s1=genId('s'), s2=genId('s'), s3=genId('s');
   const u1=genId('u'), u2=genId('u'), u3=genId('u');
-  const songs={[s1]:{name:'활동 1',ts:base},[s2]:{name:'활동 2',ts:base+1},[s3]:{name:'활동 3',ts:base+2}};
+  const g1=genId('g');
+  const songs={[s1]:{name:'활동 1',ts:base,gid:g1},[s2]:{name:'활동 2',ts:base+1,gid:g1},[s3]:{name:'활동 3',ts:base+2,gid:g1}};
   const people={[u1]:{name:'참여자 1',ts:base},[u2]:{name:'참여자 2',ts:base+1},[u3]:{name:'참여자 3',ts:base+2}};
   const matrix={
     [s1]:{[u1]:true,[u2]:true},
     [s2]:{[u2]:true,[u3]:true},
     [s3]:{[u1]:true,[u3]:true}
   };
+  const groups={ [g1]:{name:'그룹 1', members:{[u1]:true,[u2]:true,[u3]:true}, ts:base} };
   const cfg={ name:'새 프로젝트', startDate:fmtDate(t), endDate:fmtDate(e),
     startHour:18, endHour:24, slotMinutes:60, locked:false,
-    songs, people, matrix };
+    songs, people, matrix, groups };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
   lsSet('v_'+pid,String(Date.now()));
@@ -989,21 +987,61 @@ function cfgUpdate(obj){
   if(obj.name!==undefined)
     FB.update(R('projectIndex/'+state.pid),{name:obj.name});
 }
-function addSong(){
+function addSong(gid){            // 그룹 컨텍스트에서만 호출됨(legacy enter 핸들러에서도 사용)
   if(cfgLocked()) return;
-  const sid=genId('s');
-  const obj={name:'새 활동',ts:Date.now()};
-  state.config=state.config||{};
-  state.config.songs=state.config.songs||{};
-  state.config.songs[sid]=obj; // 낙관적 로컬 업데이트 (Enter 직후 새 입력란이 즉시 보이도록)
-  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),obj);
-  return sid;
+  const targetGid = gid || firstGroupId();
+  if(!targetGid){                  // 그룹이 하나도 없으면 자동 생성
+    const g=addGroup(); return addSongToGroup(g);
+  }
+  return addSongToGroup(targetGid);
+}
+function migrateLegacyGroups(){    // 멱등: 옛 데이터 -> 새 스키마
+  const c=state.config; if(!c) return false;
+  let changed=false;
+  // 1) 이전 시도(my prior impl)에서 group.songs:{sid:true} 가 있으면 song.gid 로 옮김
+  for(const gid in (c.groups||{})){
+    const g=c.groups[gid]; if(!g.songs) continue;
+    for(const sid in g.songs){
+      if(c.songs?.[sid] && !c.songs[sid].gid){
+        c.songs[sid].gid=gid;
+        FB.update(R('projects/'+state.pid+'/config/songs/'+sid),{gid});
+        changed=true;
+      }
+    }
+    delete g.songs;
+    FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/songs'));
+  }
+  // 2) gid 없는 곡들 -> 첫 그룹 또는 새 '그룹 1' 으로 묶기
+  const ungrouped=Object.keys(c.songs||{}).filter(s=>!c.songs[s].gid);
+  if(ungrouped.length){
+    let defGid=sortedGroupIds()[0];
+    if(!defGid){
+      defGid=genId('g');
+      const g={name:'그룹 1', members:{}, ts:Date.now()};
+      c.groups=c.groups||{}; c.groups[defGid]=g;
+      FB.set(R('projects/'+state.pid+'/config/groups/'+defGid),g);
+      // 전역 인물 전부를 이 기본 그룹으로
+      for(const uid in (c.people||{})){
+        g.members[uid]=true;
+        FB.set(R('projects/'+state.pid+'/config/groups/'+defGid+'/members/'+uid),true);
+      }
+      changed=true;
+    }
+    ungrouped.forEach(sid=>{
+      c.songs[sid].gid=defGid;
+      FB.update(R('projects/'+state.pid+'/config/songs/'+sid),{gid:defGid});
+    });
+    changed=true;
+  }
+  return changed;
 }
 function delSong(sid){
   if(cfgLocked()) return;
   FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
   FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
-  // 모든 그룹에서 이 곡 제거
+  FB.remove(R('projects/'+state.pid+'/schedule/'+sid));      // 스케줄 정리
+  if(state.schedule?.[sid]) delete state.schedule[sid];
+  // (이전 스키마 호환) 모든 그룹의 옛 songs 맵에서도 제거
   for(const gid in (state.config.groups||{})) FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/songs/'+sid));
 }
 function addPerson(){
@@ -1163,25 +1201,22 @@ function matrixToggle(sid,uid){
   const p='projects/'+state.pid+'/config/matrix/'+sid+'/'+uid;
   on?FB.remove(R(p)):FB.set(R(p),true);
 }
-/* ---- 그룹: {name, members:{uid:true}, songs:{sid:true}, ts} ---- */
+/* ---- 그룹: {name, members:{uid:true}, ts}. 곡은 song.gid로 그룹 소속을 갖는다. ---- */
 const groupMembers=g=>Object.keys(g&&g.members||{}).filter(u=>g.members[u]);
-const groupSongs=g=>Object.keys(g&&g.songs||{}).filter(s=>g.songs[s]);
-function pairInAnyGroup(sid,uid,exceptGid){    // (sid,uid)이 다른 그룹에도 들어있나
-  const gs=state.config?.groups||{};
-  for(const gid in gs){ if(gid===exceptGid) continue;
-    if(gs[gid].members?.[uid] && gs[gid].songs?.[sid]) return true; }
-  return false;
-}
-function mxSet(sid,uid,on){
-  state.config.matrix=state.config.matrix||{};
-  state.config.matrix[sid]=state.config.matrix[sid]||{};
-  if(on){ state.config.matrix[sid][uid]=true; FB.set(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid),true); }
-  else { delete state.config.matrix[sid][uid]; FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid)); }
+const groupSongIds=gid=>Object.keys(state.config?.songs||{}).filter(s=>state.config.songs[s].gid===gid);
+const sortedGroupIds=()=>sortedIds(state.config?.groups||{});
+const firstGroupId=()=>sortedGroupIds()[0]||'';
+function findPersonByName(name){
+  const ppl=state.config?.people||{};
+  const norm=name.trim().toLowerCase();
+  for(const uid in ppl){ if((ppl[uid]?.name||'').trim().toLowerCase()===norm) return uid; }
+  return '';
 }
 function addGroup(){
-  if(cfgLocked()) return;
+  if(cfgLocked()) return '';
   const gid=genId('g');
-  const obj={name:'새 그룹', members:{}, songs:{}, ts:Date.now()};
+  const n=(Object.keys(state.config.groups||{}).length)+1;
+  const obj={name:'그룹 '+n, members:{}, ts:Date.now()};
   state.config.groups=state.config.groups||{}; state.config.groups[gid]=obj;
   FB.set(R('projects/'+state.pid+'/config/groups/'+gid),obj);
   return gid;
@@ -1189,15 +1224,19 @@ function addGroup(){
 function delGroup(gid){
   if(cfgLocked()) return;
   const g=state.config.groups?.[gid]; if(!g) return;
-  if(!confirm(`'${itemName(g)}' 그룹을 삭제할까요? (다른 그룹에 같은 짝이 없는 참여표 항목도 함께 정리됩니다)`)) return;
-  // 다른 그룹과 겹치지 않는 (sid,uid) 짝의 참여표 제거
-  const mems=groupMembers(g), sgs=groupSongs(g);
-  mems.forEach(uid=>sgs.forEach(sid=>{
-    if(!pairInAnyGroup(sid,uid,gid)) mxSet(sid,uid,false);
-  }));
+  const sids=groupSongIds(gid);
+  if(!confirm(`'${itemName(g)}' 그룹을 삭제할까요? (이 그룹의 활동 ${sids.length}개와 참여표 항목이 모두 삭제됩니다. 참여자는 다른 그룹에 있으면 남고, 없으면 빈 그룹 멤버 자리만 비워집니다.)`)) return;
+  // 이 그룹의 곡 + 매트릭스 삭제 (전역 schedule도 정리)
+  sids.forEach(sid=>{
+    if(state.config.songs?.[sid]) delete state.config.songs[sid];
+    FB.remove(R('projects/'+state.pid+'/config/songs/'+sid));
+    FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid));
+    FB.remove(R('projects/'+state.pid+'/schedule/'+sid));
+    if(state.schedule?.[sid]) delete state.schedule[sid];
+  });
   delete state.config.groups[gid];
   FB.remove(R('projects/'+state.pid+'/config/groups/'+gid));
-  if(state.groupFilter===gid) state.groupFilter='';
+  if(state.groupFilter===gid) state.groupFilter=firstGroupId();
   doRender();
 }
 function renameGroup(gid,name){
@@ -1206,27 +1245,44 @@ function renameGroup(gid,name){
   g.name=name||'그룹';
   FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/name'),g.name);
 }
-function toggleGroupMember(gid,uid){
-  if(cfgLocked()) return;
-  const g=state.config.groups?.[gid]; if(!g) return;
-  g.members=g.members||{};
-  const on=!!g.members[uid];
-  if(on){ delete g.members[uid]; FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid));
-    groupSongs(g).forEach(sid=>{ if(!pairInAnyGroup(sid,uid,gid)) mxSet(sid,uid,false); }); }
-  else { g.members[uid]=true; FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid),true);
-    groupSongs(g).forEach(sid=>mxSet(sid,uid,true)); }
-  doRender();
+function addSongToGroup(gid){
+  if(cfgLocked()) return '';
+  if(!state.config.groups?.[gid]) return '';
+  const sid=genId('s');
+  const obj={name:'새 활동', ts:Date.now(), gid};
+  state.config=state.config||{}; state.config.songs=state.config.songs||{};
+  state.config.songs[sid]=obj;
+  FB.set(R('projects/'+state.pid+'/config/songs/'+sid),obj);
+  return sid;
 }
-function toggleGroupSong(gid,sid){
+function addMemberToGroup(gid,rawName){
+  if(cfgLocked()) return '';
+  const g=state.config.groups?.[gid]; if(!g) return '';
+  const name=(rawName||'').trim(); if(!name){ toast('이름을 입력하세요'); return ''; }
+  let uid=findPersonByName(name);
+  if(!uid){
+    uid=genId('u');
+    const obj={name, ts:Date.now()};
+    state.config.people=state.config.people||{}; state.config.people[uid]=obj;
+    FB.set(R('projects/'+state.pid+'/config/people/'+uid),obj);
+  }
+  if(g.members?.[uid]){ toast('이미 이 그룹에 있는 사람입니다'); return uid; }
+  g.members=g.members||{}; g.members[uid]=true;
+  FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid),true);
+  return uid;
+}
+function removeMemberFromGroup(gid,uid){
   if(cfgLocked()) return;
-  const g=state.config.groups?.[gid]; if(!g) return;
-  g.songs=g.songs||{};
-  const on=!!g.songs[sid];
-  if(on){ delete g.songs[sid]; FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/songs/'+sid));
-    groupMembers(g).forEach(uid=>{ if(!pairInAnyGroup(sid,uid,gid)) mxSet(sid,uid,false); }); }
-  else { g.songs[sid]=true; FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/songs/'+sid),true);
-    groupMembers(g).forEach(uid=>mxSet(sid,uid,true)); }
-  doRender();
+  const g=state.config.groups?.[gid]; if(!g||!g.members?.[uid]) return;
+  delete g.members[uid];
+  FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid));
+  // 이 그룹의 곡들에서 이 사람의 매트릭스 항목 정리
+  groupSongIds(gid).forEach(sid=>{
+    if(state.config.matrix?.[sid]?.[uid]){
+      delete state.config.matrix[sid][uid];
+      FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid));
+    }
+  });
 }
 /* 가벼운 해시 — 우발적 수정 방지용 소프트 잠금 (보안용 아님) */
 function lockHash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return 'h'+h.toString(36); }
@@ -1507,61 +1563,72 @@ function viewSetup(){
   const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
     o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
 
-  let songRows=sIds.length? sIds.map((id,i)=>
-    `<div class="list-item"><span class="idx">${i+1}</span>
-      <input type="text" value="${esc(itemName(songs[id]))}" ${dis}
-        data-act="songname" data-sid="${id}">
-      <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 활동이 없습니다.</div>';
-
-  let pplRows=pIds.length? pIds.map((id,i)=>
-    `<div class="list-item"><span class="idx">${i+1}</span>
-      <input type="text" value="${esc(itemName(people[id]))}" ${dis}
-        data-act="personname" data-uid="${id}">
-      <button class="x" data-act="delperson" data-uid="${id}" ${dis?'disabled':''} title="삭제">×</button>
-    </div>`).join('') : '<div class="empty" style="padding:24px 12px">아직 참여자가 없습니다.</div>';
-
-  // 그룹 섹션
+  // ── 그룹 단위 섹션 (활동/참여자/참여표를 그룹마다) ──
   const groups=c.groups||{}; const gIds=sortedIds(groups);
-  const grpRows=gIds.length? gIds.map((gid,gi)=>{
-    const g=groups[gid];
-    const memChips=pIds.length? pIds.map(uid=>{
-      const on=!!g.members?.[uid];
-      return `<button class="grp-chip ${on?'on':''}" data-act="grpmem" data-gid="${gid}" data-uid="${uid}" ${dis}>${esc(itemName(people[uid]))}</button>`;
-    }).join('') : '<span class="grp-empty">참여자가 없습니다</span>';
-    const sgChips=sIds.length? sIds.map(sid=>{
-      const on=!!g.songs?.[sid];
-      return `<button class="grp-chip ${on?'on':''}" data-act="grpsong" data-gid="${gid}" data-sid="${sid}" ${dis}>${esc(itemName(songs[sid]))}</button>`;
-    }).join('') : '<span class="grp-empty">활동이 없습니다</span>';
-    return `<div class="grp-box">
+  function renderGroupCard(gid,gi){
+    const g=groups[gid]||{};
+    const gSongIds=sortedIds(songs).filter(s=>songs[s].gid===gid);
+    const gMemIds=Object.keys(g.members||{}).filter(u=>people[u]).sort((a,b)=>itemTs(people[a])-itemTs(people[b]));
+    const sRows=gSongIds.length? gSongIds.map((id,i)=>
+      `<div class="list-item"><span class="idx">${i+1}</span>
+        <input type="text" value="${esc(itemName(songs[id]))}" ${dis} data-act="songname" data-sid="${id}" data-gid="${gid}">
+        <button class="x" data-act="delsong" data-sid="${id}" ${dis?'disabled':''} title="삭제">×</button>
+      </div>`).join('') : '<div class="empty" style="padding:18px 8px">활동이 없습니다.</div>';
+    const mRows=gMemIds.length? gMemIds.map((uid,i)=>
+      `<div class="list-item"><span class="idx">${i+1}</span>
+        <input type="text" value="${esc(itemName(people[uid]))}" ${dis} data-act="personname" data-uid="${uid}">
+        <button class="x" data-act="grpdelmem" data-gid="${gid}" data-uid="${uid}" ${dis?'disabled':''} title="이 그룹에서 빼기">×</button>
+      </div>`).join('') : '<div class="empty" style="padding:18px 8px">참여자가 없습니다.</div>';
+    let matrix='';
+    if(gSongIds.length&&gMemIds.length){
+      let head='<th class="corner">활동 \\ 참여자</th>'+gMemIds.map(u=>`<th class="col">${esc(itemName(people[u]))}</th>`).join('');
+      let body=gSongIds.map(s=>{
+        let cells=gMemIds.map(u=>{
+          const on=c.matrix?.[s]?.[u];
+          return `<td class="mx ${on?'on':''}${lk?' locked':''}"${lk?'':' data-act="mx"'} data-sid="${s}" data-uid="${u}"><span class="chk"></span></td>`;
+        }).join('');
+        return `<tr><td class="song-h">${esc(itemName(songs[s]))}</td>${cells}</tr>`;
+      }).join('');
+      matrix=`<div class="scroll tall"><table class="grid">
+        <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+        <div class="note">${lk?'🔒 잠겨 있어 수정할 수 없습니다.':'칸을 클릭하면 그 참여자가 그 활동에 참여하는 것으로 표시됩니다.'}</div>`;
+    } else {
+      matrix='<div class="empty" style="padding:18px 8px">활동과 참여자를 더하면 참여표가 나타납니다.</div>';
+    }
+    return `<div class="card grp-card">
       <div class="grp-head">
         <span class="grp-idx">${gi+1}</span>
         <input type="text" class="grp-name" value="${esc(itemName(g))}" data-act="groupname" data-gid="${gid}" ${dis}>
         <button class="x" data-act="delgroup" data-gid="${gid}" ${dis?'disabled':''} title="그룹 삭제">×</button>
       </div>
-      <div class="grp-row"><span class="grp-lbl">멤버</span><div class="grp-chips">${memChips}</div></div>
-      <div class="grp-row"><span class="grp-lbl">곡</span><div class="grp-chips">${sgChips}</div></div>
+      <div class="grp-sub">
+        <div class="grp-sub-head">
+          <div class="section-label" style="margin:0">활동 목록 <span class="count">${gSongIds.length}</span></div>
+          <button class="btn sm" data-act="addsong" data-gid="${gid}" ${dis}>+ 활동 추가</button>
+        </div>
+        ${sRows}
+      </div>
+      <div class="grp-sub">
+        <div class="grp-sub-head">
+          <div class="section-label" style="margin:0">참여자 목록 <span class="count">${gMemIds.length}</span></div>
+          <div class="grp-add">
+            <input type="text" placeholder="이름" maxlength="20" class="grp-add-in" data-gid="${gid}" ${dis}>
+            <button class="btn sm" data-act="grpaddmem" data-gid="${gid}" ${dis}>+ 참여자 추가</button>
+          </div>
+        </div>
+        ${mRows}
+      </div>
+      <div class="grp-sub">
+        <div class="section-label" style="margin:0 0 8px">참여표 — 활동 × 참여자</div>
+        ${matrix}
+      </div>
     </div>`;
-  }).join('') : '<div class="empty" style="padding:24px 12px">아직 그룹이 없습니다. <b>+ 그룹 추가</b>로 만드세요.</div>';
-
-  let matrix='';
-  if(sIds.length&&pIds.length){
-    let head='<th class="corner">활동 \\ 참여자</th>'+
-      pIds.map(u=>`<th class="col">${esc(itemName(people[u]))}</th>`).join('');
-    let body=sIds.map(s=>{
-      let cells=pIds.map(u=>{
-        const on=c.matrix?.[s]?.[u];
-        return `<td class="mx ${on?'on':''}${lk?' locked':''}"${lk?'':' data-act="mx"'} data-sid="${s}" data-uid="${u}">
-          <span class="chk"></span></td>`;
-      }).join('');
-      return `<tr><td class="song-h">${esc(itemName(songs[s]))}</td>${cells}</tr>`;
-    }).join('');
-    matrix=`<div class="scroll tall"><table class="grid">
-      <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-      <div class="note">${lk?'🔒 잠겨 있어 수정할 수 없습니다.':'칸을 클릭하면 그 참여자가 그 활동에 참여하는 것으로 표시됩니다.'}</div>`;
-  } else {
-    matrix='<div class="empty" style="padding:24px 12px">활동과 참여자를 먼저 추가하면 참여표가 나타납니다.</div>';
   }
+  const groupCards=gIds.length? gIds.map(renderGroupCard).join('') : '';
+  const noGroupNote = !gIds.length ? '<div class="card"><div class="empty" style="padding:30px 12px">아직 그룹이 없습니다. 아래 <b>+ 그룹 추가</b>로 첫 그룹을 만드세요.</div></div>' : '';
+  const addGroupBar = `<div style="display:flex;justify-content:center;margin:6px 0 14px">
+    <button class="btn sm" data-act="addgroup" ${dis}>+ 그룹 추가</button>
+  </div>`;
 
   return `<div class="card">
     <div class="card-head">
@@ -1573,7 +1640,7 @@ function viewSetup(){
     </div>
     <div class="page-intro">
       <div class="pi-h">🎯 이 페이지는?</div>
-      <p>프로젝트의 <b>뼈대</b>를 만드는 곳입니다. 진행할 <b>기간·시간대</b>, <b>활동 목록</b>, <b>참여자 목록</b>, 어떤 활동에 누가 참여하는지(<b>참여표</b>)를 정합니다. 다 정했으면 우상단의 <b>🔒 설정 잠그기</b>로 <b>비밀번호</b>를 걸어두면, 입력만 하러 온 참여자들이 활동·참여자·참여표를 실수로 바꾸지 못합니다. (해제하려면 그 비밀번호가 필요해요. 우발적 수정을 막는 용도이며 강력한 보안은 아닙니다.)</p>
+      <p>프로젝트의 <b>뼈대</b>를 만드는 곳입니다. <b>기간·시간대</b>를 정하고, 아래 <b>그룹</b>마다 〈활동·참여자·참여표〉를 따로 작성합니다(예: 기수별, 세션별). 같은 사람을 여러 그룹에 추가하려면 이름을 그대로 입력하세요 — 자동으로 같은 사람으로 묶입니다(시간표 1번만 작성). 다 정했으면 우상단의 <b>🔒 설정 잠그기</b>로 <b>비밀번호</b>를 걸어 두세요. (우발적 수정 방지용 소프트 잠금)</p>
     </div>
     <label class="fld">
       <span class="lab">프로젝트 이름</span>
@@ -1600,34 +1667,9 @@ function viewSetup(){
       </div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-head">
-      <div class="section-label" style="margin:0">활동 목록 <span class="count">${sIds.length}</span></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn sm" data-act="addsong" ${dis}>+ 활동 추가</button>
-      </div>
-    </div>
-    ${songRows}
-  </div>
-  <div class="card">
-    <div class="card-head">
-      <div class="section-label" style="margin:0">참여자 목록 <span class="count">${pIds.length}</span></div>
-      <button class="btn sm" data-act="addperson" ${dis}>+ 참여자 추가</button>
-    </div>
-    ${pplRows}
-  </div>
-  <div class="card">
-    <div class="card-head">
-      <div class="section-label" style="margin:0">그룹 <span class="count">${gIds.length}</span></div>
-      <button class="btn sm" data-act="addgroup" ${dis}>+ 그룹 추가</button>
-    </div>
-    <div class="grp-intro">기수·세션 등으로 묶을 때 사용. 그룹에 <b>멤버</b>와 <b>곡</b>을 더하면 참여표가 자동으로 채워집니다(빼면 다른 그룹과 겹치지 않을 때만 풀립니다). 결과 탭의 <b>그룹 필터</b>로 그룹별로 일정을 짤 수 있습니다.</div>
-    ${grpRows}
-  </div>
-  <div class="card">
-    <div class="section-label">참여표 — 활동 × 참여자</div>
-    ${matrix}
-  </div>
+  ${groupCards}
+  ${noGroupNote}
+  ${addGroupBar}
   <div class="card danger-zone">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div>
@@ -1641,9 +1683,14 @@ function viewSetup(){
 
 function viewParticipate(){
   const c=state.config;
-  const pIds=sortedIds(c.people||{});
-  if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 참여자를 먼저 추가하세요.</div></div>`;
-  if(state.me&&!c.people[state.me]) state.me=null;
+  // 어느 그룹에든 속한 사람만 노출
+  const inAnyGroup=new Set();
+  for(const gid in (c.groups||{})){
+    const g=c.groups[gid]; for(const u in (g.members||{})) if(g.members[u]) inAnyGroup.add(u);
+  }
+  const pIds=sortedIds(c.people||{}).filter(u=>inAnyGroup.has(u));
+  if(!pIds.length) return `<div class="card"><div class="empty">설정 화면에서 그룹과 참여자를 먼저 추가하세요.</div></div>`;
+  if(state.me && (!c.people[state.me] || !inAnyGroup.has(state.me))) state.me=null;
 
   let opts='<option value="">— 이름 선택 —</option>'+
     pIds.map(u=>`<option value="${u}" ${state.me===u?'selected':''}>${esc(itemName(c.people[u]))}</option>`).join('');
@@ -1761,17 +1808,17 @@ function viewResults(){
   const hidden=state.hiddenSongs||{};
   const isShown=sid=>!hidden[sid];
 
-  // 그룹 필터 (있을 때만)
+  // 그룹 선택 (단일 선택, 기본=첫 그룹) — 그 그룹의 곡만 보이게
   const groupsMap=c.groups||{}; const gIds=sortedIds(groupsMap);
-  const gf = state.groupFilter && groupsMap[state.groupFilter] ? state.groupFilter : '';
-  const inGroupFilter = sid => !gf || !!groupsMap[gf]?.songs?.[sid];
-  const groupFilterRow = gIds.length ? `<div class="group-filter">
-    <span class="mode-lbl">그룹 필터</span>
+  let gf = state.groupFilter && groupsMap[state.groupFilter] ? state.groupFilter : '';
+  if(!gf && gIds.length) gf=gIds[0];
+  const inGroupFilter = sid => !gf || (c.songs?.[sid]?.gid===gf);
+  const groupFilterRow = gIds.length>0 ? `<div class="group-filter">
+    <span class="mode-lbl">그룹</span>
     <select data-act="groupfilter">
-      <option value="">전체 (${activeSongs.length})</option>
-      ${gIds.map(gid=>{const g=groupsMap[gid]; const cnt=activeSongs.filter(s=>g.songs?.[s]).length; return `<option value="${gid}" ${gf===gid?'selected':''}>${esc(itemName(g))} (${cnt})</option>`;}).join('')}
+      ${gIds.map(gid=>{const g=groupsMap[gid]; const cnt=activeSongs.filter(s=>c.songs?.[s]?.gid===gid).length; return `<option value="${gid}" ${gf===gid?'selected':''}>${esc(itemName(g))} (${cnt})</option>`;}).join('')}
     </select>
-    ${gf?`<span class="mode-hint">'${esc(itemName(groupsMap[gf]))}'의 곡만 표시</span>`:''}
+    <span class="mode-hint">선택한 그룹의 곡으로 일정 짜기 — 다른 그룹은 따로 전환해서 짜요</span>
   </div>` : '';
 
   // 활동 토글 — chip style (그룹 필터 적용 후)
@@ -2232,13 +2279,17 @@ function bindEvents(){
       const v=($('codeIn').value||'').trim().toUpperCase();
       if(v)location.href=location.pathname+'?p='+v;return;}
     if(act==='tab'){state.tab=t.dataset.tab;render();return;}
-    if(act==='addsong'){addSong();return;}
+    if(act==='addsong'){addSong(t.dataset.gid);return;}
     if(act==='addgroup'){addGroup();doRender();return;}
     if(act==='delgroup'){delGroup(t.dataset.gid);return;}
-    if(act==='grpmem'){toggleGroupMember(t.dataset.gid,t.dataset.uid);return;}
-    if(act==='grpsong'){toggleGroupSong(t.dataset.gid,t.dataset.sid);return;}
+    if(act==='grpaddmem'){
+      const inp=document.querySelector('input.grp-add-in[data-gid="'+t.dataset.gid+'"]');
+      if(!inp){return;}
+      const nm=inp.value; addMemberToGroup(t.dataset.gid, nm);
+      inp.value=''; doRender(); return;
+    }
+    if(act==='grpdelmem'){e.stopPropagation(); removeMemberFromGroup(t.dataset.gid,t.dataset.uid); doRender(); return;}
     if(act==='delsong'){delSong(t.dataset.sid);return;}
-    if(act==='addperson'){addPerson();return;}
     if(act==='delperson'){delPerson(t.dataset.uid);return;}
     if(act==='mx'){matrixToggle(t.dataset.sid,t.dataset.uid);return;}
     if(act==='lock'){toggleLock();return;}
@@ -2260,8 +2311,8 @@ function bindEvents(){
     if(act==='toggledone'){toggleDone();return;}
     if(act==='toggleall'){
       let sIds=sortedIds(state.config.songs||{}).filter(s=>songMembers(s).length>0);
-      const gf=state.groupFilter, g=state.config.groups?.[gf];
-      if(g) sIds=sIds.filter(s=>g.songs?.[s]);            // 그룹 필터 적용
+      const gf=state.groupFilter;
+      if(gf && state.config.groups?.[gf]) sIds=sIds.filter(s=>state.config.songs[s]?.gid===gf);
       if(!sIds.length){ render(); return; }
       const allShown=sIds.every(s=>!state.hiddenSongs[s]);
       state.hiddenSongs=state.hiddenSongs||{};
@@ -2291,7 +2342,9 @@ function bindEvents(){
       if(cfgLocked()) return;
       const cur=state.config.songs?.[t.dataset.sid];
       const ts=itemTs(cur);
-      FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),{name:v.trim()||'활동',ts});
+      const obj={name:v.trim()||'활동',ts};
+      if(cur?.gid) obj.gid=cur.gid;
+      FB.set(R('projects/'+state.pid+'/config/songs/'+t.dataset.sid),obj);
     }
     else if(act==='personname'){
       if(cfgLocked()) return;
@@ -2335,30 +2388,29 @@ function bindEvents(){
     const fbPath=isSong?'songs':'people';
     const defaultName=isSong?'활동':'참여자';
     const id=t.dataset[dataKey];
-    // 현재 입력 값 저장 (Firebase + 로컬)
+    // 현재 입력 값 저장 (Firebase + 로컬). songname은 gid 필드를 보존해야 함.
     const map=isSong?state.config.songs:state.config.people;
     const cur=map?.[id];
     const ts=itemTs(cur);
     const obj={name:t.value.trim()||defaultName,ts};
+    if(isSong && cur?.gid) obj.gid=cur.gid;
     if(map) map[id]=obj;
     FB.set(R('projects/'+state.pid+'/config/'+fbPath+'/'+id),obj);
-    // 이 리스트 안의 입력란들
-    const list=Array.from($('app').querySelectorAll('input[data-act="'+act+'"]'));
+    // 같은 그룹/리스트 안에서 다음 입력란으로 또는 새로 추가
+    let listSel='input[data-act="'+act+'"]';
+    if(isSong && t.dataset.gid) listSel+='[data-gid="'+t.dataset.gid+'"]';
+    const list=Array.from($('app').querySelectorAll(listSel));
     const idx=list.indexOf(t);
     if(idx>=0&&idx<list.length-1){
-      // 다음 입력란으로
       list[idx+1].focus(); list[idx+1].select();
-    } else {
-      // 마지막 → 새로 추가 + 새 입력란 포커스
-      if(isSong) addSong(); else addPerson();
-      deferRender=false;
-      doRender();
-      const fresh=$('app').querySelectorAll('input[data-act="'+act+'"]');
-      if(fresh.length){
-        const last=fresh[fresh.length-1];
-        last.focus(); last.select();
-      }
+    } else if(isSong) {
+      // 마지막 곡 → 같은 그룹에 새 곡 추가
+      addSong(t.dataset.gid);
+      deferRender=false; doRender();
+      const fresh=$('app').querySelectorAll(listSel);
+      if(fresh.length){ const last=fresh[fresh.length-1]; last.focus(); last.select(); }
     }
+    // personname의 마지막 입력란 Enter는 새 사람 만들지 않음 (그룹의 + 참여자 추가 사용)
   });
 
   /* 그리드 칠하기 — 박스 드래그 (상하좌우) — 데스크탑 즉시, 모바일은 long-press */
