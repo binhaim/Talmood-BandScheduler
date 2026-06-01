@@ -164,10 +164,6 @@
   .grp-sub + .grp-sub{border-top:1px dashed var(--line);padding-top:14px;}
   .grp-sub-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
     flex-wrap:wrap;margin-bottom:10px;}
-  .grp-add{display:flex;gap:6px;align-items:center;}
-  .grp-add-in{padding:5px 9px;border:1px solid var(--line-2);border-radius:var(--r-sm);
-    background:var(--surface);font-size:13px;width:120px;font-family:inherit;color:var(--ink);}
-  .grp-add-in:focus{border-color:var(--ink);outline:none;}
   .idx{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
     color:var(--muted-2);font-size:12px;width:24px;text-align:right;}
   .x{border:none;background:none;color:var(--muted);cursor:pointer;
@@ -1206,12 +1202,6 @@ const groupMembers=g=>Object.keys(g&&g.members||{}).filter(u=>g.members[u]);
 const groupSongIds=gid=>Object.keys(state.config?.songs||{}).filter(s=>state.config.songs[s].gid===gid);
 const sortedGroupIds=()=>sortedIds(state.config?.groups||{});
 const firstGroupId=()=>sortedGroupIds()[0]||'';
-function findPersonByName(name){
-  const ppl=state.config?.people||{};
-  const norm=name.trim().toLowerCase();
-  for(const uid in ppl){ if((ppl[uid]?.name||'').trim().toLowerCase()===norm) return uid; }
-  return '';
-}
 function addGroup(){
   if(cfgLocked()) return '';
   const gid=genId('g');
@@ -1255,22 +1245,6 @@ function addSongToGroup(gid){
   FB.set(R('projects/'+state.pid+'/config/songs/'+sid),obj);
   return sid;
 }
-function addMemberToGroup(gid,rawName){
-  if(cfgLocked()) return '';
-  const g=state.config.groups?.[gid]; if(!g) return '';
-  const name=(rawName||'').trim(); if(!name){ toast('이름을 입력하세요'); return ''; }
-  let uid=findPersonByName(name);
-  if(!uid){
-    uid=genId('u');
-    const obj={name, ts:Date.now()};
-    state.config.people=state.config.people||{}; state.config.people[uid]=obj;
-    FB.set(R('projects/'+state.pid+'/config/people/'+uid),obj);
-  }
-  if(g.members?.[uid]){ toast('이미 이 그룹에 있는 사람입니다'); return uid; }
-  g.members=g.members||{}; g.members[uid]=true;
-  FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid),true);
-  return uid;
-}
 function removeMemberFromGroup(gid,uid){
   if(cfgLocked()) return;
   const g=state.config.groups?.[gid]; if(!g||!g.members?.[uid]) return;
@@ -1283,6 +1257,67 @@ function removeMemberFromGroup(gid,uid){
       FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid));
     }
   });
+}
+/* 클릭만으로 새 참여자 추가 (활동 추가 패턴과 동일) — 기본 이름 + 자동 포커스 후 편집 */
+function addNewMemberToGroup(gid){
+  if(cfgLocked()) return '';
+  if(!state.config.groups?.[gid]) return '';
+  const uid=genId('u');
+  const n=Object.keys(state.config.people||{}).length+1;
+  const obj={name:'참여자 '+n, ts:Date.now()};
+  state.config.people=state.config.people||{}; state.config.people[uid]=obj;
+  FB.set(R('projects/'+state.pid+'/config/people/'+uid),obj);
+  const g=state.config.groups[gid]; g.members=g.members||{}; g.members[uid]=true;
+  FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+uid),true);
+  return uid;
+}
+/* 같은 이름의 다른 인물에 합치기 — 그룹·참여표·가용시간·완료를 이전 후 임시 uid 제거 */
+function mergePerson(fromUid,toUid){
+  if(fromUid===toUid) return;
+  const cfg=state.config; if(!cfg?.people?.[toUid]) return;
+  // 1) 모든 그룹의 members
+  for(const gid in (cfg.groups||{})){
+    const g=cfg.groups[gid];
+    if(g.members?.[fromUid]){
+      delete g.members[fromUid];
+      FB.remove(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+fromUid));
+      if(!g.members[toUid]){
+        g.members[toUid]=true;
+        FB.set(R('projects/'+state.pid+'/config/groups/'+gid+'/members/'+toUid),true);
+      }
+    }
+  }
+  // 2) matrix
+  for(const sid in (cfg.matrix||{})){
+    if(cfg.matrix[sid]?.[fromUid]){
+      delete cfg.matrix[sid][fromUid];
+      FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+fromUid));
+      if(!cfg.matrix[sid][toUid]){
+        cfg.matrix[sid][toUid]=true;
+        FB.set(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+toUid),true);
+      }
+    }
+  }
+  // 3) avail: toUid 데이터가 없을 때만 이전, 있으면 toUid 우선
+  if(state.avail?.[fromUid] && !state.avail?.[toUid]){
+    FB.set(R('projects/'+state.pid+'/avail/'+toUid),state.avail[fromUid]);
+    state.avail[toUid]=state.avail[fromUid];
+  }
+  FB.remove(R('projects/'+state.pid+'/avail/'+fromUid));
+  if(state.avail) delete state.avail[fromUid];
+  // 4) done
+  if(state.done?.[fromUid] && !state.done?.[toUid]){
+    FB.set(R('projects/'+state.pid+'/done/'+toUid),true);
+    state.done[toUid]=true;
+  }
+  FB.remove(R('projects/'+state.pid+'/done/'+fromUid));
+  if(state.done) delete state.done[fromUid];
+  // 5) people: 임시 uid 제거
+  if(cfg.people?.[fromUid]) delete cfg.people[fromUid];
+  FB.remove(R('projects/'+state.pid+'/config/people/'+fromUid));
+  // 6) state.me 보정 (로컬 저장소도 갱신해야 리로드 후 안 풀림)
+  if(state.me===fromUid){ state.me=toUid; if(state.pid) lsSet('me_'+state.pid,toUid); }
+  toast('같은 이름의 인물에 합쳤습니다');
 }
 /* 가벼운 해시 — 우발적 수정 방지용 소프트 잠금 (보안용 아님) */
 function lockHash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return 'h'+h.toString(36); }
@@ -1576,7 +1611,7 @@ function viewSetup(){
       </div>`).join('') : '<div class="empty" style="padding:18px 8px">활동이 없습니다.</div>';
     const mRows=gMemIds.length? gMemIds.map((uid,i)=>
       `<div class="list-item"><span class="idx">${i+1}</span>
-        <input type="text" value="${esc(itemName(people[uid]))}" ${dis} data-act="personname" data-uid="${uid}">
+        <input type="text" value="${esc(itemName(people[uid]))}" ${dis} data-act="personname" data-uid="${uid}" data-gid="${gid}">
         <button class="x" data-act="grpdelmem" data-gid="${gid}" data-uid="${uid}" ${dis?'disabled':''} title="이 그룹에서 빼기">×</button>
       </div>`).join('') : '<div class="empty" style="padding:18px 8px">참여자가 없습니다.</div>';
     let matrix='';
@@ -1611,10 +1646,7 @@ function viewSetup(){
       <div class="grp-sub">
         <div class="grp-sub-head">
           <div class="section-label" style="margin:0">참여자 목록 <span class="count">${gMemIds.length}</span></div>
-          <div class="grp-add">
-            <input type="text" placeholder="이름" maxlength="20" class="grp-add-in" data-gid="${gid}" ${dis}>
-            <button class="btn sm" data-act="grpaddmem" data-gid="${gid}" ${dis}>+ 참여자 추가</button>
-          </div>
+          <button class="btn sm" data-act="grpaddmem" data-gid="${gid}" ${dis}>+ 참여자 추가</button>
         </div>
         ${mRows}
       </div>
@@ -2283,10 +2315,10 @@ function bindEvents(){
     if(act==='addgroup'){addGroup();doRender();return;}
     if(act==='delgroup'){delGroup(t.dataset.gid);return;}
     if(act==='grpaddmem'){
-      const inp=document.querySelector('input.grp-add-in[data-gid="'+t.dataset.gid+'"]');
-      if(!inp){return;}
-      const nm=inp.value; addMemberToGroup(t.dataset.gid, nm);
-      inp.value=''; doRender(); return;
+      addNewMemberToGroup(t.dataset.gid); doRender();
+      const inputs=document.querySelectorAll('input[data-act="personname"][data-gid="'+t.dataset.gid+'"]');
+      if(inputs.length){ const last=inputs[inputs.length-1]; last.focus(); last.select(); }
+      return;
     }
     if(act==='grpdelmem'){e.stopPropagation(); removeMemberFromGroup(t.dataset.gid,t.dataset.uid); doRender(); return;}
     if(act==='delsong'){delSong(t.dataset.sid);return;}
@@ -2348,9 +2380,14 @@ function bindEvents(){
     }
     else if(act==='personname'){
       if(cfgLocked()) return;
-      const cur=state.config.people?.[t.dataset.uid];
+      const uid=t.dataset.uid;
+      const cur=state.config.people?.[uid];
       const ts=itemTs(cur);
-      FB.set(R('projects/'+state.pid+'/config/people/'+t.dataset.uid),{name:v.trim()||'참여자',ts});
+      const newName=v.trim()||'참여자';
+      // 같은 이름의 다른 인물이 있나? → 자동 합치기
+      const other=Object.keys(state.config.people||{}).find(u=>u!==uid && (state.config.people[u]?.name||'').trim().toLowerCase()===newName.toLowerCase());
+      if(other){ mergePerson(uid,other); doRender(); return; }
+      FB.set(R('projects/'+state.pid+'/config/people/'+uid),{name:newName,ts});
     }
     else if(act==='groupname'){ renameGroup(t.dataset.gid, v.trim()); }
     else if(act==='groupfilter'){ state.groupFilter=v||''; render(); }
@@ -2388,29 +2425,32 @@ function bindEvents(){
     const fbPath=isSong?'songs':'people';
     const defaultName=isSong?'활동':'참여자';
     const id=t.dataset[dataKey];
-    // 현재 입력 값 저장 (Firebase + 로컬). songname은 gid 필드를 보존해야 함.
+    // 현재 입력 값 저장. songname은 gid 보존, personname은 같은 이름이면 머지.
     const map=isSong?state.config.songs:state.config.people;
     const cur=map?.[id];
     const ts=itemTs(cur);
     const obj={name:t.value.trim()||defaultName,ts};
     if(isSong && cur?.gid) obj.gid=cur.gid;
+    if(!isSong){
+      const other=Object.keys(state.config.people||{}).find(u=>u!==id && (state.config.people[u]?.name||'').trim().toLowerCase()===obj.name.toLowerCase());
+      if(other){ mergePerson(id,other); doRender(); return; }
+    }
     if(map) map[id]=obj;
     FB.set(R('projects/'+state.pid+'/config/'+fbPath+'/'+id),obj);
-    // 같은 그룹/리스트 안에서 다음 입력란으로 또는 새로 추가
+    // 같은 그룹 리스트에서 다음 입력란 또는 끝이면 새로 추가
     let listSel='input[data-act="'+act+'"]';
-    if(isSong && t.dataset.gid) listSel+='[data-gid="'+t.dataset.gid+'"]';
+    if(t.dataset.gid) listSel+='[data-gid="'+t.dataset.gid+'"]';
     const list=Array.from($('app').querySelectorAll(listSel));
     const idx=list.indexOf(t);
     if(idx>=0&&idx<list.length-1){
       list[idx+1].focus(); list[idx+1].select();
-    } else if(isSong) {
-      // 마지막 곡 → 같은 그룹에 새 곡 추가
-      addSong(t.dataset.gid);
+    } else {
+      if(isSong) addSong(t.dataset.gid);
+      else addNewMemberToGroup(t.dataset.gid);
       deferRender=false; doRender();
       const fresh=$('app').querySelectorAll(listSel);
       if(fresh.length){ const last=fresh[fresh.length-1]; last.focus(); last.select(); }
     }
-    // personname의 마지막 입력란 Enter는 새 사람 만들지 않음 (그룹의 + 참여자 추가 사용)
   });
 
   /* 그리드 칠하기 — 박스 드래그 (상하좌우) — 데스크탑 즉시, 모바일은 long-press */
