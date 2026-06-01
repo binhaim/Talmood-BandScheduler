@@ -768,6 +768,13 @@ function mdLabel(ds){const d=new Date(ds+'T00:00:00');return(d.getMonth()+1)+'/'
 function timeList(sh,eh,sm){const out=[];for(let m=sh*60;m<eh*60;m+=sm)
   out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));return out;}
 const slotKey=(d,t)=>d+'|'+t;
+/* 확장 시각(예: 25:00) → 실제 캘린더 (날짜, 분) 으로 정규화 — overnight 슬롯 export용 */
+function normalizeDT(date,minOfDay){
+  const days=Math.floor(minOfDay/1440), realMin=minOfDay%1440;
+  if(!days) return {date,min:realMin};
+  const d=new Date(date+'T00:00:00'); d.setDate(d.getDate()+days);
+  return {date:fmtDate(d),min:realMin};
+}
 
 /* ---- 활동/참여자 항목은 구버전(문자열) / 신버전({name,ts}) 둘 다 지원 ---- */
 const itemName=v=>typeof v==='string'?v:(v&&v.name)||'';
@@ -973,7 +980,7 @@ async function createProject(){
   };
   const groups={ [g1]:{name:'그룹 1', members:{[u1]:true,[u2]:true,[u3]:true}, ts:base} };
   const cfg={ name:'새 프로젝트', startDate:fmtDate(t), endDate:fmtDate(e),
-    startHour:18, endHour:24, slotMinutes:60, locked:false,
+    startHour:9, endHour:33, slotMinutes:60, locked:false,
     songs, people, matrix, groups };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
@@ -1111,8 +1118,11 @@ function exportICS(){
   const dtstamp=`${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//talmood//timetable//KO','CALSCALE:GREGORIAN'];
   blocks.forEach(b=>{
-    const dstart=b.date.replace(/-/g,'')+'T'+b.start.replace(':','')+'00';
-    const dend=b.date.replace(/-/g,'')+'T'+b.end.replace(':','')+'00';
+    // overnight (확장 시각) 일 수 있으니 실제 캘린더 (날짜, 시각) 로 정규화
+    const ns=normalizeDT(b.date,parseTime(b.start));
+    const ne=normalizeDT(b.date,parseTime(b.end));
+    const dstart=ns.date.replace(/-/g,'')+'T'+pad(Math.floor(ns.min/60))+pad(ns.min%60)+'00';
+    const dend=ne.date.replace(/-/g,'')+'T'+pad(Math.floor(ne.min/60))+pad(ne.min%60)+'00';
     const songNm=itemName(c.songs[b.sid]);
     const memNm=b.members.map(u=>itemName(c.people[u])).join(', ');
     lines.push('BEGIN:VEVENT');
@@ -1156,8 +1166,10 @@ function buildSheetTSV(){
     for(const k in sched[sid]){ const sv=sched[sid][k]; if(!sv||sv==='e') continue;   // 외부 슬롯 제외(동방만)
       const bar=k.indexOf('|'); const d=k.slice(0,bar), t=k.slice(bar+1), t0=parseTime(t);
       for(let m=t0;m<t0+sm;m+=30){
-        const key=d+'|'+sheetRowLabel(m); const arr=cell[key]||(cell[key]=[]);
-        if(!arr.includes(nm)) arr.push(nm); dates.add(d);
+        const nrm=normalizeDT(d,m);                          // overnight → 다음 캘린더 날짜로
+        const key=nrm.date+'|'+sheetRowLabel(nrm.min);
+        const arr=cell[key]||(cell[key]=[]);
+        if(!arr.includes(nm)) arr.push(nm); dates.add(nrm.date);
       }
     }
   }
@@ -1632,8 +1644,9 @@ function viewSetup(){
   const c=state.config, lk=!!c.locked, dis=lk?'disabled':'';
   const songs=c.songs||{}, people=c.people||{};
   const sIds=sortedIds(songs), pIds=sortedIds(people);
-  const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++)
-    o+=`<option value="${h}" ${h==sel?'selected':''}>${h}시</option>`;return o;};
+  const hourOpts=(sel,from,to)=>{let o='';for(let h=from;h<=to;h++){
+    const lbl = h<24 ? `${h}시` : `${h}시 (다음날 ${h-24}시)`;
+    o+=`<option value="${h}" ${h==sel?'selected':''}>${lbl}</option>`;}return o;};
 
   // ── 그룹 단위 섹션 (활동/참여자/참여표를 그룹마다) ──
   const groups=c.groups||{}; const gIds=sortedIds(groups);
@@ -1727,7 +1740,7 @@ function viewSetup(){
         <label class="fld" style="margin-bottom:0"><span class="lab">시작 시각</span>
           <select ${dis} data-act="cfgsh">${hourOpts(c.startHour,0,23)}</select></label>
         <label class="fld" style="margin-bottom:0"><span class="lab">종료 시각</span>
-          <select ${dis} data-act="cfgeh">${hourOpts(c.endHour,1,24)}</select></label>
+          <select ${dis} data-act="cfgeh">${hourOpts(c.endHour,1,(c.startHour||0)+24)}</select></label>
         <label class="fld" style="margin-bottom:0"><span class="lab">칸 단위</span>
           <select ${dis} data-act="cfgslot">
             <option value="60" ${c.slotMinutes==60?'selected':''}>1시간</option>
