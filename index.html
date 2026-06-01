@@ -940,7 +940,7 @@ function subscribeIndex(){
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
-    if(state.config) migrateLegacyGroups();   // 구버전 데이터 → 그룹 스키마 자동 이전 (멱등)
+    if(state.config){ migrateLegacyGroups(); deduplicatePeople(); }
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
     if(state.screen==='project') render(); });
@@ -1272,7 +1272,7 @@ function addNewMemberToGroup(gid){
   return uid;
 }
 /* 같은 이름의 다른 인물에 합치기 — 그룹·참여표·가용시간·완료를 이전 후 임시 uid 제거 */
-function mergePerson(fromUid,toUid){
+function mergePerson(fromUid,toUid,silent){
   if(fromUid===toUid) return;
   const cfg=state.config; if(!cfg?.people?.[toUid]) return;
   // 1) 모든 그룹의 members
@@ -1317,9 +1317,28 @@ function mergePerson(fromUid,toUid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+fromUid));
   // 6) state.me 보정 (로컬 저장소도 갱신해야 리로드 후 안 풀림)
   if(state.me===fromUid){ state.me=toUid; if(state.pid) lsSet('me_'+state.pid,toUid); }
-  toast('같은 이름의 인물에 합쳤습니다');
+  if(!silent) toast('같은 이름의 인물에 합쳤습니다');
 }
-/* 가벼운 해시 — 우발적 수정 방지용 소프트 잠금 (보안용 아님) */
+/* 이름이 같은(대소문자·공백 무시) 인물들을 자동 합치기 — 구버전 데이터에서 누적된 중복 정리.
+   기본 자리표시자 이름("참여자 N"/"참여자")은 의도적인 별개 항목으로 보고 건너뜀. */
+function deduplicatePeople(){
+  const cfg=state.config; if(!cfg?.people) return 0;
+  const byName={};
+  for(const uid in cfg.people){
+    const raw=(cfg.people[uid]?.name||'').trim(); if(!raw) continue;
+    if(/^참여자(?: \d+)?$/.test(raw)) continue;
+    const key=raw.toLowerCase();
+    (byName[key]=byName[key]||[]).push(uid);
+  }
+  let merged=0;
+  for(const nm in byName){
+    const uids=byName[nm]; if(uids.length<=1) continue;
+    uids.sort((a,b)=>(cfg.people[a].ts||0)-(cfg.people[b].ts||0));   // 가장 오래된 uid를 유지
+    const keep=uids[0];
+    for(let i=1;i<uids.length;i++){ mergePerson(uids[i],keep,true); merged++; }
+  }
+  return merged;
+}
 function lockHash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return 'h'+h.toString(36); }
 function toggleLock(){
   const c=state.config;
