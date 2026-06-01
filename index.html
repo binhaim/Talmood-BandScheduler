@@ -1865,15 +1865,13 @@ function viewResults(){
   const hidden=state.hiddenSongs||{};
   const isShown=sid=>!hidden[sid];
 
-  // 그룹 선택 (다중) — 선택한 그룹들의 곡만 표시. 비어있으면 첫 그룹 자동 선택(없으면 전체).
+  // 그룹 선택 (다중, 비어있으면 전체 표시) — 칩 토글로 추가/제거. 0개도 정상 상태.
   const groupsMap=c.groups||{}; const gIds=sortedIds(groupsMap);
   // 레거시 호환: 문자열 → 객체
   if(typeof state.groupFilter==='string') state.groupFilter = state.groupFilter ? {[state.groupFilter]:true} : {};
   state.groupFilter = state.groupFilter || {};
-  // 삭제된 그룹 정리
+  // 삭제된 그룹 정리 (자동 시드는 하지 않음 — 비어 있으면 전체 그룹)
   for(const k in state.groupFilter) if(!groupsMap[k]) delete state.groupFilter[k];
-  // 비어있으면 첫 그룹으로 자동 시드
-  if(gIds.length && !Object.keys(state.groupFilter).length) state.groupFilter[gIds[0]]=true;
   const selGids = Object.keys(state.groupFilter).filter(g=>state.groupFilter[g]);
   const inGroupFilter = sid => selGids.length===0 || selGids.includes(c.songs?.[sid]?.gid);
   const groupFilterRow = gIds.length>0 ? `<div class="group-filter">
@@ -1881,7 +1879,7 @@ function viewResults(){
     <div class="grp-tog-row">
       ${gIds.map(gid=>{const g=groupsMap[gid]; const on=!!state.groupFilter[gid]; const cnt=activeSongs.filter(s=>c.songs?.[s]?.gid===gid).length; return `<button class="grp-tog ${on?'on':''}" data-act="grouptoggle" data-gid="${gid}">${esc(itemName(g))}<span class="grp-tog-n">${cnt}</span></button>`;}).join('')}
     </div>
-    <span class="mode-hint">${selGids.length>1?selGids.length+'개 그룹 동시 — 같이 일정 짜기':(selGids.length===1?'한 그룹':'전체 그룹')}</span>
+    <span class="mode-hint">${selGids.length===0?'전체 그룹 — 칩을 눌러 한정':(selGids.length===1?'한 그룹':selGids.length+'개 그룹 동시')}</span>
   </div>` : '';
 
   // 활동 토글 — chip style (그룹 필터 적용 후)
