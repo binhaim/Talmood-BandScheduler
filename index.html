@@ -1109,10 +1109,20 @@ async function exportPNG(){
     const canvas=await h2c(el,{backgroundColor:'#fffdf7',scale:2});
     const c=state.config;
     const who=state.finalFilter ? itemName(c.people[state.finalFilter]) : 'all';
+    // 1) 파일 다운로드
     const link=document.createElement('a');
     link.download=`${(c.name||'schedule').replace(/[\\/:*?"<>|]/g,'_')}-${who}.png`;
     link.href=canvas.toDataURL('image/png');
     link.click();
+    // 2) 클립보드에도 복사 (지원 브라우저만 — HTTPS + Clipboard API + ClipboardItem)
+    let clipOk=false;
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+        if(blob){ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); clipOk=true; }
+      }
+    }catch(_){ /* 권한·미지원 등 — 다운로드만 성공 */ }
+    toast(clipOk?'PNG 저장 + 클립보드 복사 완료':'PNG 저장 완료');
   }catch(e){ console.error(e); toast('PNG 저장 실패'); }
 }
 function escapeICS(s){
