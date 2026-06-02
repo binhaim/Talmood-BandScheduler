@@ -1004,10 +1004,12 @@ function addSong(gid){            // 그룹 컨텍스트에서만 호출됨(lega
   }
   return addSongToGroup(targetGid);
 }
-/* 옛 기본값(18-24)을 그대로 쓰던 프로젝트만 새 기본값(9-33)으로 한 번 자동 이전. 멱등. */
+/* 시작이 9시가 아니거나 overnight(>24)이 아닌 프로젝트 → 새 기본값(9-33)으로 한 번 자동 이전. 멱등. */
 function migrateOldDefaultHours(){
   const c=state.config; if(!c) return;
-  if(c.startHour===18 && c.endHour===24){
+  const sh=Number(c.startHour), eh=Number(c.endHour);
+  if(isNaN(sh)||isNaN(eh)) return;
+  if(sh!==9 || eh<=24){
     c.startHour=9; c.endHour=33;
     FB.update(R('projects/'+state.pid+'/config'),{startHour:9,endHour:33});
   }
