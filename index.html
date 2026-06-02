@@ -953,7 +953,7 @@ function subscribeIndex(){
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
-    if(state.config){ migrateLegacyGroups(); deduplicatePeople(); }
+    if(state.config){ migrateLegacyGroups(); migrateOldDefaultHours(); deduplicatePeople(); }
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/avail'),s=>{ state.avail=s.val()||{};
     if(state.screen==='project') render(); });
@@ -1003,6 +1003,14 @@ function addSong(gid){            // 그룹 컨텍스트에서만 호출됨(lega
     const g=addGroup(); return addSongToGroup(g);
   }
   return addSongToGroup(targetGid);
+}
+/* 옛 기본값(18-24)을 그대로 쓰던 프로젝트만 새 기본값(9-33)으로 한 번 자동 이전. 멱등. */
+function migrateOldDefaultHours(){
+  const c=state.config; if(!c) return;
+  if(c.startHour===18 && c.endHour===24){
+    c.startHour=9; c.endHour=33;
+    FB.update(R('projects/'+state.pid+'/config'),{startHour:9,endHour:33});
+  }
 }
 function migrateLegacyGroups(){    // 멱등: 옛 데이터 -> 새 스키마
   const c=state.config; if(!c) return false;
@@ -1092,7 +1100,8 @@ async function ensureH2c(){
   return window.html2canvas;
 }
 async function exportPNG(){
-  const el=document.getElementById('final-snapshot');
+  // 시간표만 캡처 — 없으면 final-snapshot 전체로 폴백
+  const el=document.getElementById('cal-snapshot')||document.getElementById('final-snapshot');
   if(!el){ toast('저장할 내용이 없습니다'); return; }
   toast('PNG 생성 중...');
   try{
@@ -2190,7 +2199,7 @@ function viewResults(){
       <div class="fd-title">${esc(c.name||'일정')} <span class="fd-subtitle">· ${filterLabel}</span></div>
       ${summaryHtml}
       ${blocks.length
-        ? calHtml
+        ? `<div id="cal-snapshot">${calHtml}</div>`
         : `<div class="empty" style="padding:30px 12px">아직 배정된 시간표가 없습니다. 위 그리드에서 칸을 클릭해 배정해 보세요.</div>`}
     </div>
   </div>`;
