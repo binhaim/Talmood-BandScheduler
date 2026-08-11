@@ -103,6 +103,8 @@
   .btn.danger{background:transparent;border-color:var(--line-2);color:var(--accent);}
   .btn.danger:hover{background:var(--accent-soft);border-color:var(--accent);
     color:var(--accent-d);}
+  .btn.danger:disabled:hover{background:transparent;border-color:var(--line-2);
+    color:var(--accent);}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
   .btn:disabled:hover{background:var(--ink);border-color:var(--ink);transform:none;}
   .btn.ghost:disabled:hover{background:transparent;border-color:var(--line-2);}
@@ -312,6 +314,7 @@
     background:var(--sc,#888);margin-bottom:4px;border-radius:2px;}
   table.gantt th.gnt-sub.day-end{border-right:4px solid var(--ink);}
   table.gantt td.gnt-cell{width:26px;height:30px;cursor:pointer;padding:0;
+    position:relative;
     border-right:1px solid var(--line);border-bottom:1px solid var(--line);
     transition:filter 80ms ease;}
   table.gantt td.gnt-cell.day-end{border-right:4px solid var(--ink);}
@@ -332,6 +335,82 @@
     font-size:11px;line-height:1;pointer-events:none;filter:drop-shadow(0 0 1px rgba(0,0,0,.5));}
   .cal-block.ext{background-image:repeating-linear-gradient(135deg,
     rgba(255,255,255,.28) 0 3px, transparent 3px 7px);}
+
+  /* 메인 페이지: 전체 합주 월간 캘린더 */
+  .agg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;margin-bottom:12px;}
+  .agg-head .section-label{margin:0;}
+  .agg-tools{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;}
+  .agg-nav{display:inline-flex;align-items:center;border:1px solid var(--line-2);
+    border-radius:var(--r-sm);overflow:hidden;background:var(--surface);height:34px;}
+  .agg-nav button{width:32px;height:32px;border:0;background:transparent;cursor:pointer;
+    color:var(--ink);font-size:19px;line-height:1;display:flex;align-items:center;
+    justify-content:center;transition:background var(--t),color var(--t);}
+  .agg-nav button:hover{background:var(--paper);color:var(--accent);}
+  .agg-month-title{min-width:112px;text-align:center;font-family:'Bricolage Grotesque',sans-serif;
+    font-size:14px;font-weight:700;}
+  .agg-member{height:34px;min-width:150px;max-width:220px;padding-top:6px;padding-bottom:6px;}
+  .agg-cal-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);-webkit-overflow-scrolling:touch;}
+  .agg-cal{min-width:770px;}
+  .agg-export-title{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:800;
+    padding:11px 12px;background:var(--surface);border-bottom:1px solid var(--line);}
+  .agg-export-title span{font-family:'Archivo',sans-serif;font-size:11px;font-weight:500;
+    color:var(--muted);margin-left:5px;}
+  .agg-weekdays,.agg-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
+  .agg-weekday{background:var(--ink);color:var(--paper);font-size:11px;font-weight:600;
+    padding:7px 8px;text-align:center;border-right:1px solid #000;}
+  .agg-weekday:last-child{border-right:0;}
+  .agg-weekday.sun{color:#e89c92;} .agg-weekday.sat{color:#9ac8e8;}
+  .agg-cell{min-height:118px;padding:7px;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);background:var(--surface);min-width:0;}
+  .agg-cell:nth-child(7n){border-right:0;}
+  .agg-cell:nth-last-child(-n+7){border-bottom:0;}
+  .agg-cell.out{background:rgba(245,241,232,.42);}
+  .agg-cell.today{box-shadow:inset 0 0 0 2px var(--accent);}
+  .agg-date-num{display:flex;align-items:center;justify-content:space-between;min-height:20px;
+    font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;
+    color:var(--ink-2);margin-bottom:4px;}
+  .agg-cell.out .agg-date-num{color:var(--muted-2);}
+  .agg-cell.sun .agg-date-num{color:var(--accent);}
+  .agg-cell.sat .agg-date-num{color:#3a7ab8;}
+  .agg-cell.today .agg-date-num span{background:var(--accent);color:#fff;width:22px;height:22px;
+    border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
+  .agg-events{display:flex;flex-direction:column;gap:4px;}
+  .agg-event{width:100%;border:1px solid var(--line);border-left:3px solid var(--pc);
+    border-radius:4px;background:var(--paper);padding:5px 6px;text-align:left;cursor:pointer;
+    overflow:hidden;transition:border-color var(--t),background var(--t);}
+  .agg-event:hover{border-color:var(--pc);background:var(--surface);}
+  .agg-event-top{display:flex;align-items:center;gap:5px;min-width:0;}
+  .agg-event-time{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;
+    color:var(--ink-2);white-space:nowrap;}
+  .agg-event-song{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;min-width:0;}
+  .agg-event-proj{display:block;font-size:9.5px;color:var(--pc);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+  .agg-ext{font-size:8px;font-weight:700;color:#7c5cff;flex-shrink:0;}
+  .agg-month-empty{text-align:center;color:var(--muted);font-size:12.5px;padding:10px 0 0;}
+  .agg-edit-project{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 12px;margin-bottom:14px;background:var(--paper);border:1px solid var(--line);
+    border-radius:6px;}
+  .agg-edit-project strong{display:block;font-size:13px;color:var(--ink);}
+  .agg-edit-project span{display:block;margin-top:2px;font-family:ui-monospace,'SF Mono',Menlo,monospace;
+    font-size:10px;color:var(--muted);}
+  .agg-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .agg-edit-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .agg-edit-field.full{grid-column:1/-1;}
+  .agg-edit-field label{font-size:11px;font-weight:700;color:var(--ink-2);}
+  .agg-edit-field input,.agg-edit-field select{width:100%;height:38px;min-width:0;}
+  .agg-edit-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+  .agg-edit-actions-right{display:flex;justify-content:flex-end;gap:7px;margin-left:auto;}
+  @media(max-width:560px){
+    .agg-edit-grid{grid-template-columns:1fr;}
+    .agg-edit-field.full{grid-column:auto;}
+    .agg-edit-actions{align-items:stretch;flex-direction:column-reverse;}
+    .agg-edit-actions-right{display:grid;grid-template-columns:1fr 1fr;margin-left:0;}
+    .agg-edit-actions .btn{width:100%;}
+  }
 
   /* 최종 시간표 카드 */
   .fd-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
@@ -419,7 +498,7 @@
   .cal-day-body{position:relative;}
   .cal-day-body .cal-cell{border-bottom:1px solid var(--line);box-sizing:border-box;}
   .cal-day-body .cal-cell:last-child{border-bottom:0;}
-  .cal-block{position:absolute;color:#fff;border-radius:5px;padding:5px 7px 4px;
+  .cal-block{position:absolute;z-index:1;color:#fff;border-radius:5px;padding:5px 7px 4px;
     display:flex;flex-direction:column;gap:1px;line-height:1.15;
     overflow:hidden;cursor:default;box-shadow:0 1px 2px rgba(0,0,0,.10);}
   .ext-tag{display:inline-block;margin-left:5px;font-size:9px;font-weight:700;vertical-align:middle;
@@ -589,11 +668,26 @@
   .proj-item .pc{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;
     color:var(--muted);font-weight:600;letter-spacing:.04em;
     background:var(--paper);padding:3px 9px;border-radius:999px;}
-  .proj-item .proj-x{border:none;background:transparent;color:var(--muted-2);
-    cursor:pointer;font-size:16px;line-height:1;padding:4px 8px;
-    border-radius:4px;opacity:0;transition:opacity var(--t),color var(--t),background var(--t);}
-  .proj-item:hover .proj-x{opacity:1;}
-  .proj-item .proj-x:hover{color:var(--accent);background:var(--accent-soft);}
+  .proj-list-all{max-height:520px;overflow:auto;padding-right:2px;}
+  .proj-item .proj-del{border:1px solid var(--line-2);background:transparent;color:var(--accent);
+    cursor:pointer;font-size:11px;font-weight:600;padding:5px 9px;border-radius:4px;
+    flex-shrink:0;transition:color var(--t),background var(--t),border-color var(--t);}
+  .proj-item .proj-del:hover{color:var(--accent-d);background:var(--accent-soft);
+    border-color:var(--accent);}
+  .trash-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;margin-bottom:12px;}
+  .trash-head .section-label{margin:0;}
+  .trash-item{cursor:default;background:var(--paper);}
+  .trash-item:hover{border-color:var(--line-2);transform:none;box-shadow:none;}
+  .proj-item .proj-restore{border:1px solid var(--line-2);background:var(--surface);
+    color:var(--ok);cursor:pointer;font-size:11px;font-weight:600;padding:5px 9px;
+    border-radius:4px;flex-shrink:0;transition:background var(--t),border-color var(--t);}
+  .proj-item .proj-restore:hover{background:var(--ok-soft);border-color:var(--ok);}
+  @media (max-width:640px){
+    .proj-item{padding:12px;gap:8px;}
+    .proj-item .pn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .proj-item .pc{padding:3px 7px;}
+  }
   .hero{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
     font-size:32px;letter-spacing:-.03em;margin-bottom:8px;line-height:1.1;}
   .hero .dot{color:var(--accent);}
@@ -720,9 +814,12 @@ let DB=null, FB={}, fbReady=false;
 let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
-  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null,
+  activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null, aggEdit:null,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
-  groupFilter:{} // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
+  groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
+  allSched:null,  // 활성 프로젝트 전체 배정 {pid:{config,schedule}} (로딩 전 null)
+  aggMonth:'',    // 메인 월간 캘린더 기준 월 (YYYY-MM)
+  aggMember:''    // 메인 멤버 필터 (정규화된 이름)
 };
 
 /* ---------------- 유틸 ---------------- */
@@ -733,20 +830,6 @@ const genPid=()=>Math.random().toString(36).slice(2,8).toUpperCase();
 const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
 const lsDel=k=>{try{localStorage.removeItem(k);}catch(e){}};
-function getVisited(){
-  const out=[];
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('v_')){
-        const pid=k.slice(2);
-        const ts=parseInt(localStorage.getItem(k))||0;
-        out.push({pid,ts});
-      }
-    }
-  }catch(e){}
-  return out;
-}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
 async function copyCode(){
@@ -825,6 +908,54 @@ function normalizeSchedule(raw){
 function isAssigned(sid,slotKey){
   return !!(state.schedule&&state.schedule[sid]&&state.schedule[sid][slotKey]);
 }
+/* ---- 활성 프로젝트 전체 배정을 절대 시각(ms) 구간으로 인덱싱.
+   슬롯 단위(30/60분)나 심야 표기(25:00 등)가 서로 달라도 겹침을 정확히 판정한다. ---- */
+let _referenceIdx=null;
+const referenceInvalidate=()=>{_referenceIdx=null;};
+const memberNameKey=name=>itemName(name).trim().toLocaleLowerCase('ko-KR');
+/* dataMap {pid:{config,schedule}} → 시간순 정렬된 배정 블록 목록 */
+function buildScheduleIntervals(dataMap){
+  const raw=[];
+  for(const pid in (dataMap||{})){
+    const od=dataMap[pid]; if(!od||!od.schedule) continue;
+    const sm=Number(od.config?.slotMinutes)||60;
+    for(const sid in od.schedule){
+      const slots=od.schedule[sid]; if(!slots) continue;
+      const matrix=od.config?.matrix?.[sid]||{};
+      const memberKeys=Object.keys(matrix).filter(uid=>matrix[uid]&&od.config?.people?.[uid])
+        .map(uid=>memberNameKey(od.config.people[uid])).filter(Boolean);
+      for(const k in slots){
+        const v=slots[k]; if(!v) continue;
+        const [d,t]=k.split('|'); if(!d||!t) continue;
+        const base=new Date(d+'T00:00:00').getTime(); if(isNaN(base)) continue;
+        const s=base+parseTime(t)*60000;
+        raw.push({pid,sid,ext:v==='e',s,e:s+sm*60000,memberKeys});
+      }
+    }
+  }
+  raw.sort((a,b)=>a.s-b.s);
+  const merged=[], last={};              // 같은 (프로젝트·활동·장소)의 연속 슬롯은 한 블록으로
+  for(const r of raw){
+    const key=r.pid+'|'+r.sid+'|'+(r.ext?'e':'i');
+    const L=last[key];
+    if(L && r.s<=L.e) L.e=Math.max(L.e,r.e);
+    else { const b={...r}; merged.push(b); last[key]=b; }
+  }
+  return merged;
+}
+function referenceIntervals(){
+  if(!_referenceIdx) _referenceIdx=buildScheduleIntervals(state.allSched||{});
+  return _referenceIdx;
+}
+function referencesAt(slotKey){
+  const idx=referenceIntervals(); if(!idx.length) return [];
+  const [d,t]=slotKey.split('|'); if(!d||!t) return [];
+  const base=new Date(d+'T00:00:00').getTime(); if(isNaN(base)) return [];
+  const s=base+parseTime(t)*60000, e=s+(Number(state.config?.slotMinutes)||60)*60000;
+  return idx.filter(o=>o.s<e&&o.e>s);
+}
+const referenceProjectName=pid=>itemName(state.allSched?.[pid]?.config?.name)||state.index?.[pid]?.name||pid;
+const referenceSongName=o=>itemName(state.allSched?.[o.pid]?.config?.songs?.[o.sid])||'활동';
 function slotInRange(k){
   if(!k||!state.config) return false;
   const [d,t]=k.split('|'); if(!d||!t) return false;
@@ -854,9 +985,30 @@ function slotConflicts(sid,slotKey,asExt){
     const v=state.schedule[other][slotKey]; if(!v) continue;
     const shared=songMembers(other).filter(u=>mine.has(u));
     const roomClash=!asExt && v!=='e';   // 둘 다 동방 → 한 방 충돌
-    if(shared.length||roomClash) out.push({sid:other,shared});
+    if(shared.length||roomClash) out.push({sid:other,shared,roomClash});
+  }
+  const mineNames=new Set(songMembers(sid).map(uid=>memberNameKey(state.config.people?.[uid])).filter(Boolean));
+  for(const ref of referencesAt(slotKey)){
+    const sharedNames=ref.memberKeys.filter(name=>mineNames.has(name));
+    const roomClash=!asExt&&!ref.ext;
+    if(sharedNames.length||roomClash) out.push({ref,sharedNames,roomClash});
   }
   return out;
+}
+function conflictName(conflict){
+  if(conflict.ref)
+    return referenceProjectName(conflict.ref.pid)+' · '+referenceSongName(conflict.ref);
+  return itemName(state.config?.songs?.[conflict.sid]);
+}
+const conflictHasShared=conflict=>
+  !!((conflict.shared&&conflict.shared.length)||(conflict.sharedNames&&conflict.sharedNames.length));
+function conflictMessage(conflicts){
+  const names=conflicts.map(conflictName).join(', ');
+  const hasShared=conflicts.some(conflictHasShared);
+  const hasRoom=conflicts.some(conflict=>conflict.roomClash);
+  const reason=hasShared&&hasRoom?'참여자 또는 동방 시간 겹침':
+    hasShared?'참여자 겹침':'이 시간 동방 사용 중';
+  return `${reason}: ${names}`;
 }
 
 /* ---- 시간 산수 + 블록 통합 ---- */
@@ -945,11 +1097,47 @@ async function initFirebase(){
     fbReady=true; return 'ok';
   }catch(e){ console.error('Firebase load failed',e); return 'error'; }
 }
-const R=p=>FB.ref(DB,p);
+const R=p=>p?FB.ref(DB,p):FB.ref(DB);
 
 function subscribeIndex(){
   FB.onValue(R('projectIndex'),s=>{ state.index=s.val()||{};
+    syncAllScheduleSubs();
     if(state.screen==='landing') render(); });
+}
+/* 메인 캘린더와 프로젝트 배정 충돌 판정이 공유하는 활성 프로젝트 실시간 구독 */
+let _allScheduleSubs={}, _allScheduleRenderTimer=null;
+function allSchedulesChanged(){
+  referenceInvalidate();
+  clearTimeout(_allScheduleRenderTimer);
+  _allScheduleRenderTimer=setTimeout(()=>{
+    if(state.screen==='landing'||state.screen==='project') render();
+  },30);
+}
+function syncAllScheduleSubs(){
+  if(state.allSched===null) state.allSched={};
+  const wanted=new Set(Object.keys(state.index||{}).filter(pid=>
+    !state.index[pid]?.trashedAt&&pid!==state.pid));
+  for(const pid in _allScheduleSubs){
+    if(wanted.has(pid)) continue;
+    _allScheduleSubs[pid].forEach(unsub=>{try{unsub();}catch(_){}});
+    delete _allScheduleSubs[pid];
+    delete state.allSched[pid];
+  }
+  wanted.forEach(pid=>{
+    if(_allScheduleSubs[pid]) return;
+    state.allSched[pid]={config:null,schedule:{}};
+    _allScheduleSubs[pid]=[
+      FB.onValue(R('projects/'+pid+'/config'),s=>{
+        if(!state.allSched[pid]) return;
+        state.allSched[pid].config=s.val(); allSchedulesChanged();
+      }),
+      FB.onValue(R('projects/'+pid+'/schedule'),s=>{
+        if(!state.allSched[pid]) return;
+        state.allSched[pid].schedule=normalizeSchedule(s.val()); allSchedulesChanged();
+      })
+    ];
+  });
+  allSchedulesChanged();
 }
 function subscribeProject(pid){
   FB.onValue(R('projects/'+pid+'/config'),s=>{ state.config=s.val();
@@ -984,7 +1172,6 @@ async function createProject(){
     songs, people, matrix, groups };
   await FB.set(R('projects/'+pid+'/config'),cfg);
   await FB.set(R('projectIndex/'+pid),{name:cfg.name,createdAt:Date.now()});
-  lsSet('v_'+pid,String(Date.now()));
   location.href=location.pathname+'?p='+pid;
 }
 /* 잠금 시 설정(setup) 변경 차단 — 우발적 수정 방지 소프트 잠금 */
@@ -1125,8 +1312,61 @@ async function exportPNG(){
     toast(clipOk?'PNG 저장 + 클립보드 복사 완료':'PNG 저장 완료');
   }catch(e){ console.error(e); toast('PNG 저장 실패'); }
 }
+async function exportAggPNG(){
+  const el=document.getElementById('agg-calendar-export');
+  const sel=aggregateSelection();
+  if(!el||!sel.intervals.length){ toast('이달 합주 일정이 없습니다'); return; }
+  toast('전체 합주 PNG 생성 중...');
+  try{
+    const h2c=await ensureH2c();
+    const width=el.scrollWidth;
+    const canvas=await h2c(el,{backgroundColor:'#fffdf7',scale:2,width,
+      windowWidth:Math.max(width,document.documentElement.clientWidth)});
+    const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
+    const link=document.createElement('a');
+    link.download=`전체합주-${state.aggMonth}-${who}.png`;
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+    toast('전체 합주 PNG를 저장했습니다');
+  }catch(e){ console.error(e); toast('PNG 저장 실패'); }
+}
 function escapeICS(s){
   return String(s||'').replace(/[\\;,]/g,m=>'\\'+m).replace(/\r?\n/g,'\\n');
+}
+function exportAggICS(){
+  const sel=aggregateSelection();
+  if(!sel.intervals.length){ toast('이달 합주 일정이 없습니다'); return; }
+  const pad=n=>String(n).padStart(2,'0');
+  const localStamp=ms=>{ const d=new Date(ms); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`; };
+  const now=new Date();
+  const dtstamp=`${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+  const calName=`${state.aggMonth} 전체 합주${sel.memberName?' · '+sel.memberName:''}`;
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//talmood//all-timetable//KO',
+    'CALSCALE:GREGORIAN',`X-WR-CALNAME:${escapeICS(calName)}`];
+  sel.intervals.slice().sort((a,b)=>a.s-b.s).forEach(o=>{
+    const cfg=sel.data[o.pid]?.config||{};
+    const song=itemName(cfg.songs?.[o.sid])||'활동';
+    const pname=itemName(cfg.name)||sel.idx[o.pid]?.name||o.pid;
+    const matrix=cfg.matrix?.[o.sid]||{};
+    const members=Object.keys(matrix).filter(uid=>matrix[uid]&&cfg.people?.[uid])
+      .map(uid=>itemName(cfg.people[uid])).join(', ');
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:all-${o.pid}-${o.sid}-${o.s}@talmood.app`);
+    lines.push(`DTSTAMP:${dtstamp}`);
+    lines.push(`DTSTART:${localStamp(o.s)}`);
+    lines.push(`DTEND:${localStamp(o.e)}`);
+    lines.push(`SUMMARY:${escapeICS(song+(o.ext?' (외부)':'')+' · '+pname)}`);
+    lines.push(`DESCRIPTION:${escapeICS('프로젝트: '+pname+'\n참여자: '+members)}`);
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
+  const link=document.createElement('a');
+  link.href=url; link.download=`전체합주-${state.aggMonth}-${who}.ics`; link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+  toast('전체 합주 캘린더 파일을 받았습니다');
 }
 function exportICS(){
   const c=state.config; if(!c) return;
@@ -1220,6 +1460,194 @@ function viewSheetExport(){
       </div>
     </div>
   </div>`;
+}
+function dateTimeLocalValue(ms){
+  const d=new Date(ms);
+  return fmtDate(d)+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function scheduleKeyStartMs(k){
+  const [date,time]=(k||'').split('|'); if(!date||!time) return NaN;
+  const base=new Date(date+'T00:00:00').getTime();
+  return isNaN(base)?NaN:base+parseTime(time)*60000;
+}
+function projectSlotMap(config){
+  const map=new Map(); if(!config) return map;
+  const dates=dateList(config.startDate,config.endDate);
+  const times=timeList(config.startHour,config.endHour,config.slotMinutes);
+  dates.forEach(date=>times.forEach(time=>map.set(scheduleKeyStartMs(slotKey(date,time)),slotKey(date,time))));
+  return map;
+}
+function aggregateEditOriginalKeys(edit){
+  const data=state.allSched?.[edit.pid], slots=data?.schedule?.[edit.originalSid]||{};
+  return Object.keys(slots).filter(k=>{
+    const v=slots[k], start=scheduleKeyStartMs(k);
+    return !!v&&((v==='e')===edit.originalExt)&&start>=edit.originalStart&&start<edit.originalEnd;
+  });
+}
+function aggregateCreatePids(){
+  return Object.keys(state.allSched||{}).filter(pid=>{
+    const data=state.allSched[pid];
+    return !state.index?.[pid]?.trashedAt&&data?.config&&sortedIds(data.config.songs||{}).length>0&&projectSlotMap(data.config).size>0;
+  }).sort((a,b)=>{
+    const month=state.aggMonth||'';
+    const aCfg=state.allSched[a].config, bCfg=state.allSched[b].config;
+    const aIn=String(aCfg.startDate||'').slice(0,7)<=month&&String(aCfg.endDate||'').slice(0,7)>=month;
+    const bIn=String(bCfg.startDate||'').slice(0,7)<=month&&String(bCfg.endDate||'').slice(0,7)>=month;
+    return Number(bIn)-Number(aIn)||itemName(state.allSched[a].config.name).localeCompare(itemName(state.allSched[b].config.name),'ko');
+  });
+}
+function aggregateCreateDraft(pid){
+  const cfg=state.allSched?.[pid]?.config; if(!cfg) return null;
+  const songs=sortedIds(cfg.songs||{}), step=(Number(cfg.slotMinutes)||60)*60000;
+  const starts=[...projectSlotMap(cfg).keys()].sort((a,b)=>a-b);
+  const inMonth=starts.find(ms=>dateTimeLocalValue(ms).slice(0,7)===state.aggMonth);
+  const start=inMonth??starts[0];
+  if(!songs.length||!isFinite(start)) return null;
+  return {isNew:true,pid,sid:songs[0],start:dateTimeLocalValue(start),end:dateTimeLocalValue(start+step),ext:false};
+}
+function openAggregateCreate(){
+  const pid=aggregateCreatePids()[0], draft=pid?aggregateCreateDraft(pid):null;
+  if(!draft){toast('일정을 추가할 수 있는 프로젝트가 없습니다');return;}
+  state.aggEdit=draft; render();
+}
+function changeAggregateCreateProject(pid){
+  const draft=aggregateCreateDraft(pid);
+  if(!draft){toast('이 프로젝트에는 추가 가능한 시간 범위가 없습니다');return;}
+  state.aggEdit=draft; render();
+}
+function openAggregateEdit(el){
+  const pid=el.dataset.pid, sid=el.dataset.sid;
+  const start=Number(el.dataset.start), end=Number(el.dataset.end);
+  const data=state.allSched?.[pid];
+  if(!data?.config||!data.schedule?.[sid]||!isFinite(start)||!isFinite(end)){
+    toast('일정 정보를 다시 불러오고 있습니다'); return;
+  }
+  const ext=el.dataset.ext==='1';
+  state.aggEdit={pid,sid,start:dateTimeLocalValue(start),end:dateTimeLocalValue(end),ext,
+    originalSid:sid,originalStart:start,originalEnd:end,originalExt:ext};
+  render();
+}
+function viewAggregateEdit(){
+  const edit=state.aggEdit; if(!edit) return '';
+  const data=state.allSched?.[edit.pid], cfg=data?.config;
+  if(!cfg) return '';
+  const songs=sortedIds(cfg.songs||{});
+  const project=itemName(cfg.name)||state.index?.[edit.pid]?.name||edit.pid;
+  const songOpts=songs.map(sid=>`<option value="${esc(sid)}" ${edit.sid===sid?'selected':''}>${esc(itemName(cfg.songs[sid])||'활동')}</option>`).join('');
+  const projectField=edit.isNew?`<div class="agg-edit-field full"><label for="aggEditProject">프로젝트</label><select id="aggEditProject" data-act="aggcreateproject">${aggregateCreatePids().map(pid=>{
+    const name=itemName(state.allSched[pid]?.config?.name)||state.index?.[pid]?.name||pid;
+    return `<option value="${esc(pid)}" ${edit.pid===pid?'selected':''}>${esc(name)} · ${esc(pid)}</option>`;
+  }).join('')}</select></div>`:'';
+  return `<div class="modal-backdrop" data-act="aggeditclose">
+    <div class="modal" data-act="modal-noop" style="max-width:560px">
+      <div class="modal-head"><h2>${edit.isNew?'일정 추가':'일정 수정'}</h2><button class="modal-x" data-act="aggeditclose" title="닫기">×</button></div>
+      <div class="modal-body">
+        ${edit.isNew?'':`<div class="agg-edit-project">
+          <div><strong>${esc(project)}</strong><span>${esc(edit.pid)}</span></div>
+          <button class="btn ghost sm" data-act="aggeditopenproject">프로젝트 열기</button>
+        </div>`}
+        <div class="agg-edit-grid">
+          ${projectField}
+          <div class="agg-edit-field full"><label for="aggEditSong">활동</label><select id="aggEditSong" data-act="aggeditfield" data-field="sid">${songOpts}</select></div>
+          <div class="agg-edit-field"><label for="aggEditStart">시작</label><input id="aggEditStart" type="datetime-local" step="${(Number(cfg.slotMinutes)||60)*60}" value="${esc(edit.start)}" data-act="aggeditfield" data-field="start"></div>
+          <div class="agg-edit-field"><label for="aggEditEnd">종료</label><input id="aggEditEnd" type="datetime-local" step="${(Number(cfg.slotMinutes)||60)*60}" value="${esc(edit.end)}" data-act="aggeditfield" data-field="end"></div>
+          <div class="agg-edit-field full">
+            <label>장소</label>
+            <div class="mode-row" style="margin:0">
+              <button class="mode-btn ${edit.ext?'':'on'}" data-act="aggeditroom" data-room="in">🏠 동방</button>
+              <button class="mode-btn ext ${edit.ext?'on':''}" data-act="aggeditroom" data-room="ext">🌐 외부</button>
+            </div>
+          </div>
+        </div>
+        <div class="agg-edit-actions">
+          ${edit.isNew?'':`<button class="btn danger sm" data-act="aggeditdelete">일정 삭제</button>`}
+          <div class="agg-edit-actions-right">
+            <button class="btn ghost sm" data-act="aggeditclose">취소</button>
+            <button class="btn sm" data-act="aggeditsave">${edit.isNew?'일정 추가':'변경 저장'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function syncAggregateEditDraft(){
+  const edit=state.aggEdit; if(!edit) return;
+  const song=$('aggEditSong'), start=$('aggEditStart'), end=$('aggEditEnd');
+  if(song) edit.sid=song.value; if(start) edit.start=start.value; if(end) edit.end=end.value;
+}
+async function saveAggregateEdit(){
+  syncAggregateEditDraft();
+  const edit=state.aggEdit, data=state.allSched?.[edit?.pid], cfg=data?.config;
+  if(!edit||!cfg||state.index?.[edit.pid]?.trashedAt){toast('저장할 프로젝트를 찾을 수 없습니다');return;}
+  if(!cfg.songs?.[edit.sid]){toast('활동을 선택하세요');return;}
+  const start=new Date(edit.start).getTime(), end=new Date(edit.end).getTime();
+  const sm=Number(cfg.slotMinutes)||60, step=sm*60000;
+  if(!isFinite(start)||!isFinite(end)||end<=start){toast('시작과 종료 시각을 확인하세요');return;}
+  if((end-start)%step!==0){toast(`${sm}분 단위로 시간을 맞춰주세요`);return;}
+  const slots=projectSlotMap(cfg), newKeys=[];
+  for(let ms=start;ms<end;ms+=step){const k=slots.get(ms);if(!k){toast('프로젝트의 날짜·시간 설정 범위 안에서 선택하세요');return;}newKeys.push(k);}
+  if(!newKeys.length){toast('한 칸 이상의 일정을 선택하세요');return;}
+  const oldKeys=edit.isNew?[]:aggregateEditOriginalKeys(edit);
+  if(!edit.isNew&&!oldKeys.length){toast('원본 일정이 변경되었습니다. 다시 선택하세요');state.aggEdit=null;render();return;}
+
+  const targetSchedule={};
+  Object.keys(data.schedule||{}).forEach(sid=>{targetSchedule[sid]={...(data.schedule[sid]||{})};});
+  oldKeys.forEach(k=>{if(targetSchedule[edit.originalSid])delete targetSchedule[edit.originalSid][k];});
+  if(newKeys.some(k=>targetSchedule[edit.sid]?.[k])){toast('선택한 시간에 같은 활동 일정이 이미 있습니다');return;}
+  const compare={};
+  Object.keys(state.allSched||{}).forEach(pid=>{
+    if(state.index?.[pid]?.trashedAt) return;
+    compare[pid]=pid===edit.pid?{config:cfg,schedule:targetSchedule}:state.allSched[pid];
+  });
+  const memberKeys=new Set(Object.keys(cfg.matrix?.[edit.sid]||{}).filter(uid=>cfg.matrix[edit.sid][uid]&&cfg.people?.[uid])
+    .map(uid=>memberNameKey(cfg.people[uid])).filter(Boolean));
+  const conflicts=[];
+  for(const interval of buildScheduleIntervals(compare)){
+    if(!newKeys.some(k=>{const s=scheduleKeyStartMs(k);return interval.s<s+step&&interval.e>s;})) continue;
+    const shared=interval.memberKeys.some(name=>memberKeys.has(name));
+    const roomClash=!edit.ext&&!interval.ext;
+    if(shared||roomClash) conflicts.push(interval);
+  }
+  if(conflicts.length){
+    const first=conflicts[0], other=state.allSched?.[first.pid];
+    const project=itemName(other?.config?.name)||state.index?.[first.pid]?.name||first.pid;
+    const song=itemName(other?.config?.songs?.[first.sid])||'활동';
+    toast(`일정 충돌: ${project} · ${song}`); return;
+  }
+
+  try{
+    const avail=(await FB.get(R('projects/'+edit.pid+'/avail'))).val()||{};
+    const unavailable=Object.keys(cfg.matrix?.[edit.sid]||{}).filter(uid=>
+      cfg.matrix[edit.sid][uid]&&cfg.people?.[uid]&&newKeys.some(k=>avail[uid]?.[k]));
+    if(unavailable.length){
+      const names=unavailable.map(uid=>itemName(cfg.people[uid])).filter(Boolean);
+      const shown=names.length?names.slice(0,4).join(', ')+(names.length>4?` 외 ${names.length-4}명`:''):`${unavailable.length}명`;
+      const action=edit.isNew?'추가':'저장';
+      if(!confirm(`선택한 시간에 불가능한 멤버가 있습니다: ${shown}\n그래도 일정을 ${action}할까요?`)) return;
+    }
+  }catch(e){
+    console.error('availability check failed',e); toast('멤버 가능 시간을 확인하지 못했습니다'); return;
+  }
+
+  const updates={};
+  oldKeys.forEach(k=>{updates['projects/'+edit.pid+'/schedule/'+edit.originalSid+'/'+k]=null;});
+  newKeys.forEach(k=>{updates['projects/'+edit.pid+'/schedule/'+edit.sid+'/'+k]=edit.ext?'e':true;});
+  try{
+    await FB.update(R(''),updates); state.aggEdit=null; render(); toast(edit.isNew?'일정을 추가했습니다':'일정을 수정했습니다');
+  }catch(e){console.error(e);toast(edit.isNew?'일정을 추가하지 못했습니다':'일정을 수정하지 못했습니다');}
+}
+async function deleteAggregateEdit(){
+  const edit=state.aggEdit; if(!edit) return;
+  syncAggregateEditDraft();
+  const keys=aggregateEditOriginalKeys(edit);
+  if(!keys.length){toast('원본 일정이 변경되었습니다. 다시 선택하세요');state.aggEdit=null;render();return;}
+  const project=itemName(state.allSched?.[edit.pid]?.config?.name)||state.index?.[edit.pid]?.name||edit.pid;
+  const song=itemName(state.allSched?.[edit.pid]?.config?.songs?.[edit.originalSid])||'활동';
+  if(!confirm(`'${project} · ${song}' 일정을 삭제할까요?`)) return;
+  const updates={}; keys.forEach(k=>{updates['projects/'+edit.pid+'/schedule/'+edit.originalSid+'/'+k]=null;});
+  try{
+    await FB.update(R(''),updates); state.aggEdit=null; render(); toast('일정을 삭제했습니다');
+  }catch(e){console.error(e);toast('일정을 삭제하지 못했습니다');}
 }
 async function sheetCopy(){
   const ta=$('sheetTsv'); const tsv=ta?ta.value:(state.sheetExport||''); if(!tsv) return;
@@ -1400,12 +1828,51 @@ function toggleLock(){
   }
 }
 async function delProject(){
-  if(cfgLocked()){ toast('잠금을 해제한 뒤 삭제할 수 있습니다'); return; }
-  if(!confirm('이 프로젝트를 완전히 삭제합니다. 되돌릴 수 없습니다.\n계속할까요?'))return;
-  await FB.remove(R('projects/'+state.pid));
-  await FB.remove(R('projectIndex/'+state.pid));
-  lsDel('v_'+state.pid);
+  if(!confirm('이 프로젝트를 휴지통으로 옮길까요?\n휴지통에서 다시 복원할 수 있습니다.'))return;
+  await FB.update(R('projectIndex/'+state.pid),{trashedAt:Date.now()});
   location.href=location.pathname;
+}
+async function trashProjectFromLanding(pid){
+  if(!pid||!state.index?.[pid]) return;
+  const name=state.index[pid].name||pid;
+  try{
+    if(!confirm(`'${name}' (${pid}) 프로젝트를 휴지통으로 옮길까요?\n나중에 다시 복원할 수 있습니다.`)) return;
+    const trashedAt=Date.now();
+    await FB.update(R('projectIndex/'+pid),{trashedAt});
+    state.index[pid].trashedAt=trashedAt;
+    if(state.allSched) delete state.allSched[pid];
+    render(); toast('휴지통으로 옮겼습니다');
+  }catch(e){ console.error(e); toast('휴지통으로 옮기지 못했습니다'); }
+}
+async function restoreProject(pid){
+  if(!pid||!state.index?.[pid]?.trashedAt) return;
+  try{
+    await FB.update(R('projectIndex/'+pid),{trashedAt:null});
+    delete state.index[pid].trashedAt;
+    syncAllScheduleSubs(); render(); toast('프로젝트를 복원했습니다');
+  }catch(e){ console.error(e); toast('프로젝트 복원에 실패했습니다'); }
+}
+async function emptyTrash(){
+  const pids=Object.keys(state.index||{}).filter(pid=>state.index[pid]?.trashedAt);
+  if(!pids.length){ toast('휴지통이 비어 있습니다'); return; }
+  if(!confirm(`휴지통의 프로젝트 ${pids.length}개를 영구 삭제할까요?\n모든 설정, 참여자 입력, 시간표가 삭제되며 되돌릴 수 없습니다.`)) return;
+  try{
+    const locked=(await Promise.all(pids.map(async pid=>{
+      const snap=await FB.get(R('projects/'+pid+'/config/locked'));
+      return snap.val()?pid:null;
+    }))).filter(Boolean);
+    if(locked.length){
+      toast(`잠긴 프로젝트 ${locked.length}개가 있습니다 · 복원 후 잠금을 해제하세요`); return;
+    }
+    const updates={};
+    pids.forEach(pid=>{ updates['projects/'+pid]=null; updates['projectIndex/'+pid]=null; });
+    await FB.update(R(''),updates);
+    pids.forEach(pid=>{
+      lsDel('v_'+pid); delete state.index[pid];
+      if(state.allSched) delete state.allSched[pid];
+    });
+    render(); toast('휴지통을 비웠습니다');
+  }catch(e){ console.error(e); toast('휴지통을 비우지 못했습니다'); }
 }
 
 /* ---------------- 계산 ---------------- */
@@ -1480,6 +1947,7 @@ function renderBody(){
   }
   if(state.showHelp) html+=viewHelp();
   if(state.sheetExport) html+=viewSheetExport();
+  if(state.aggEdit) html+=viewAggregateEdit();
   app.innerHTML=html;
 }
 
@@ -1498,7 +1966,8 @@ function viewHelp(){
           <ol>
             <li><b>리더</b>가 프로젝트를 만들고 그룹 안에 활동·참여자·참여표 작성 → 6자리 <b>코드</b>를 공유</li>
             <li><b>참여자</b>는 입력 탭에서 자기 이름을 골라 안 되는 시간만 표시 (한 번만)</li>
-            <li>리더가 <b>결과 탭</b>에서 시간표를 짜고, 모두가 받아갑니다 (PNG·.ics·시트로 복사)</li>
+            <li>리더가 <b>결과 탭</b>에서 시간표를 짜고, 모두가 받아갑니다 (PNG·.ics(캘린더 자동 연동)·시트로 복사)</li>
+            <li>메인의 <b>전체 합주 시간표</b>에서는 <b>+ 일정 추가</b>로 직접 일정을 만들고, 기존 일정을 눌러 수정·삭제할 수 있습니다. 변경 내용은 프로젝트 결과 탭에도 자동 반영됩니다.</li>
           </ol>
         </div>
 
@@ -1549,6 +2018,7 @@ function viewHelp(){
                 <li><b>다른 모드의 칸은 건드릴 수 없습니다</b> — 외부 모드에선 동방 칸 못 만지고, 그 반대도 마찬가지(보호). 외부 배정은 빗금 + <b>🌐 이모지</b> 표시.</li>
               </ul>
             </li>
+            <li><b>전체 일정 자동 확인</b> — 메인의 활성 프로젝트 시간표를 실시간으로 참조합니다. 같은 멤버가 다른 프로젝트 일정에 있거나 동방 사용 시간이 겹치면 배정할 수 없습니다. 현재 프로젝트와 휴지통 프로젝트는 비교에서 제외됩니다.</li>
           </ul>
           <p>칸 색 의미:</p>
           <ul>
@@ -1571,7 +2041,7 @@ function viewHelp(){
             <li><b>최종 캘린더</b> — 배정된 일정을 시각화. 외부 블록은 빗금 + "외부" 태그.</li>
             <li><b>참여자 필터</b> — 드롭다운에서 본인 선택하면 본인 일정만 표시</li>
             <li><b>📷 PNG</b> — 화면 그대로 이미지로 저장</li>
-            <li><b>📅 .ics</b> — Google/Apple/Outlook 캘린더로 가져갈 수 있는 파일</li>
+            <li><b>📅 .ics (캘린더 자동 연동)</b> — Google/Apple/Outlook 캘린더로 가져갈 수 있는 파일</li>
             <li><b>📋 시트로 복사</b> — 합주 시간표를 시간×일~토 표(TSV)로 클립보드에 복사. 구글 시트 빈 탭에 붙여넣기(Ctrl/⌘+V, 모바일은 길게 눌러 붙여넣기)하면 칸이 자동 채워집니다. <b>외부 배정은 제외</b>(동방 시트니까).</li>
           </ul>
         </div>
@@ -1587,8 +2057,8 @@ function viewHelp(){
             <li><b>코드를 잃어버렸어요</b> — 다른 참여자에게 물어보세요. 헤더 코드 칩 클릭으로 공유.</li>
             <li><b>새 프로젝트를 만들면?</b> — <b>그룹 1</b> 안에 활동 3개·참여자 3개와 참여표가 채워져 있습니다. 이름은 자유롭게 바꾸고, 필요 없는 항목은 × 로 삭제. <b>+ 그룹 추가</b>로 그룹을 더 만들 수 있습니다.</li>
             <li><b>같은 사람을 두 그룹에 두려면?</b> — 다른 그룹에서 <b>+ 참여자 추가</b> 후 이름만 똑같이(대소문자/공백 무시) 적으면 자동으로 동일 인물로 합쳐집니다. 그 사람의 시간표·완료 상태는 그대로 유지.</li>
-            <li><b>다른 기기에서 같은 프로젝트를 열려면?</b> — 코드 입력 또는 받은 링크로 들어가면 됩니다. 메인 화면 "최근 프로젝트" 목록은 그 기기에서만 보입니다.</li>
-            <li><b>설정 잠그면 뭐가 잠기나요?</b> — 그룹/활동/참여자/참여표/날짜/시간/이름 변경, 프로젝트 삭제까지 막힙니다. 입력 탭의 시간 표시와 결과 탭의 배정은 그대로 가능. 비번을 잊으면 해제하기 어렵습니다(개발자 도구/DB 우회는 가능 — 강한 보안 아님).</li>
+            <li><b>다른 기기에서 같은 프로젝트를 열려면?</b> — 코드 입력 또는 받은 링크로 들어가면 됩니다.</li>
+            <li><b>설정 잠그면 뭐가 잠기나요?</b> — 그룹/활동/참여자/참여표/날짜/시간/이름 변경이 막힙니다. 입력·결과 탭과 휴지통 이동·복원은 그대로 가능하며, 영구 삭제 전에는 잠금을 해제해야 합니다. 비번을 잊으면 해제하기 어렵습니다(개발자 도구/DB 우회는 가능 — 강한 보안 아님).</li>
             <li><b>그룹 필터를 모두 끄면?</b> — 전체 그룹이 다 보입니다. 한두 개만 켜면 그 그룹의 곡만 시간표에 표시.</li>
             <li><b>외부 vs 동방 어떻게 다른가요?</b> — 동방은 한 방을 공유해 같은 시간 한 활동만, 외부는 각자 방이라 다른 활동과 같은 시간 OK. 다만 멤버가 겹치면 어느 경우든 불가. 외부 배정은 동방 시트 복사에서 빠집니다.</li>
           </ul>
@@ -1629,19 +2099,143 @@ function viewMissing(){
     <button class="btn" data-act="home">프로젝트 목록으로</button></div>`;
 }
 
+/* 메인 월간 캘린더와 내보내기가 공유하는 활성 프로젝트/멤버/일정 모델 */
+function linkedProjectPeople(config){
+  const linked=new Set();
+  Object.values(config?.groups||{}).forEach(group=>{
+    Object.keys(group?.members||{}).forEach(uid=>{if(group.members[uid])linked.add(uid);});
+  });
+  Object.values(config?.matrix||{}).forEach(members=>{
+    Object.keys(members||{}).forEach(uid=>{if(members[uid])linked.add(uid);});
+  });
+  return linked;
+}
+function aggregateSelection(){
+  const idx=state.index||{};
+  const data={};
+  Object.keys(state.allSched||{}).forEach(pid=>{
+    if(!idx[pid]?.trashedAt) data[pid]=state.allSched[pid];
+  });
+  const pids=Object.keys(data).sort();
+  const memberMap={};
+  pids.forEach(pid=>{
+    const config=data[pid]?.config||{}, people=config.people||{};
+    const linked=linkedProjectPeople(config);
+    Object.keys(people).forEach(uid=>{
+      if(!linked.has(uid)) return;
+      const name=itemName(people[uid]).trim(); if(!name) return;
+      const key=name.toLocaleLowerCase('ko-KR');
+      if(!memberMap[key]) memberMap[key]=name;
+    });
+  });
+  const memberKeys=Object.keys(memberMap).sort((a,b)=>memberMap[a].localeCompare(memberMap[b],'ko'));
+  if(state.aggMember&&!memberMap[state.aggMember]) state.aggMember='';
+  const all=buildScheduleIntervals(data).map(o=>{
+    const cfg=data[o.pid]?.config||{};
+    const matrix=cfg.matrix?.[o.sid]||{};
+    const intervalMembers=Object.keys(matrix).filter(uid=>matrix[uid]&&cfg.people?.[uid]).map(uid=>
+      itemName(cfg.people[uid]).trim().toLocaleLowerCase('ko-KR'));
+    return {...o,memberKeys:intervalMembers};
+  });
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(!/^\d{4}-\d{2}$/.test(state.aggMonth)) state.aggMonth=fmtDate(now).slice(0,7);
+  const [year,month]=state.aggMonth.split('-').map(Number);
+  const monthStart=new Date(year,month-1,1);
+  const nextMonth=new Date(year,month,1);
+  const intervals=all.filter(o=>(!state.aggMember||o.memberKeys.includes(state.aggMember))&&
+    o.s>=monthStart.getTime()&&o.s<nextMonth.getTime());
+  return {idx,data,pids,memberMap,memberKeys,intervals,now,year,month,monthStart,nextMonth,
+    memberName:state.aggMember?memberMap[state.aggMember]||'':''};
+}
+
+/* 메인 페이지: 모든 프로젝트의 배정된 합주를 월간 캘린더로 */
+function viewAggSchedule(){
+  const idx=state.index||{};
+  if(!Object.keys(idx).some(pid=>!idx[pid]?.trashedAt)) return '';
+  const label=(extra='')=>`<div class="section-label">전체 합주 시간표${extra}</div>`;
+  if(!state.allSched)
+    return `<div class="card">${label()}<div class="empty">시간표 불러오는 중…</div></div>`;
+  const sel=aggregateSelection();
+  const {data,pids,memberMap,memberKeys,intervals,now,year,month,monthStart}=sel;
+  const pColor=pid=>{ const i=Math.max(pids.indexOf(pid),0);
+    return `hsl(${Math.round(i/Math.max(pids.length,1)*360)},50%,42%)`; };
+  const hm=ms=>{ const d=new Date(ms);
+    return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  const gridStart=new Date(monthStart); gridStart.setDate(gridStart.getDate()-gridStart.getDay());
+  const byDate={};
+  intervals.forEach(o=>{ const ds=fmtDate(new Date(o.s)); (byDate[ds]=byDate[ds]||[]).push(o); });
+  Object.values(byDate).forEach(arr=>arr.sort((a,b)=>a.s-b.s||a.pid.localeCompare(b.pid)));
+  const monthCount=intervals.length;
+  const canAdd=aggregateCreatePids().length>0;
+
+  const cells=[];
+  const cursor=new Date(gridStart);
+  for(let i=0;i<42;i++){
+    const ds=fmtDate(cursor), inMonth=cursor.getMonth()===month-1;
+    const dow=cursor.getDay(), isToday=ds===fmtDate(now);
+    const events=inMonth?(byDate[ds]||[]):[];
+    const eventsHtml=events.map(o=>{
+      const cfg=data[o.pid]?.config||{};
+      const song=itemName(cfg.songs?.[o.sid])||'활동';
+      const pname=itemName(cfg.name)||idx[o.pid]?.name||o.pid;
+      const title=`${pname} · ${song} · ${hm(o.s)}–${hm(o.e)}${o.ext?' · 외부':''} · 클릭하여 수정`;
+      return `<button class="agg-event" style="--pc:${pColor(o.pid)}" data-act="aggedit" data-pid="${esc(o.pid)}" data-sid="${esc(o.sid)}" data-start="${o.s}" data-end="${o.e}" data-ext="${o.ext?'1':'0'}" title="${esc(title)}">
+        <span class="agg-event-top"><span class="agg-event-time">${hm(o.s)}–${hm(o.e)}</span><span class="agg-event-song">${esc(song)}</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
+        <span class="agg-event-proj">${esc(pname)}</span>
+      </button>`;
+    }).join('');
+    cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}">
+      <div class="agg-date-num"><span>${cursor.getDate()}</span></div>
+      <div class="agg-events">${eventsHtml}</div>
+    </div>`);
+    cursor.setDate(cursor.getDate()+1);
+  }
+  const memberOpts='<option value="">전체 멤버</option>'+memberKeys.map(key=>
+    `<option value="${esc(key)}" ${state.aggMember===key?'selected':''}>${esc(memberMap[key])}</option>`).join('');
+  const weekdays=['일','월','화','수','목','금','토'].map((d,i)=>
+    `<div class="agg-weekday${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
+  return `<div class="card">
+    <div class="agg-head">
+      ${label(` <span class="count">${monthCount}회</span>`)}
+      <div class="agg-tools">
+        <button class="btn sm" data-act="aggadd" ${canAdd?'':'disabled'}>+ 일정 추가</button>
+        <button class="btn ghost sm" data-act="aggpng" ${monthCount?'':'disabled'}>📷 PNG</button>
+        <button class="btn ghost sm" data-act="aggics" ${monthCount?'':'disabled'}>📅 .ics (캘린더 자동 연동)</button>
+        <button class="btn ghost sm" data-act="aggtoday">오늘</button>
+        <div class="agg-nav">
+          <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
+          <div class="agg-month-title">${year}년 ${month}월</div>
+          <button data-act="aggmonth" data-d="1" title="다음 달" aria-label="다음 달">›</button>
+        </div>
+        <select class="agg-member" data-act="aggmember" aria-label="멤버 필터">${memberOpts}</select>
+      </div>
+    </div>
+    <div class="agg-cal-scroll"><div class="agg-cal" id="agg-calendar-export">
+      <div class="agg-export-title">${year}년 ${month}월 전체 합주 시간표${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
+      <div class="agg-weekdays">${weekdays}</div>
+      <div class="agg-month-grid">${cells.join('')}</div>
+    </div></div>
+    ${monthCount?'':`<div class="agg-month-empty">${state.aggMember?esc(memberMap[state.aggMember])+'님의 ':''}이달 합주 일정이 없습니다.</div>`}
+  </div>`;
+}
+
 function viewLanding(){
   const idx=state.index||{};
-  const visited=getVisited()
-    .filter(v=>idx[v.pid])           // Firebase에 실제 존재하는 것만
-    .sort((a,b)=>b.ts-a.ts);          // 최근 방문 순
-  const list=visited.map(v=>{
-    const pid=v.pid;
-    return `<div class="proj-item" data-act="open" data-pid="${pid}">
-       <div class="pn">${esc(idx[pid].name||'(이름 없음)')}</div>
-       <div class="pc">${pid}</div>
-       <button class="proj-x" data-act="forget" data-pid="${pid}" title="이 기기 목록에서 제거 (프로젝트 자체는 남아 있음)">×</button>
-     </div>`;
-  }).join('');
+  const allPids=Object.keys(idx).filter(pid=>!idx[pid]?.trashedAt).sort((a,b)=>
+    (Number(idx[b]?.createdAt)||0)-(Number(idx[a]?.createdAt)||0)||
+    String(idx[a]?.name||'').localeCompare(String(idx[b]?.name||''),'ko'));
+  const allList=allPids.map(pid=>`<div class="proj-item" data-act="open" data-pid="${esc(pid)}">
+    <div class="pn">${esc(idx[pid]?.name||'(이름 없음)')}</div>
+    <div class="pc">${esc(pid)}</div>
+    <button class="proj-del" data-act="trashproject" data-pid="${esc(pid)}" title="휴지통으로 이동">휴지통</button>
+  </div>`).join('');
+  const trashPids=Object.keys(idx).filter(pid=>!!idx[pid]?.trashedAt).sort((a,b)=>
+    (Number(idx[b]?.trashedAt)||0)-(Number(idx[a]?.trashedAt)||0));
+  const trashList=trashPids.map(pid=>`<div class="proj-item trash-item">
+    <div class="pn">${esc(idx[pid]?.name||'(이름 없음)')}</div>
+    <div class="pc">${esc(pid)}</div>
+    <button class="proj-restore" data-act="restoreproject" data-pid="${esc(pid)}">복원</button>
+  </div>`).join('');
 
   return `<div class="card" style="padding:32px">
     <div class="hero">일정 조율<span class="dot">,</span> 한 번에</div>
@@ -1653,10 +2247,18 @@ function viewLanding(){
       <button class="btn ghost" data-act="enter">입장</button>
     </div>
   </div>
-  ${visited.length?`<div class="card">
-    <div class="section-label">최근 프로젝트 <span class="count">${visited.length}</span></div>
-    ${list}
-  </div>`:''}`;
+  ${viewAggSchedule()}
+  <div class="card">
+    <div class="section-label">전체 프로젝트 <span class="count">${allPids.length}</span></div>
+    ${allPids.length?`<div class="proj-list-all">${allList}</div>`:'<div class="empty">아직 프로젝트가 없습니다.</div>'}
+  </div>
+  <div class="card">
+    <div class="trash-head">
+      <div class="section-label">휴지통 <span class="count">${trashPids.length}</span></div>
+      <button class="btn danger sm" data-act="emptytrash" ${trashPids.length?'':'disabled'}>휴지통 모두 비우기</button>
+    </div>
+    ${trashPids.length?`<div class="proj-list-all">${trashList}</div>`:'<div class="empty" style="padding:28px 16px">휴지통이 비어 있습니다.</div>'}
+  </div>`;
 }
 
 function viewSetup(){
@@ -1774,10 +2376,10 @@ function viewSetup(){
   <div class="card danger-zone">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div>
-        <div class="section-label" style="margin:0 0 4px;color:var(--accent)">위험 구역</div>
-        <div style="font-size:13px;color:var(--muted)">프로젝트를 영구 삭제합니다. 되돌릴 수 없습니다.</div>
+        <div class="section-label" style="margin:0 0 4px;color:var(--accent)">프로젝트 관리</div>
+        <div style="font-size:13px;color:var(--muted)">프로젝트를 휴지통으로 옮깁니다. 메인 화면에서 복원할 수 있습니다.</div>
       </div>
-      <button class="btn danger sm" data-act="delproject" ${dis}>프로젝트 삭제</button>
+      <button class="btn danger sm" data-act="delproject">휴지통으로 이동</button>
     </div>
   </div>`;
 }
@@ -1980,9 +2582,7 @@ function viewResults(){
       title='이 시간엔 참여자가 안 됩니다';
     } else if(cfs.length){
       cls+=' conflict';
-      const nm=cfs.map(x=>itemName(c.songs[x.sid])).join(', ');
-      const hasShared=cfs.some(x=>x.shared&&x.shared.length);
-      title=hasShared?`참여자 겹침: ${nm}`:`이 시간 동방 사용 중: ${nm}`;
+      title=conflictMessage(cfs);
     } else {
       cls+=' feasible';
       style=`background:${songColorLight(sid)}`;
@@ -2037,7 +2637,7 @@ function viewResults(){
         <h2>시간표 — 가능 시간 & 배정</h2>
         <div class="page-intro">
           <div class="pi-h">🎯 이 페이지는?</div>
-          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 참여자 입력이 종합되어 활동별 가능 시간이 자동 계산되고, 클릭/드래그로 배정·해제합니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨(외부는 빗금), 빗금 회색=참여자 안 됨. 배정 전 위에서 <b>동방/외부</b>를 고르세요 — 동방은 같은 시간에 한 활동만, 외부는 겹쳐 잡을 수 있습니다.</p>
+          <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 참여자 입력이 종합되어 활동별 가능 시간이 자동 계산되고, 클릭/드래그로 배정·해제합니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨(외부는 빗금), 빗금 회색=참여자 안 됨. 메인 시간표의 다른 프로젝트 일정도 자동으로 확인해 같은 멤버나 동방 시간이 겹치지 않게 합니다.</p>
         </div>
         ${modeRow}
         ${groupFilterRow}
@@ -2201,7 +2801,7 @@ function viewResults(){
         <select data-act="filtermember">${memberOpts}</select>
         <button class="btn sm" data-act="sheetexport" ${blocks.length?'':'disabled'}>📋 시트로 복사</button>
         <button class="btn ghost sm" data-act="exportpng" ${blocks.length?'':'disabled'}>📷 PNG</button>
-        <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics</button>
+        <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics (캘린더 자동 연동)</button>
       </div>
     </div>
     ${finalTabsHtml}
@@ -2371,14 +2971,21 @@ function bindEvents(){
     if(act==='modal-noop') return;
     if(act==='new'){createProject();return;}
     if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
-    if(act==='forget'){
-      e.stopPropagation();
-      const pid=t.dataset.pid;
-      const nm=state.index[pid]?.name||pid;
-      if(!confirm(`'${nm}' 을 이 기기 목록에서 제거할까요?\n(프로젝트 자체는 그대로 남아 있어서 다시 코드로 들어올 수 있습니다.)`)) return;
-      lsDel('v_'+pid);
-      render();
-      return;
+    if(act==='aggadd'){openAggregateCreate();return;}
+    if(act==='aggedit'){openAggregateEdit(t);return;}
+    if(act==='aggeditclose'){state.aggEdit=null;render();return;}
+    if(act==='aggeditopenproject'){location.href=location.pathname+'?p='+state.aggEdit.pid;return;}
+    if(act==='aggeditroom'){syncAggregateEditDraft();state.aggEdit.ext=t.dataset.room==='ext';render();return;}
+    if(act==='aggeditsave'){saveAggregateEdit();return;}
+    if(act==='aggeditdelete'){deleteAggregateEdit();return;}
+    if(act==='trashproject'){e.stopPropagation();trashProjectFromLanding(t.dataset.pid);return;}
+    if(act==='restoreproject'){e.stopPropagation();restoreProject(t.dataset.pid);return;}
+    if(act==='emptytrash'){emptyTrash();return;}
+    if(act==='aggtoday'){state.aggMonth=fmtDate(new Date()).slice(0,7);render();return;}
+    if(act==='aggmonth'){
+      const [y,m]=state.aggMonth.split('-').map(Number);
+      const d=new Date(y,m-1+(+t.dataset.d||0),1);
+      state.aggMonth=fmtDate(d).slice(0,7); render(); return;
     }
     if(act==='enter'){
       const v=($('codeIn').value||'').trim().toUpperCase();
@@ -2409,6 +3016,8 @@ function bindEvents(){
       else state.groupFilter[gid]=true;
       render(); return;
     }
+    if(act==='aggpng'){exportAggPNG();return;}
+    if(act==='aggics'){exportAggICS();return;}
     if(act==='exportpng'){exportPNG();return;}
     if(act==='exportics'){exportICS();return;}
     if(act==='sheetexport'){const tsv=buildSheetTSV();if(!tsv){toast('배정된 합주가 없습니다');return;}state.sheetExport=tsv;render();return;}
@@ -2482,6 +3091,21 @@ function bindEvents(){
       state.finalFilter=v||'';
       render();
     }
+    else if(act==='aggmember'){
+      state.aggMember=v||'';
+      render();
+    }
+    else if(act==='aggcreateproject'){
+      changeAggregateCreateProject(v);
+    }
+    else if(act==='aggeditfield'&&state.aggEdit){
+      state.aggEdit[t.dataset.field]=v;
+    }
+  });
+
+  app.addEventListener('input',e=>{
+    const t=e.target.closest('[data-act="aggeditfield"]');
+    if(t&&state.aggEdit) state.aggEdit[t.dataset.field]=t.value;
   });
 
   app.addEventListener('blur',e=>{
@@ -2733,9 +3357,7 @@ function bindEvents(){
     if(!slotOkForSong(sid,k)){ toast('이 시간엔 참여자가 안 됩니다'); return; }
     const cfs=slotConflicts(sid,k,roomModeExt());
     if(cfs.length){
-      const nm=cfs.map(x=>itemName(state.config.songs[x.sid])).join(', ');
-      const hasShared=cfs.some(x=>x.shared&&x.shared.length);
-      toast(hasShared?`참여자 겹침: ${nm}`:`이 시간 동방 사용 중: ${nm}`); return;
+      toast(conflictMessage(cfs)); return;
     }
     const val=roomModeExt()?'e':true;
     state.schedule[sid]=state.schedule[sid]||{};
@@ -2843,8 +3465,8 @@ async function start(){
   if(pid){
     state.pid=pid; state.screen='project';
     state.me=lsGet('me_'+pid)||null;
-    lsSet('v_'+pid,String(Date.now())); // 코드로 들어왔으면 방문 기록
     subscribeProject(pid);
+    subscribeIndex();
   }else{
     state.screen='landing'; subscribeIndex();
   }
