@@ -680,8 +680,17 @@
   .proj-item .proj-del:hover{color:var(--accent-d);background:var(--accent-soft);
     border-color:var(--accent);}
   .trash-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
-    flex-wrap:wrap;margin-bottom:12px;}
+    flex-wrap:wrap;margin-bottom:0;}
+  .trash-head.open{margin-bottom:12px;}
   .trash-head .section-label{margin:0;}
+  .trash-toggle{display:flex;align-items:center;gap:10px;min-height:30px;padding:3px 1px;
+    border:0;background:transparent;box-shadow:none;cursor:pointer;text-align:left;color:var(--muted);}
+  .trash-toggle:hover .section-label{color:var(--ink);}
+  .trash-toggle:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:3px;}
+  .trash-chevron{width:8px;height:8px;border-right:1.5px solid currentColor;
+    border-bottom:1.5px solid currentColor;transform:rotate(45deg) translate(-1px,-1px);
+    transform-origin:center;transition:transform var(--t);}
+  .trash-toggle[aria-expanded="true"] .trash-chevron{transform:rotate(225deg) translate(-1px,-1px);}
   .trash-item{cursor:default;background:var(--paper);}
   .trash-item:hover{border-color:var(--line-2);transform:none;box-shadow:none;}
   .proj-item .proj-restore{border:1px solid var(--line-2);background:var(--surface);
@@ -866,6 +875,7 @@ let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
   activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null, aggEdit:null,
+  trashOpen:false,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
   allSched:null,  // 활성 프로젝트 전체 배정 {pid:{config,schedule}} (로딩 전 null)
@@ -2098,7 +2108,7 @@ function viewHelp(){
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
-            <li><b>휴지통</b>: 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
+            <li><b>휴지통</b>: 메인의 휴지통 제목을 눌러 목록을 펼칠 수 있습니다. 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
           </ul>
           <div class="tut-callout warn"><b>휴지통 모두 비우기</b>는 프로젝트의 설정, 참여자 입력과 시간표를 영구 삭제합니다. 잠긴 프로젝트가 하나라도 있으면 비울 수 없으므로 먼저 복원하고 잠금을 해제해야 합니다.</div>
           <a class="tut-top-link" href="#tut-top">맨 위로</a>
@@ -2316,11 +2326,16 @@ function viewLanding(){
     ${allPids.length?`<div class="proj-list-all">${allList}</div>`:'<div class="empty">아직 프로젝트가 없습니다.</div>'}
   </div>
   <div class="card">
-    <div class="trash-head">
-      <div class="section-label">휴지통 <span class="count">${trashPids.length}</span></div>
-      <button class="btn danger sm" data-act="emptytrash" ${trashPids.length?'':'disabled'}>휴지통 모두 비우기</button>
+    <div class="trash-head${state.trashOpen?' open':''}">
+      <button class="trash-toggle" data-act="toggletrash" aria-expanded="${state.trashOpen?'true':'false'}" aria-controls="trashContents" title="휴지통 ${state.trashOpen?'접기':'펼치기'}">
+        <span class="section-label">휴지통 <span class="count">${trashPids.length}</span></span>
+        <span class="trash-chevron" aria-hidden="true"></span>
+      </button>
+      ${state.trashOpen?`<button class="btn danger sm" data-act="emptytrash" ${trashPids.length?'':'disabled'}>휴지통 모두 비우기</button>`:''}
     </div>
-    ${trashPids.length?`<div class="proj-list-all">${trashList}</div>`:'<div class="empty" style="padding:28px 16px">휴지통이 비어 있습니다.</div>'}
+    <div id="trashContents" ${state.trashOpen?'':'hidden'}>
+      ${trashPids.length?`<div class="proj-list-all">${trashList}</div>`:'<div class="empty" style="padding:28px 16px">휴지통이 비어 있습니다.</div>'}
+    </div>
   </div>`;
 }
 
@@ -3054,6 +3069,7 @@ function bindEvents(){
     if(act==='aggeditdelete'){deleteAggregateEdit();return;}
     if(act==='trashproject'){e.stopPropagation();trashProjectFromLanding(t.dataset.pid);return;}
     if(act==='restoreproject'){e.stopPropagation();restoreProject(t.dataset.pid);return;}
+    if(act==='toggletrash'){state.trashOpen=!state.trashOpen;render();return;}
     if(act==='emptytrash'){emptyTrash();return;}
     if(act==='aggtoday'){state.aggMonth=fmtDate(new Date()).slice(0,7);render();return;}
     if(act==='aggmonth'){
