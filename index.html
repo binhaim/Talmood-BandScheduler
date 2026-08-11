@@ -379,15 +379,14 @@
   .agg-events{display:flex;flex-direction:column;gap:4px;}
   .agg-event{width:100%;border:1px solid var(--line);border-left:3px solid var(--pc);
     border-radius:4px;background:var(--paper);padding:5px 6px;text-align:left;cursor:pointer;
-    overflow:hidden;transition:border-color var(--t),background var(--t);}
+    overflow:hidden;display:flex;flex-direction:column;gap:2px;
+    transition:border-color var(--t),background var(--t);}
   .agg-event:hover{border-color:var(--pc);background:var(--surface);}
-  .agg-event-top{display:flex;align-items:center;gap:5px;min-width:0;}
   .agg-event-time{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;
-    color:var(--ink-2);white-space:nowrap;}
+    color:var(--ink-2);white-space:nowrap;line-height:1.2;}
+  .agg-event-song-row{display:flex;align-items:center;gap:4px;min-width:0;width:100%;}
   .agg-event-song{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;
-    text-overflow:ellipsis;min-width:0;}
-  .agg-event-proj{display:block;font-size:9.5px;color:var(--pc);white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+    text-overflow:ellipsis;min-width:0;line-height:1.25;}
   .agg-ext{font-size:8px;font-weight:700;color:#7c5cff;flex-shrink:0;}
   .agg-month-empty{text-align:center;color:var(--muted);font-size:12.5px;padding:10px 0 0;}
   .agg-edit-project{display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -405,6 +404,12 @@
     margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
   .agg-edit-actions-right{display:flex;justify-content:flex-end;gap:7px;margin-left:auto;}
   @media(max-width:560px){
+    .agg-cal{min-width:700px;}
+    .agg-cell{min-height:106px;padding:5px;}
+    .agg-events{gap:3px;}
+    .agg-event{padding:4px 5px;}
+    .agg-event-time{font-size:9px;}
+    .agg-event-song{font-size:10px;}
     .agg-edit-grid{grid-template-columns:1fr;}
     .agg-edit-field.full{grid-column:auto;}
     .agg-edit-actions{align-items:stretch;flex-direction:column-reverse;}
@@ -2180,8 +2185,8 @@ function viewAggSchedule(){
       const pname=itemName(cfg.name)||idx[o.pid]?.name||o.pid;
       const title=`${pname} · ${song} · ${hm(o.s)}–${hm(o.e)}${o.ext?' · 외부':''} · 클릭하여 수정`;
       return `<button class="agg-event" style="--pc:${pColor(o.pid)}" data-act="aggedit" data-pid="${esc(o.pid)}" data-sid="${esc(o.sid)}" data-start="${o.s}" data-end="${o.e}" data-ext="${o.ext?'1':'0'}" title="${esc(title)}">
-        <span class="agg-event-top"><span class="agg-event-time">${hm(o.s)}–${hm(o.e)}</span><span class="agg-event-song">${esc(song)}</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
-        <span class="agg-event-proj">${esc(pname)}</span>
+        <span class="agg-event-time">${hm(o.s)}~${hm(o.e)}</span>
+        <span class="agg-event-song-row"><span class="agg-event-song">(${esc(song)})</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
       </button>`;
     }).join('');
     cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}">
