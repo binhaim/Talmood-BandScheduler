@@ -2186,7 +2186,7 @@ function viewAggSchedule(){
       const title=`${pname} · ${song} · ${hm(o.s)}–${hm(o.e)}${o.ext?' · 외부':''} · 클릭하여 수정`;
       return `<button class="agg-event" style="--pc:${pColor(o.pid)}" data-act="aggedit" data-pid="${esc(o.pid)}" data-sid="${esc(o.sid)}" data-start="${o.s}" data-end="${o.e}" data-ext="${o.ext?'1':'0'}" title="${esc(title)}">
         <span class="agg-event-time">${hm(o.s)}~${hm(o.e)}</span>
-        <span class="agg-event-song-row"><span class="agg-event-song">(${esc(song)})</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
+        <span class="agg-event-song-row"><span class="agg-event-song">${esc(song)}</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
       </button>`;
     }).join('');
     cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}">
