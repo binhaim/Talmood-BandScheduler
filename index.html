@@ -349,7 +349,9 @@
   .agg-nav button:hover{background:var(--paper);color:var(--accent);}
   .agg-month-title{min-width:112px;text-align:center;font-family:'Bricolage Grotesque',sans-serif;
     font-size:14px;font-weight:700;}
-  .agg-member{height:34px;min-width:150px;max-width:220px;padding-top:6px;padding-bottom:6px;}
+  .agg-project,.agg-member{height:34px;padding-top:6px;padding-bottom:6px;}
+  .agg-project{min-width:180px;max-width:270px;}
+  .agg-member{min-width:150px;max-width:220px;}
   .agg-cal-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm);
     background:var(--surface);-webkit-overflow-scrolling:touch;}
   .agg-cal{min-width:770px;}
@@ -404,6 +406,8 @@
     margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
   .agg-edit-actions-right{display:flex;justify-content:flex-end;gap:7px;margin-left:auto;}
   @media(max-width:560px){
+    .agg-tools{width:100%;}
+    .agg-project,.agg-member{flex:1 1 150px;min-width:0;max-width:none;}
     .agg-cal{min-width:700px;}
     .agg-cell{min-height:106px;padding:5px;}
     .agg-events{gap:3px;}
@@ -880,7 +884,8 @@ let state={ screen:'loading', pid:null, tab:'setup',
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
   allSched:null,  // 활성 프로젝트 전체 배정 {pid:{config,schedule}} (로딩 전 null)
   aggMonth:'',    // 메인 월간 캘린더 기준 월 (YYYY-MM)
-  aggMember:''    // 메인 멤버 필터 (정규화된 이름)
+  aggMember:'',   // 메인 멤버 필터 (정규화된 이름)
+  aggProject:''   // 메인 프로젝트 필터 (프로젝트 코드)
 };
 
 /* ---------------- 유틸 ---------------- */
@@ -1383,9 +1388,10 @@ async function exportAggPNG(){
     const width=el.scrollWidth;
     const canvas=await h2c(el,{backgroundColor:'#fffdf7',scale:2,width,
       windowWidth:Math.max(width,document.documentElement.clientWidth)});
+    const scope=(sel.projectName||'전체합주').replace(/[\\/:*?"<>|]/g,'_');
     const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
     const link=document.createElement('a');
-    link.download=`전체합주-${state.aggMonth}-${who}.png`;
+    link.download=`${scope}-${state.aggMonth}-${who}.png`;
     link.href=canvas.toDataURL('image/png');
     link.click();
     toast('전체 합주 PNG를 저장했습니다');
@@ -1401,7 +1407,7 @@ function exportAggICS(){
   const localStamp=ms=>{ const d=new Date(ms); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`; };
   const now=new Date();
   const dtstamp=`${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
-  const calName=`${state.aggMonth} 전체 합주${sel.memberName?' · '+sel.memberName:''}`;
+  const calName=`${state.aggMonth} ${sel.projectName||'전체 합주'}${sel.memberName?' · '+sel.memberName:''}`;
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//talmood//all-timetable//KO',
     'CALSCALE:GREGORIAN',`X-WR-CALNAME:${escapeICS(calName)}`];
   sel.intervals.slice().sort((a,b)=>a.s-b.s).forEach(o=>{
@@ -1423,9 +1429,10 @@ function exportAggICS(){
   lines.push('END:VCALENDAR');
   const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob);
+  const scope=(sel.projectName||'전체합주').replace(/[\\/:*?"<>|]/g,'_');
   const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
   const link=document.createElement('a');
-  link.href=url; link.download=`전체합주-${state.aggMonth}-${who}.ics`; link.click();
+  link.href=url; link.download=`${scope}-${state.aggMonth}-${who}.ics`; link.click();
   setTimeout(()=>URL.revokeObjectURL(url),0);
   toast('전체 합주 캘린더 파일을 받았습니다');
 }
@@ -1567,7 +1574,9 @@ function aggregateCreateDraft(pid){
   return {isNew:true,pid,sid:songs[0],start:dateTimeLocalValue(start),end:dateTimeLocalValue(start+step),ext:false};
 }
 function openAggregateCreate(){
-  const pid=aggregateCreatePids()[0], draft=pid?aggregateCreateDraft(pid):null;
+  const pids=aggregateCreatePids();
+  const pid=state.aggProject&&pids.includes(state.aggProject)?state.aggProject:pids[0];
+  const draft=pid?aggregateCreateDraft(pid):null;
   if(!draft){toast('일정을 추가할 수 있는 프로젝트가 없습니다');return;}
   state.aggEdit=draft; render();
 }
@@ -2104,6 +2113,7 @@ function viewHelp(){
           <h3><span class="tut-num">5</span>메인: 전체 합주 시간표 관리</h3>
           <ul>
             <li><b>월간 캘린더</b>: 휴지통에 없는 모든 프로젝트의 배정 일정을 모아 보여줍니다. 일정에는 시간과 곡명만 표시되며, 누르면 프로젝트 정보와 수정 화면이 열립니다.</li>
+            <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG, .ics 내보내기도 같은 범위로 바뀝니다.</li>
             <li><b>멤버 필터</b>: 활성 프로젝트의 참여표에 연결된 멤버만 나오며, 선택한 멤버의 일정만 월간 캘린더와 내보내기에 반영됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
@@ -2189,9 +2199,12 @@ function aggregateSelection(){
   Object.keys(state.allSched||{}).forEach(pid=>{
     if(!idx[pid]?.trashedAt) data[pid]=state.allSched[pid];
   });
-  const pids=Object.keys(data).sort();
+  const projectLabel=pid=>itemName(data[pid]?.config?.name)||idx[pid]?.name||pid;
+  const pids=Object.keys(data).sort((a,b)=>projectLabel(a).localeCompare(projectLabel(b),'ko')||a.localeCompare(b));
+  if(state.aggProject&&!data[state.aggProject]) state.aggProject='';
+  const scopePids=state.aggProject?[state.aggProject]:pids;
   const memberMap={};
-  pids.forEach(pid=>{
+  scopePids.forEach(pid=>{
     const config=data[pid]?.config||{}, people=config.people||{};
     const linked=linkedProjectPeople(config);
     Object.keys(people).forEach(uid=>{
@@ -2203,7 +2216,8 @@ function aggregateSelection(){
   });
   const memberKeys=Object.keys(memberMap).sort((a,b)=>memberMap[a].localeCompare(memberMap[b],'ko'));
   if(state.aggMember&&!memberMap[state.aggMember]) state.aggMember='';
-  const all=buildScheduleIntervals(data).map(o=>{
+  const scopedData={}; scopePids.forEach(pid=>{scopedData[pid]=data[pid];});
+  const all=buildScheduleIntervals(scopedData).map(o=>{
     const cfg=data[o.pid]?.config||{};
     const matrix=cfg.matrix?.[o.sid]||{};
     const intervalMembers=Object.keys(matrix).filter(uid=>matrix[uid]&&cfg.people?.[uid]).map(uid=>
@@ -2217,7 +2231,8 @@ function aggregateSelection(){
   const nextMonth=new Date(year,month,1);
   const intervals=all.filter(o=>(!state.aggMember||o.memberKeys.includes(state.aggMember))&&
     o.s>=monthStart.getTime()&&o.s<nextMonth.getTime());
-  return {idx,data,pids,memberMap,memberKeys,intervals,now,year,month,monthStart,nextMonth,
+  return {idx,data,pids,scopePids,memberMap,memberKeys,intervals,now,year,month,monthStart,nextMonth,
+    projectName:state.aggProject?projectLabel(state.aggProject):'',
     memberName:state.aggMember?memberMap[state.aggMember]||'':''};
 }
 
@@ -2239,7 +2254,8 @@ function viewAggSchedule(){
   intervals.forEach(o=>{ const ds=fmtDate(new Date(o.s)); (byDate[ds]=byDate[ds]||[]).push(o); });
   Object.values(byDate).forEach(arr=>arr.sort((a,b)=>a.s-b.s||a.pid.localeCompare(b.pid)));
   const monthCount=intervals.length;
-  const canAdd=aggregateCreatePids().length>0;
+  const creatablePids=aggregateCreatePids();
+  const canAdd=state.aggProject?creatablePids.includes(state.aggProject):creatablePids.length>0;
 
   const cells=[];
   const cursor=new Date(gridStart);
@@ -2265,6 +2281,10 @@ function viewAggSchedule(){
   }
   const memberOpts='<option value="">전체 멤버</option>'+memberKeys.map(key=>
     `<option value="${esc(key)}" ${state.aggMember===key?'selected':''}>${esc(memberMap[key])}</option>`).join('');
+  const projectOpts='<option value="">전체 프로젝트</option>'+pids.map(pid=>{
+    const name=itemName(data[pid]?.config?.name)||idx[pid]?.name||pid;
+    return `<option value="${esc(pid)}" ${state.aggProject===pid?'selected':''}>${esc(name)} · ${esc(pid)}</option>`;
+  }).join('');
   const weekdays=['일','월','화','수','목','금','토'].map((d,i)=>
     `<div class="agg-weekday${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
   return `<div class="card">
@@ -2280,15 +2300,16 @@ function viewAggSchedule(){
           <div class="agg-month-title">${year}년 ${month}월</div>
           <button data-act="aggmonth" data-d="1" title="다음 달" aria-label="다음 달">›</button>
         </div>
+        <select class="agg-project" data-act="aggproject" aria-label="프로젝트 필터">${projectOpts}</select>
         <select class="agg-member" data-act="aggmember" aria-label="멤버 필터">${memberOpts}</select>
       </div>
     </div>
     <div class="agg-cal-scroll"><div class="agg-cal" id="agg-calendar-export">
-      <div class="agg-export-title">${year}년 ${month}월 전체 합주 시간표${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
+      <div class="agg-export-title">${year}년 ${month}월 전체 합주 시간표${sel.projectName?`<span>· ${esc(sel.projectName)}</span>`:''}${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
       <div class="agg-weekdays">${weekdays}</div>
       <div class="agg-month-grid">${cells.join('')}</div>
     </div></div>
-    ${monthCount?'':`<div class="agg-month-empty">${state.aggMember?esc(memberMap[state.aggMember])+'님의 ':''}이달 합주 일정이 없습니다.</div>`}
+    ${monthCount?'':`<div class="agg-month-empty">${sel.projectName||sel.memberName?'선택한 조건에 맞는 ':''}이달 합주 일정이 없습니다.</div>`}
   </div>`;
 }
 
@@ -3179,6 +3200,11 @@ function bindEvents(){
     }
     else if(act==='filtermember'){
       state.finalFilter=v||'';
+      render();
+    }
+    else if(act==='aggproject'){
+      state.aggProject=v||'';
+      state.aggMember='';
       render();
     }
     else if(act==='aggmember'){
