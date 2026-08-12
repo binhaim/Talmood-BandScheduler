@@ -909,13 +909,20 @@
   }
 
   /* 동방 사용 보드 */
-  .dayboard-modal{max-width:780px;width:calc(100vw - 32px);}
+  /* 보드 팝업은 화면에 고정 — 스크롤은 가운데 시간표 하나만 (세로) */
+  .bd-backdrop{align-items:stretch;overflow:hidden;}
+  .dayboard-modal{max-width:780px;width:calc(100vw - 32px);
+    display:flex;flex-direction:column;}
+  .dayboard-head{flex-shrink:0;}
+  .dayboard-body{flex:1;min-height:0;display:flex;flex-direction:column;
+    overflow:hidden;max-height:none;}
+  .bd-namebar{flex-shrink:0;}
   .dayboard-nav{display:flex;align-items:center;gap:6px;min-width:0;}
   .dayboard-nav h2{font-size:16px;min-width:170px;text-align:center;white-space:nowrap;}
   .dayboard-nav button{width:28px;height:28px;border:1px solid var(--line-2);border-radius:6px;
     background:var(--surface);cursor:pointer;font-size:15px;color:var(--ink);flex-shrink:0;}
   .dayboard-nav button:hover{border-color:var(--ink);}
-  .bd-scroll{max-height:62vh;}
+  .bd-scroll{flex:1;min-height:0;overflow-y:auto;}
   .bd-table{border-collapse:collapse;width:100%;min-width:460px;}
   .bd-th{position:sticky;top:0;z-index:2;background:var(--ink);color:var(--paper);
     font-family:'Bricolage Grotesque',sans-serif;font-size:11.5px;font-weight:700;
@@ -2780,7 +2787,6 @@ function viewDayBoard(){
           <span>칸을 누르면 이 이름으로 적혀요</span>
         </div>
         <div class="bd-scroll scroll"><table class="bd-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-        <div class="note">칸을 누르면 <b>내 이름</b>이 들어가고, 다시 누르면 내 이름만 빠집니다 — 다른 사람 이름이 있어도 함께 적을 수 있어요. PC는 드래그로 여러 칸을 한 번에. <b>합주</b> 열은 프로젝트 배정에서 자동 표시됩니다.</div>
       </div>
     </div>
   </div>`;
