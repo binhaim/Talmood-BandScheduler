@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>일정 조율</title>
+<title>TALENDER</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
@@ -365,7 +365,8 @@
   .agg-cal{min-width:770px;}
   .agg-swipe-hint{display:none;}
   .agg-export-title{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:800;
-    padding:11px 12px;background:var(--surface);border-bottom:1px solid var(--line);}
+    padding:11px 12px;background:var(--surface);border-bottom:1px solid var(--line);
+    position:sticky;left:0;max-width:100vw;box-sizing:border-box;}   /* 가로 스크롤에도 제목은 왼쪽 고정 */
   .agg-export-title span{font-family:'Archivo',sans-serif;font-size:11px;font-weight:500;
     color:var(--muted);margin-left:5px;}
   .agg-weekdays,.agg-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
@@ -889,8 +890,12 @@
   .tut-top-link:hover{color:var(--ink);}
 
   @media (max-width:640px){
-    .wrap{padding:0 14px;}
-    .card{padding:16px;}
+    .wrap{padding:0 8px;}
+    .card{padding:14px 12px;}
+    /* 월간 캘린더를 화면 가장자리까지 확장 (wrap 8px + card 12px 회수) */
+    .agg-cal-wrap{margin-left:-20px;margin-right:-20px;}
+    .agg-cal-scroll{border-left:0;border-right:0;border-radius:0;}
+    .agg-swipe-hint{padding-right:4px;}
     .hero{font-size:26px;}
     .tabs{margin-left:0;width:100%;}
     .tab{flex:1;text-align:center;}
@@ -933,8 +938,12 @@
     border-bottom:1px solid var(--line);cursor:pointer;text-align:center;
     font-size:11.5px;padding:0 3px;user-select:none;}
   .bd-cell:hover{background:hsl(var(--bh,0),70%,95%);}
-  .bd-cell.fill{background:hsl(var(--bh,0),70%,90%);color:hsl(var(--bh,0),65%,26%);font-weight:600;}
-  .bd-cell.fill:hover{text-decoration:line-through;}
+  .bd-cell.fill{background:hsl(var(--bh,0),70%,90%);color:hsl(var(--bh,0),65%,26%);font-weight:600;
+    max-width:90px;white-space:normal;padding:3px;line-height:1.25;}
+  .bd-nm{display:inline-block;}   /* 이름 중간에서는 줄바꿈 안 되게 — 이름 단위로만 감김 */
+  .bd-nm+.bd-nm::before{content:'·';margin:0 3px;opacity:.55;}
+  .bd-cell.fill.mine{box-shadow:inset 0 0 0 2px hsl(var(--bh,0),55%,55%);}
+  .bd-cell.fill.mine:hover{text-decoration:line-through;}
   .bd-cell.bd-prev{background:hsl(var(--bh,0),70%,86%);}
   .bd-cell.bd-prev-del{background:var(--accent-soft);text-decoration:line-through;color:var(--accent-d);}
   /* 보드는 실시간으로 자주 다시 그려지므로 모달 진입 애니메이션을 재생하지 않음 (깜빡임 방지) */
@@ -949,19 +958,24 @@
   .agg-cell{cursor:pointer;}
   .agg-personal{display:flex;flex-direction:column;gap:2px;margin-top:5px;
     padding-top:5px;border-top:1px dashed var(--line-2);}
-  .agg-pev{display:flex;align-items:center;gap:4px;border:0;width:100%;
+  .agg-pev{display:flex;flex-direction:column;gap:1px;border:0;width:100%;
     background:hsl(var(--bh,0),65%,94%);color:hsl(var(--bh,0),55%,30%);
     border-left:3px solid hsl(var(--bh,0),60%,55%);border-radius:4px;
-    padding:2px 5px;font-size:10px;cursor:pointer;text-align:left;line-height:1.35;min-width:0;}
+    padding:3px 6px;font-size:10px;cursor:pointer;text-align:left;line-height:1.3;min-width:0;}
+  .agg-pev .pev-top{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap;}
   .agg-pev b{font-size:9px;background:hsl(var(--bh,0),60%,55%);color:#fff;
     border-radius:3px;padding:0 3px;flex-shrink:0;}
-  .agg-pev span{margin-left:auto;font-family:ui-monospace,Menlo,monospace;
-    font-size:9px;color:hsl(var(--bh,0),40%,45%);flex-shrink:0;}
-  .agg-pev.more{justify-content:center;background:var(--paper);color:var(--muted);
-    border-left-color:var(--line-2);}
+  .agg-pev i{font-style:normal;font-family:ui-monospace,Menlo,monospace;
+    font-size:8.5px;letter-spacing:-.02em;color:hsl(var(--bh,0),40%,45%);white-space:nowrap;}
+  .agg-pev em{font-style:normal;font-weight:600;min-width:0;line-height:1.35;}   /* 이름은 줄바꿈으로 전부 표시 */
+  .agg-pev.more{flex-direction:row;justify-content:center;background:var(--paper);
+    color:var(--muted);border-left-color:var(--line-2);}
 
   @media (max-width:640px){
-    .dayboard-modal{width:calc(100vw - 16px);}
+    .bd-backdrop{padding:10px 4px;}
+    .dayboard-modal{width:100%;}
+    .dayboard-head{padding:12px 10px;}
+    .dayboard-body{padding:12px 8px 16px;}
     .dayboard-nav h2{font-size:14.5px;min-width:0;}
     .bd-table{min-width:430px;}
     .bd-reh{max-width:92px;font-size:9.5px;padding:2px 5px;}
@@ -2384,7 +2398,7 @@ function doRender(){
 }
 
 function renderHeader(){
-  let h='<button type="button" class="brand" data-act="home" aria-label="홈으로 이동">일정<span class="dot">.</span>조율</button>';
+  let h='<button type="button" class="brand" data-act="home" aria-label="홈으로 이동">TALENDER<span class="dot">.</span></button>';
   if(state.screen==='project'&&state.config){
     h+='<div class="crumb">'
       +'<span class="pname">'+esc(state.config.name||'(이름 없음)')+'</span>'
@@ -2438,7 +2452,7 @@ function viewHelp(){
           <p>이 도구는 멤버별 <b>안 되는 시간</b>을 모아 활동별 가능 시간을 계산하고, 여러 프로젝트가 서로 겹치지 않도록 일정을 배정합니다. 대부분의 입력과 배정은 누르는 즉시 저장됩니다.</p>
           <div class="tut-role-grid">
             <a class="tut-role" href="#tut-manager"><b>프로젝트 담당자</b><span>프로젝트 생성, 설정, 코드 공유, 시간표 배정</span></a>
-            <a class="tut-role" href="#tut-participant"><b>참여자</b><span>코드로 입장, 불가능한 시간 입력, 완료 표시</span></a>
+            <a class="tut-role" href="#tut-participant"><b>참여자</b><span>링크·목록·코드로 입장, 불가능한 시간 입력, 완료 표시</span></a>
           </div>
         </div>
 
@@ -2482,7 +2496,7 @@ function viewHelp(){
         <div class="tut-section" id="tut-participant">
           <h3><span class="tut-num">3</span>참여자: 안 되는 시간 입력</h3>
           <ol class="tut-flow">
-            <li><strong>프로젝트 입장</strong><span>받은 링크를 열거나 메인 코드 입력란에 6자리 코드를 넣습니다.</span></li>
+            <li><strong>프로젝트 입장</strong><span>받은 링크를 열거나, 메인의 전체 프로젝트 목록에서 누르거나, 코드 입력란에 6자리 코드를 넣습니다.</span></li>
             <li><strong>내 이름 선택</strong><span><b>내 시간</b> 탭에서 본인 이름을 고릅니다. 이름이 없다면 담당자에게 설정의 참여자 목록을 확인해 달라고 요청하세요.</span></li>
             <li><strong>불가능한 시간 표시</strong><span>참여할 수 없는 칸만 빨갛게 칠합니다. PC는 클릭 또는 드래그, 모바일은 짧게 탭하거나 꾹 누른 뒤 드래그합니다.</span></li>
             <li><strong>작성 완료 체크</strong><span>입력이 끝나면 일정 카드 오른쪽의 <b>작성 완료 체크</b>를 누릅니다. 이후에도 다시 열어 수정할 수 있습니다.</span></li>
@@ -2518,7 +2532,7 @@ function viewHelp(){
             <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
-            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(V·G·B·D·K)로 개인 연습 시간을 자유롭게 적고 지울 수 있어요. 빈 칸을 누르면 이름을 적고, 채워진 칸을 누르면 지워집니다. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
+            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(V·G·B·D·K)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
             <li><b>휴지통</b>: 메인의 휴지통 제목을 눌러 목록을 펼칠 수 있습니다. 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
           </ul>
@@ -2670,19 +2684,44 @@ function bdRehearsalRows(ds){
   });
   return rows;
 }
-/* 칸 쓰기/지우기 — 로컬 상태를 먼저 바꿔 즉시 그리고, 서버 저장은 뒤에서 (낙관적 업데이트) */
-function bdWrite(col,time,name){
-  const ds=state.dayBoard; if(!ds) return;
-  const d=state.roomBoardData;
-  ((d[ds]=d[ds]||{})[col]=d[ds][col]||{})[time]={name,ts:Date.now()};
-  FB.set(R(`roomBoard/${ds}/${col}/${time}`),{name,ts:Date.now()}).catch(wErr);
-  doRender();
+/* 칸 하나에 여러 이름 — 신형은 {이름키:ts,...} 맵, 구형 {name,ts}도 읽기 호환 */
+const bdNameKey=n=>String(n||'').trim().replace(/[.#$/\[\]]/g,'');
+function bdEntries(cell){
+  if(!cell||typeof cell!=='object') return [];
+  const out=[];
+  if(typeof cell.name==='string'&&cell.name.trim()) out.push({name:cell.name.trim(),ts:Number(cell.ts)||0});
+  Object.keys(cell).forEach(k=>{
+    if(k==='name'||k==='ts') return;
+    out.push({name:k,ts:Number(cell[k])||0});
+  });
+  return out;
 }
-function bdRemove(col,time){
-  const ds=state.dayBoard; if(!ds) return;
-  const slot=state.roomBoardData?.[ds]?.[col];
-  if(slot) delete slot[time];
-  FB.remove(R(`roomBoard/${ds}/${col}/${time}`)).catch(wErr);
+const bdHasName=(cell,name)=>bdEntries(cell).some(e=>bdNameKey(e.name)===bdNameKey(name));
+/* 내 이름 넣기/빼기 토글 — 다른 사람 이름은 절대 건드리지 않음. 낙관적 반영 + 뒤에서 저장 */
+function bdApplyToggle(col,time,name,mode){   // mode: 'add' | 'remove'
+  const ds=state.dayBoard; if(!ds) return false;
+  const key=bdNameKey(name); if(!key) return false;
+  const cell=state.roomBoardData?.[ds]?.[col]?.[time];
+  const entries=bdEntries(cell);
+  const has=entries.some(e=>bdNameKey(e.name)===key);
+  if(mode==='add'&&has) return false;
+  if(mode==='remove'&&!has) return false;
+  const oldShape=!!(cell&&typeof cell==='object'&&typeof cell.name==='string');
+  const next={};
+  entries.forEach(e=>{const k=bdNameKey(e.name); if(k) next[k]=Number(e.ts)||Date.now();});
+  if(has) delete next[key]; else next[key]=Date.now();
+  const d=state.roomBoardData;
+  const dayCol=((d[ds]=d[ds]||{})[col]=d[ds][col]||{});
+  if(Object.keys(next).length) dayCol[time]=next; else delete dayCol[time];
+  const cellPath=`roomBoard/${ds}/${col}/${time}`;
+  if(oldShape) FB.set(R(cellPath),Object.keys(next).length?next:null).catch(wErr);   // 구형 칸은 통째로 신형으로 정규화
+  else if(has) FB.remove(R(`${cellPath}/${key}`)).catch(wErr);
+  else FB.set(R(`${cellPath}/${key}`),next[key]).catch(wErr);
+  return true;
+}
+function bdToggle(col,time,name){
+  const cell=state.roomBoardData?.[state.dayBoard]?.[col]?.[time];
+  bdApplyToggle(col,time,name,bdHasName(cell,name)?'remove':'add');
   doRender();
 }
 /* 월간 캘린더용 — 개인 연습을 (같은 이름 연속 칸 병합 후) 실제 달력 날짜별로 묶기 */
@@ -2695,13 +2734,17 @@ function bdMonthPersonal(){
   Object.keys(data).forEach(ds=>{
     const base=new Date(ds+'T00:00:00').getTime(); if(isNaN(base)) return;
     BOARD_COLS.forEach(([col,letter])=>{
-      const slots=data[ds]?.[col]||{}; let run=null;
+      const slots=data[ds]?.[col]||{};
+      let run=null;   // 같은 인원 구성이 이어지는 구간을 한 덩어리로 병합
       times.forEach(t=>{
-        if(!slots[t]){ if(run){push(base,ds,run);run=null;} return; }
-        const m=parseTime(t), nm=String(slots[t].name||'').trim();
-        if(run&&run.name===nm&&m===run.endMin){ run.endMin=m+BOARD_SM; return; }
+        const m=parseTime(t);
+        const entries=bdEntries(slots[t]);
+        if(!entries.length){ if(run){push(base,ds,run);run=null;} return; }
+        const names=entries.map(e=>e.name).sort((a,b)=>a.localeCompare(b,'ko'));
+        const key=names.map(bdNameKey).join('|');
+        if(run&&run.key===key&&run.endMin===m){ run.endMin=m+BOARD_SM; return; }
         if(run) push(base,ds,run);
-        run={col,letter,name:nm,startMin:m,endMin:m+BOARD_SM};
+        run={col,letter,names,key,startMin:m,endMin:m+BOARD_SM};
       });
       if(run) push(base,ds,run);
     });
@@ -2720,9 +2763,14 @@ function viewDayBoard(){
     const rehCell=`<td class="bd-reh${reh[i].some(r=>!r.ext)?' on':''}">${reh[i].map(r=>
       `<span>${esc(r.song)}${r.ext?'<i>외부</i>':''}</span>`).join('')}</td>`;
     const cells=BOARD_COLS.map(([c])=>{
-      const ent=day[c]?.[t];
-      if(ent) return `<td class="bd-cell fill" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" title="누르면 삭제">${esc(ent.name||'')}</td>`;
-      return `<td class="bd-cell" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}"></td>`;
+      const entries=bdEntries(day[c]?.[t]);
+      if(entries.length){
+        const mine=myName&&entries.some(e=>bdNameKey(e.name)===bdNameKey(myName));
+        const names=entries.map(e=>e.name);
+        const label=names.map(n=>`<span class="bd-nm">${esc(n)}</span>`).join('');
+        return `<td class="bd-cell fill${mine?' mine':''}" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="${mine?'1':'0'}" title="${esc(names.join(', '))} · ${mine?'누르면 내 이름 빼기':'누르면 내 이름 추가'}">${label}</td>`;
+      }
+      return `<td class="bd-cell" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="0"></td>`;
     }).join('');
     return `<tr><td class="bd-time${parseTime(t)>=1440?' ov':''}">${t}</td>${rehCell}${cells}</tr>`;
   }).join('');
@@ -2743,7 +2791,7 @@ function viewDayBoard(){
           <span>칸을 누르면 이 이름으로 적혀요</span>
         </div>
         <div class="bd-scroll scroll"><table class="bd-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-        <div class="note">빈 칸을 누르면 바로 적히고, 채워진 칸을 누르면 지워집니다. PC는 드래그로 여러 칸을 한 번에. <b>합주</b> 열은 프로젝트 배정에서 자동 표시됩니다.</div>
+        <div class="note">칸을 누르면 <b>내 이름</b>이 들어가고, 다시 누르면 내 이름만 빠집니다 — 다른 사람 이름이 있어도 함께 적을 수 있어요. PC는 드래그로 여러 칸을 한 번에. <b>합주</b> 열은 프로젝트 배정에서 자동 표시됩니다.</div>
       </div>
     </div>
   </div>`;
@@ -2787,10 +2835,10 @@ function viewAggSchedule(){
       </button>`;
     }).join('');
     const pers=inMonth?(personalAll[ds]||[]):[];
-    const persHtml=pers.length?`<div class="agg-personal">${pers.slice(0,3).map(p=>{
+    const persHtml=pers.length?`<div class="agg-personal">${pers.slice(0,10).map(p=>{
       const full=(BOARD_COLS.find(c=>c[0]===p.col)||[])[2]||'';
-      return `<button class="agg-pev" style="--bh:${BOARD_HUES[p.col]}" data-act="dayboard" data-date="${p.srcDate}" title="${esc(p.name)} · ${full} 개인 연습 · 누르면 동방 사용표 열기"><b>${p.letter}</b>${esc(p.name)}<span>${hm(p.abs)}~${hm(p.absEnd)}</span></button>`;
-    }).join('')}${pers.length>3?`<button class="agg-pev more" data-act="dayboard" data-date="${ds}">+${pers.length-3}</button>`:''}</div>`:'';
+      return `<button class="agg-pev" style="--bh:${BOARD_HUES[p.col]}" data-act="dayboard" data-date="${p.srcDate}" title="${esc(p.names.join(', '))} · ${full} 개인 연습 · 누르면 동방 사용표 열기"><span class="pev-top"><b>${p.letter}</b><i>${hm(p.abs)}~${hm(p.absEnd)}</i></span><em>${esc(p.names.join(' · '))}</em></button>`;
+    }).join('')}${pers.length>10?`<button class="agg-pev more" data-act="dayboard" data-date="${ds}">+${pers.length-10}</button>`:''}</div>`:'';
     cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}" data-act="dayboard" data-date="${ds}" title="누르면 ${mdLabel(ds)} 동방 사용표 열기">
       <div class="agg-date-num"><span>${cursor.getDate()}</span></div>
       <div class="agg-events">${eventsHtml}</div>${persHtml}
@@ -2851,20 +2899,20 @@ function viewLanding(){
     <button class="proj-restore" data-act="restoreproject" data-pid="${esc(pid)}">복원</button>
   </div>`).join('');
 
-  return `<div class="card" style="padding:32px">
-    <div class="hero">일정 조율<span class="dot">,</span> 한 번에</div>
-    <p class="sub" style="margin-bottom:24px;font-size:14.5px;max-width:560px">날짜·시간 범위와 활동·참여자를 정하면, 각자 안 되는 시간을 입력하고 활동별 모두가 가능한 시간을 자동으로 계산합니다. <b>코드를 아는 사람만</b> 프로젝트에 들어올 수 있습니다.</p>
+  return `${viewAggSchedule()}
+  <div class="card">
+    <div class="section-label">전체 프로젝트 <span class="count">${allPids.length}</span></div>
+    ${allPids.length?`<div class="proj-list-all">${allList}</div>`:'<div class="empty">아직 프로젝트가 없습니다.</div>'}
+  </div>
+  <div class="card">
+    <div class="section-label">새 프로젝트 · 코드 입장</div>
+    <p class="sub" style="margin:10px 0 16px;font-size:13.5px;max-width:560px">날짜·시간 범위와 활동·참여자를 정하면, 각자 안 되는 시간을 입력해 활동별로 모두가 가능한 시간을 자동으로 계산합니다. 프로젝트는 위 목록에서 열거나 6자리 코드로 바로 입장할 수 있어요.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn" data-act="new">+ 새 프로젝트 만들기</button>
       <span style="color:var(--muted-2);font-size:13px;padding:0 4px">또는</span>
       <input type="text" id="codeIn" placeholder="코드 입력" maxlength="6" class="code-input">
       <button class="btn ghost" data-act="enter">입장</button>
     </div>
-  </div>
-  ${viewAggSchedule()}
-  <div class="card">
-    <div class="section-label">전체 프로젝트 <span class="count">${allPids.length}</span></div>
-    ${allPids.length?`<div class="proj-list-all">${allList}</div>`:'<div class="empty">아직 프로젝트가 없습니다.</div>'}
   </div>
   <div class="card">
     <div class="trash-head${state.trashOpen?' open':''}">
@@ -3615,13 +3663,11 @@ function bindEvents(){
       return;
     }
     if(act==='bdcell'){
-      if(bdSuppress)return;   // 드래그 채우기 직후의 클릭 무시
-      const col=t.dataset.col,time=t.dataset.time;
-      if(t.classList.contains('fill')){bdRemove(col,time);return;}
+      if(bdSuppress)return;   // 드래그 직후의 클릭 무시
       const name=(($('bdName')||{}).value||'').trim();
       if(!name){toast('위의 이름 칸을 먼저 채워주세요');const n=$('bdName');if(n)n.focus();return;}
       lsSet('boardName',name);
-      bdWrite(col,time,name);
+      bdToggle(t.dataset.col,t.dataset.time,name);   // 내 이름 넣기/빼기 — 남 이름은 그대로
       return;
     }
     if(act==='aggsubscribe'){openAggregateSubscribe();return;}
@@ -3732,21 +3778,24 @@ function bindEvents(){
     if(e.target.id==='bdName') lsSet('boardName',e.target.value.trim());
   });
 
-  /* 동방 사용 보드 — 마우스 드래그: 빈 칸에서 시작하면 채우기, 채워진 칸에서 시작하면 지우기 */
+  /* 동방 사용 보드 — 마우스 드래그: 내 이름이 없는 칸에서 시작하면 넣기, 있는 칸에서 시작하면 빼기 */
+  const bdCellMine=td=>{
+    const name=(($('bdName')||{}).value||'').trim(); if(!name)return null;
+    return bdHasName(state.roomBoardData?.[state.dayBoard]?.[td.dataset.col]?.[td.dataset.time],name);
+  };
   app.addEventListener('pointerdown',e=>{
     if(e.pointerType!=='mouse'||e.button!==0)return;
     const td=e.target.closest('td.bd-cell'); if(!td)return;
-    const erase=td.classList.contains('fill');
-    if(!erase&&!(($('bdName')||{}).value||'').trim())return;
-    bdDrag={col:td.dataset.col,erase,times:new Set([td.dataset.time])};
-    td.classList.add(erase?'bd-prev-del':'bd-prev');
+    const mine=bdCellMine(td); if(mine===null)return;   // 이름 미입력 시 클릭 흐름의 토스트가 안내
+    bdDrag={col:td.dataset.col,erase:mine,times:new Set([td.dataset.time])};
+    td.classList.add(mine?'bd-prev-del':'bd-prev');
   });
   window.addEventListener('pointermove',e=>{
     if(!bdDrag)return;
     const el=document.elementFromPoint(e.clientX,e.clientY);
     const td=el&&el.closest?el.closest('td.bd-cell'):null;
     if(!td||td.dataset.col!==bdDrag.col)return;
-    if(td.classList.contains('fill')!==bdDrag.erase)return;   // 모드에 맞는 칸만
+    if(bdCellMine(td)!==bdDrag.erase)return;   // 모드에 맞는 칸만 (넣기: 내 이름 없는 칸 / 빼기: 있는 칸)
     if(!bdDrag.times.has(td.dataset.time)){bdDrag.times.add(td.dataset.time);td.classList.add(bdDrag.erase?'bd-prev-del':'bd-prev');}
   });
   window.addEventListener('pointerup',()=>{
@@ -3755,19 +3804,10 @@ function bindEvents(){
     document.querySelectorAll('.bd-prev,.bd-prev-del').forEach(x=>x.classList.remove('bd-prev','bd-prev-del'));
     if(drag.times.size<2)return;   // 한 칸이면 클릭(탭) 흐름이 처리
     bdSuppress=true; setTimeout(()=>{bdSuppress=false;},300);
-    const ds=state.dayBoard; if(!ds)return;
     const name=(($('bdName')||{}).value||'').trim();
-    if(!drag.erase&&!name)return;
-    if(!drag.erase) lsSet('boardName',name);
-    // 낙관적 반영 + 저장 모두 한 번에 (칸마다 반복 렌더·요청 없음)
-    const d=state.roomBoardData;
-    const dayCol=((d[ds]=d[ds]||{})[drag.col]=d[ds][drag.col]||{});
-    const upd={};
-    drag.times.forEach(tm=>{
-      if(drag.erase){ upd[tm]=null; delete dayCol[tm]; }
-      else { upd[tm]={name,ts:Date.now()}; dayCol[tm]=upd[tm]; }
-    });
-    FB.update(R(`roomBoard/${ds}/${drag.col}`),upd).catch(wErr);
+    if(!state.dayBoard||!name)return;
+    lsSet('boardName',name);
+    drag.times.forEach(tm=>bdApplyToggle(drag.col,tm,name,drag.erase?'remove':'add'));
     doRender();
   });
 
