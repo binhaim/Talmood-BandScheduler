@@ -405,6 +405,15 @@
   .agg-edit-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;
     margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
   .agg-edit-actions-right{display:flex;justify-content:flex-end;gap:7px;margin-left:auto;}
+  .calendar-sub-modal{max-width:620px;}
+  .calendar-sub-person{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;
+    font-weight:800;line-height:1.2;letter-spacing:0;margin-bottom:6px;}
+  .calendar-sub-scope{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
+  .calendar-sub-url{display:flex;align-items:stretch;gap:7px;}
+  .calendar-sub-url input{flex:1;min-width:0;font-family:ui-monospace,'SF Mono',Menlo,monospace;
+    font-size:11.5px;background:var(--paper);}
+  .calendar-sub-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;
+    margin-top:18px;}
   @media(max-width:560px){
     .agg-tools{width:100%;}
     .agg-project,.agg-member{flex:1 1 150px;min-width:0;max-width:none;}
@@ -419,6 +428,9 @@
     .agg-edit-actions{align-items:stretch;flex-direction:column-reverse;}
     .agg-edit-actions-right{display:grid;grid-template-columns:1fr 1fr;margin-left:0;}
     .agg-edit-actions .btn{width:100%;}
+    .calendar-sub-url{align-items:stretch;flex-direction:column;}
+    .calendar-sub-actions{display:grid;grid-template-columns:1fr 1fr;}
+    .calendar-sub-actions .btn:last-child{grid-column:1/-1;justify-content:center;}
   }
 
   /* 최종 시간표 카드 */
@@ -907,6 +919,7 @@ const firebaseConfig = {
 /* ▲▲▲ 여기까지 ▲▲▲ */
 
 const FB_VERSION = "10.7.1"; // 로딩 실패 시 Firebase 콘솔 스니펫의 최신 버전으로 교체
+const MEMBER_CALENDAR_BASE='https://binhaim.github.io/Talmood-BandScheduler/';
 
 /* ---------------- 상태 ---------------- */
 let DB=null, FB={}, fbReady=false;
@@ -914,6 +927,7 @@ let state={ screen:'loading', pid:null, tab:'setup',
   config:null, avail:{}, index:{}, me:null,
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
   activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null, aggEdit:null,
+  aggSubscribe:null,
   trashOpen:false,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
@@ -933,14 +947,16 @@ const lsSet=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
 const lsDel=k=>{try{localStorage.removeItem(k);}catch(e){}};
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
-async function copyCode(){
-  try{ await navigator.clipboard.writeText(state.pid); toast('코드 복사됨 · '+state.pid); }
-  catch{
-    const ta=document.createElement('textarea');ta.value=state.pid;
+async function copyText(value){
+  try{ await navigator.clipboard.writeText(value); return true; }
+  catch(_){
+    const ta=document.createElement('textarea');ta.value=value;ta.style.position='fixed';ta.style.left='-10000px';
     document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');toast('코드 복사됨 · '+state.pid);}catch{toast('복사 실패');}
-    ta.remove();
+    try{return document.execCommand('copy');}catch(__){return false;}finally{ta.remove();}
   }
+}
+async function copyCode(){
+  toast(await copyText(state.pid)?'코드 복사됨 · '+state.pid:'복사 실패');
 }
 
 function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1567,6 +1583,55 @@ function exportAggICS(){
   setTimeout(()=>URL.revokeObjectURL(url),0);
   toast('전체 합주 캘린더 파일을 받았습니다');
 }
+function memberCalendarKey(memberName){
+  const normalized=String(memberName||'').normalize('NFC').trim().toLocaleLowerCase('ko-KR');
+  const bytes=new TextEncoder().encode(normalized);
+  let binary='';
+  bytes.forEach(byte=>{binary+=String.fromCharCode(byte);});
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function memberCalendarUrl(memberName){
+  return new URL(`calendars/${memberCalendarKey(memberName)}.ics`,MEMBER_CALENDAR_BASE).toString();
+}
+function openAggregateSubscribe(){
+  const sel=aggregateSelection();
+  if(!sel.memberName){toast('구독할 멤버를 먼저 선택해주세요');return;}
+  state.aggSubscribe={memberName:sel.memberName,url:memberCalendarUrl(sel.memberName)};
+  render();
+}
+async function copyAggregateSubscribeLink(){
+  const sub=state.aggSubscribe;
+  if(!sub) return;
+  toast(await copyText(sub.url)?`${sub.memberName} 구독 링크를 복사했습니다`:'구독 링크를 복사하지 못했습니다');
+}
+function launchAggregateSubscribe(){
+  const sub=state.aggSubscribe;
+  if(!sub) return;
+  location.href=sub.url.replace(/^https:/,'webcal:');
+}
+function viewAggregateSubscribe(){
+  const sub=state.aggSubscribe;
+  if(!sub) return '';
+  return `<div class="modal-backdrop" data-act="aggsubclose">
+    <div class="modal calendar-sub-modal" data-act="modal-noop" role="dialog" aria-modal="true" aria-labelledby="calendarSubTitle">
+      <div class="modal-head"><h2 id="calendarSubTitle">캘린더 구독</h2><button class="modal-x" data-act="aggsubclose" title="닫기" aria-label="캘린더 구독 닫기">×</button></div>
+      <div class="modal-body">
+        <div class="calendar-sub-person">${esc(sub.memberName)} 전체 합주 일정</div>
+        <div class="calendar-sub-scope">휴지통에 없는 모든 프로젝트 · 구독 파일은 약 10분마다 갱신</div>
+        <div class="calendar-sub-url">
+          <input id="calendarSubUrl" type="text" readonly value="${esc(sub.url)}" aria-label="캘린더 구독 URL">
+          <button class="btn ghost sm" data-act="aggsubcopy">링크 복사</button>
+        </div>
+        <div class="note">Google Calendar는 복사한 링크를 PC 웹의 <b>다른 캘린더 → URL로 추가</b>에 붙여넣으세요. 자동 갱신 시점은 캘린더 서비스마다 다릅니다.</div>
+        <div class="calendar-sub-actions">
+          <button class="btn ghost sm" data-act="aggsubclose">닫기</button>
+          <button class="btn ghost sm" data-act="aggsubcopy">링크 복사</button>
+          <button class="btn sm" data-act="aggsubopen">캘린더 앱에서 열기</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
 function exportICS(){
   const c=state.config; if(!c) return;
   const blocks=consolidateBlocks(state.finalFilter||null);
@@ -2153,6 +2218,7 @@ function renderBody(){
   if(state.showHelp) html+=viewHelp();
   if(state.sheetExport) html+=viewSheetExport();
   if(state.aggEdit) html+=viewAggregateEdit();
+  if(state.aggSubscribe) html+=viewAggregateSubscribe();
   app.innerHTML=html;
 }
 
@@ -2191,7 +2257,7 @@ function viewHelp(){
             <li><strong>설정 잠금 후 코드 공유</strong><span>설정이 끝나면 잠그고, 헤더의 코드나 현재 링크를 참여자에게 보냅니다.</span></li>
             <li><strong>불가능한 시간 수집</strong><span>각 참여자가 <b>입력</b> 탭에서 본인의 안 되는 시간만 표시하고 완료 체크합니다.</span></li>
             <li><strong>시간표 배정</strong><span>담당자가 <b>결과</b> 탭의 가능한 칸을 눌러 동방 또는 외부 일정으로 배정합니다.</span></li>
-            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, .ics 또는 시트 형식으로 공유합니다.</span></li>
+            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, .ics, 개인 구독 링크 또는 시트 형식으로 공유합니다.</span></li>
           </ol>
         </div>
 
@@ -2246,6 +2312,7 @@ function viewHelp(){
             <li><b>월간 캘린더</b>: 휴지통에 없는 모든 프로젝트의 배정 일정을 모아 보여줍니다. 일정에는 시간과 곡명만 표시되며, 누르면 프로젝트 정보와 수정 화면이 열립니다.</li>
             <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG, .ics 내보내기도 같은 범위로 바뀝니다.</li>
             <li><b>멤버 필터</b>: 활성 프로젝트의 참여표에 연결된 멤버만 나오며, 선택한 멤버의 일정만 월간 캘린더와 내보내기에 반영됩니다.</li>
+            <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
@@ -2261,7 +2328,8 @@ function viewHelp(){
             <li><b>최종 시간표</b>: 결과 탭 아래에서 활동별 횟수와 총시간, 주간 캘린더를 확인합니다. 참여자 필터를 고르면 그 사람의 일정만 표시됩니다.</li>
             <li><b>상세 탭</b>: 활동 하나를 선택해 참여자별 가능 여부와 불가능 시간 비율을 확인합니다. 특정 활동의 가능한 시간이 적은 이유를 찾을 때 유용합니다.</li>
             <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 날짜별로 압축해 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
-            <li><b>.ics (캘린더 자동 연동)</b>: Google, Apple 또는 Outlook 캘린더에 가져올 수 있는 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
+            <li><b>.ics (1회 가져오기)</b>: 현재 화면 범위의 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
+            <li><b>개인 구독</b>: 메인에서 멤버를 선택해 고정 URL을 등록하면 Google, Apple 또는 Outlook 캘린더가 변경된 일정을 주기적으로 다시 읽습니다. 구독 파일 생성에는 약 10분이 걸릴 수 있고, 이후 반영 시점은 캘린더 서비스마다 다릅니다.</li>
             <li><b>시트로 복사</b>: 결과 탭의 동방 일정을 시간과 요일 표로 복사합니다. 구글 시트의 빈 칸에 붙여넣으면 열과 행으로 나뉘며, 외부 일정은 제외됩니다.</li>
           </ul>
           <a class="tut-top-link" href="#tut-top">맨 위로</a>
@@ -2275,6 +2343,7 @@ function viewHelp(){
             <li><b>코드나 링크를 다시 공유하고 싶어요</b>: 프로젝트 상단의 6자리 코드 버튼을 누르세요. 다른 기기에서도 같은 코드나 링크로 동일한 데이터를 볼 수 있습니다.</li>
             <li><b>설정 잠금 비밀번호를 잊었어요</b>: 앱에서 비밀번호를 복구할 수 없습니다. 프로젝트 담당자가 기억할 수 있는 값으로 정하고 별도로 보관하세요.</li>
             <li><b>휴지통 프로젝트 일정이 보여요</b>: 정상이라면 전체 합주 시간표에서 즉시 빠집니다. 화면을 새로고침한 뒤에도 보이면 프로젝트를 복원했다가 다시 휴지통으로 옮겨보세요.</li>
+            <li><b>구독 일정이 바로 안 바뀌어요</b>: 사이트에는 즉시 반영되고 구독 파일은 약 10분마다 갱신됩니다. 그 뒤에도 캘린더 앱이 링크를 다시 확인할 때까지 몇 시간이 걸릴 수 있으며, 링크를 다시 등록할 필요는 없습니다.</li>
           </ul>
           <a class="tut-top-link" href="#tut-top">맨 위로</a>
         </div>
@@ -2424,7 +2493,8 @@ function viewAggSchedule(){
       <div class="agg-tools">
         <button class="btn sm" data-act="aggadd" ${canAdd?'':'disabled'}>+ 일정 추가</button>
         <button class="btn ghost sm" data-act="aggpng" ${monthCount?'':'disabled'}>📷 PNG</button>
-        <button class="btn ghost sm" data-act="aggics" ${monthCount?'':'disabled'}>📅 .ics (캘린더 자동 연동)</button>
+        <button class="btn ghost sm" data-act="aggics" ${monthCount?'':'disabled'}>📅 .ics (1회 가져오기)</button>
+        <button class="btn ghost sm" data-act="aggsubscribe" ${sel.memberName?'':'disabled'} title="${sel.memberName?esc(sel.memberName)+' 전체 일정 구독':'멤버를 먼저 선택하세요'}">🔗 개인 구독</button>
         <button class="btn ghost sm" data-act="aggtoday">오늘</button>
         <div class="agg-nav">
           <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
@@ -3031,7 +3101,7 @@ function viewResults(){
         <select data-act="filtermember">${memberOpts}</select>
         <button class="btn sm" data-act="sheetexport" ${blocks.length?'':'disabled'}>📋 시트로 복사</button>
         <button class="btn ghost sm" data-act="exportpng" ${blocks.length?'':'disabled'}>📷 PNG</button>
-        <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics (캘린더 자동 연동)</button>
+        <button class="btn ghost sm" data-act="exportics" ${blocks.length?'':'disabled'}>📅 .ics (1회 가져오기)</button>
       </div>
     </div>
     ${finalTabsHtml}
@@ -3214,6 +3284,10 @@ function bindEvents(){
     if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
     if(act==='aggadd'){openAggregateCreate();return;}
     if(act==='aggedit'){openAggregateEdit(t);return;}
+    if(act==='aggsubscribe'){openAggregateSubscribe();return;}
+    if(act==='aggsubclose'){state.aggSubscribe=null;render();return;}
+    if(act==='aggsubcopy'){copyAggregateSubscribeLink();return;}
+    if(act==='aggsubopen'){launchAggregateSubscribe();return;}
     if(act==='aggeditclose'){state.aggEdit=null;render();return;}
     if(act==='aggeditopenproject'){location.href=location.pathname+'?p='+state.aggEdit.pid;return;}
     if(act==='aggeditroom'){syncAggregateEditDraft();state.aggEdit.ext=t.dataset.room==='ext';render();return;}

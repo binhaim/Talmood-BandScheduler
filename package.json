@@ -1,0 +1,19 @@
+{
+  "name": "talmood-band-scheduler",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --check calendar/calendar.js && node --check calendar/generate.js",
+    "generate:feeds": "node calendar/generate.js",
+    "test": "node --test calendar/*.test.js"
+  },
+  "dependencies": {
+    "ical-generator": "^11.1.0"
+  },
+  "devDependencies": {
+    "ical.js": "^2.2.1"
+  }
+}
