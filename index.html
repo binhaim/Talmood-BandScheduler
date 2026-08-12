@@ -524,30 +524,40 @@
     overflow:hidden;}
   .cal-block .cb-mem b{font-weight:700;}
 
-  /* 프로젝트 결과 PNG 전용: 화면 폭과 무관한 공유용 캘린더 */
+  /* 프로젝트 결과 PNG 전용: 날짜별 일정을 압축한 공유용 보드 */
   .project-png-export{position:fixed;left:-10000px;top:0;width:1280px;padding:30px;
     background:var(--surface);color:var(--ink);pointer-events:none;z-index:-1;}
   .project-png-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;
-    margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid var(--ink);}
+    flex-wrap:wrap;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid var(--ink);}
   .project-png-title{font-family:'Bricolage Grotesque',sans-serif;font-size:28px;
     line-height:1.15;font-weight:800;letter-spacing:0;}
   .project-png-range{font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap;}
-  .project-png-export .cal-corner{flex-basis:78px;height:48px;}
-  .project-png-export .cal-time-col{flex-basis:78px;}
-  .project-png-export .cal-head-row .cal-day-head{height:48px;padding:10px 5px;
-    font-size:16px;letter-spacing:0;gap:6px;}
-  .project-png-export .cal-head-row .cal-day-head span{font-size:13px;}
-  .project-png-export .cal-time{font-size:13px;font-weight:600;padding:6px 10px 0;
-    line-height:1.15;}
-  .project-png-export .cal-block{padding:7px 9px;gap:3px;justify-content:flex-start;
-    border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.14);}
-  .project-png-export .cal-block .cb-time{order:1;font-size:14px;font-weight:700;
-    line-height:1.15;opacity:1;white-space:nowrap;letter-spacing:0;}
-  .project-png-export .cal-block .cb-name{order:2;font-size:17px;line-height:1.1;
-    letter-spacing:0;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
-    line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;}
-  .project-png-export .cal-block .cb-mem{display:none;}
-  .project-png-export .ext-tag{font-size:10px;margin-left:6px;}
+  .project-png-week{display:grid;grid-template-columns:repeat(var(--png-cols,4),minmax(0,1fr));
+    gap:14px;align-items:start;}
+  .project-png-day{border:1px solid var(--line-2);border-radius:6px;overflow:hidden;
+    background:var(--surface);}
+  .project-png-day-head{height:46px;padding:10px 13px;background:var(--ink);color:var(--paper);
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .project-png-day-head strong{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;
+    font-weight:800;line-height:1;letter-spacing:0;}
+  .project-png-day-head span{font-size:13px;font-weight:600;opacity:.72;}
+  .project-png-day.sat .project-png-day-head{color:#9ac8e8;}
+  .project-png-day.sun .project-png-day-head{color:#e89c92;}
+  .project-png-events{display:flex;flex-direction:column;gap:8px;padding:10px;}
+  .project-png-event{min-height:72px;padding:11px 12px;border-radius:5px;background:var(--sc);
+    color:#fff;display:flex;flex-direction:column;gap:4px;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);}
+  .project-png-event.ext{background-image:repeating-linear-gradient(135deg,
+    rgba(255,255,255,.22) 0 4px,transparent 4px 9px);}
+  .project-png-time{font-family:ui-monospace,Menlo,monospace;font-size:16px;
+    font-weight:700;line-height:1.15;letter-spacing:0;white-space:nowrap;}
+  .project-png-song{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;
+    font-weight:800;line-height:1.15;letter-spacing:0;overflow-wrap:anywhere;}
+  .project-png-ext{display:inline-block;margin-left:6px;padding:2px 5px;border-radius:4px;
+    background:rgba(255,255,255,.25);font-family:'Archivo',sans-serif;font-size:10px;
+    font-weight:700;vertical-align:middle;}
+  .project-png-empty{padding:34px;text-align:center;border:1px solid var(--line);
+    color:var(--muted);font-size:16px;}
 
   /* 상세 탭 — 활동별 참여자 가능 캘린더 */
   table.gantt th.gnt-sub.dtl-sub{min-width:42px;padding:8px 5px 6px;
@@ -1377,68 +1387,93 @@ async function ensureH2c(){
   });
   return window.html2canvas;
 }
-function projectPNGWeekRange(){
+function projectPNGWeek(){
   const c=state.config;
-  if(!c) return '';
+  if(!c) return null;
   const weeks=buildWeeks(dateList(c.startDate,c.endDate))
-    .map((dates,idx)=>({idx,dates,range:dates.filter(d=>d.inRange).map(d=>d.date)}))
+    .map(dates=>({dates,range:dates.filter(d=>d.inRange).map(d=>d.date)}))
     .filter(w=>w.range.length);
-  const week=weeks[Math.min(Math.max(state.activeWeek||0,0),weeks.length-1)];
+  return weeks[Math.min(Math.max(state.activeWeek||0,0),weeks.length-1)]||null;
+}
+function projectPNGWeekRange(week){
   if(!week) return '';
   const label=ds=>ds.split('-').map(Number).join('.');
   const first=label(week.range[0]), last=label(week.range[week.range.length-1]);
   return first===last?first:`${first} - ${last}`;
 }
 function buildProjectPNGSnapshot(){
-  const source=document.getElementById('cal-snapshot');
-  if(!source) return null;
+  const c=state.config, week=projectPNGWeek();
+  if(!c||!week) return null;
+  const filterUid=state.finalFilter&&c.people?.[state.finalFilter]?state.finalFilter:null;
+  const dateSet=new Set(week.range);
+  const byDate={};
+  consolidateBlocks(filterUid).filter(b=>dateSet.has(b.date)).forEach(b=>{
+    (byDate[b.date]=byDate[b.date]||[]).push(b);
+  });
+  const days=week.dates.filter(d=>d.inRange&&byDate[d.date]?.length);
 
   const stage=document.createElement('div');
   stage.className='project-png-export';
   stage.setAttribute('aria-hidden','true');
+  stage.style.width=`${Math.min(1280,Math.max(720,days.length*300+60))}px`;
 
   const head=document.createElement('div');
   head.className='project-png-head';
   const title=document.createElement('div');
   title.className='project-png-title';
-  title.textContent=state.config?.name||'일정';
+  title.textContent=c.name||'일정';
   const range=document.createElement('div');
   range.className='project-png-range';
-  range.textContent=projectPNGWeekRange();
+  range.textContent=projectPNGWeekRange(week);
   head.append(title,range);
 
-  const calendar=source.cloneNode(true);
-  calendar.removeAttribute('id');
-  const timeCells=[...calendar.querySelectorAll('.cal-time')];
-  const blocks=[...calendar.querySelectorAll('.cal-block')];
-  if(timeCells.length&&blocks.length){
-    const rowH=parseFloat(timeCells[0].style.height)||36;
-    const firstRow=Math.max(0,Math.floor(Math.min(...blocks.map(el=>parseFloat(el.style.top)||0))/rowH));
-    const maxBottom=Math.max(...blocks.map(el=>(parseFloat(el.style.top)||0)+(parseFloat(el.style.height)||0)+2));
-    const lastRow=Math.min(timeCells.length,Math.ceil(maxBottom/rowH)+1);
-    timeCells.forEach((el,idx)=>{ if(idx<firstRow||idx>=lastRow) el.remove(); });
-    calendar.querySelectorAll('.cal-day-body').forEach(day=>{
-      [...day.querySelectorAll('.cal-cell')].forEach((el,idx)=>{
-        if(idx<firstRow||idx>=lastRow) el.remove();
-      });
-      day.style.height=`${(lastRow-firstRow)*rowH}px`;
-    });
-    blocks.forEach(el=>{
-      el.style.top=`${(parseFloat(el.style.top)||0)-firstRow*rowH}px`;
-    });
-  }
-  const scalePx=(el,prop,factor)=>{
-    const value=parseFloat(el.style[prop]);
-    if(Number.isFinite(value)) el.style[prop]=`${Math.round(value*factor)}px`;
-  };
-  calendar.querySelectorAll('.cal-time,.cal-cell').forEach(el=>scalePx(el,'height',2.2));
-  calendar.querySelectorAll('.cal-day-body').forEach(el=>scalePx(el,'height',2.2));
-  blocks.forEach(el=>{
-    scalePx(el,'top',2.2);
-    scalePx(el,'height',2.2);
-  });
+  const content=document.createElement('div');
+  if(days.length){
+    content.className='project-png-week';
+    content.style.setProperty('--png-cols',String(Math.min(4,days.length)));
+    days.forEach(d=>{
+      const wd=wdOf(d.date);
+      const day=document.createElement('section');
+      day.className=`project-png-day ${wd===0?'sun':wd===6?'sat':''}`.trim();
 
-  stage.append(head,calendar);
+      const dayHead=document.createElement('div');
+      dayHead.className='project-png-day-head';
+      const dayDate=document.createElement('strong');
+      dayDate.textContent=mdLabel(d.date);
+      const dayWd=document.createElement('span');
+      dayWd.textContent=`${WD[wd]}요일`;
+      dayHead.append(dayDate,dayWd);
+
+      const events=document.createElement('div');
+      events.className='project-png-events';
+      byDate[d.date].sort((a,b)=>parseTime(a.start)-parseTime(b.start)).forEach(b=>{
+        const event=document.createElement('div');
+        event.className=`project-png-event${b.ext?' ext':''}`;
+        event.style.setProperty('--sc',songColor(b.sid));
+        const time=document.createElement('div');
+        time.className='project-png-time';
+        time.textContent=`${b.start} - ${b.end}`;
+        const song=document.createElement('div');
+        song.className='project-png-song';
+        song.textContent=itemName(c.songs[b.sid])||'활동';
+        if(b.ext){
+          const tag=document.createElement('span');
+          tag.className='project-png-ext';
+          tag.textContent='외부';
+          song.appendChild(tag);
+        }
+        event.append(time,song);
+        events.appendChild(event);
+      });
+      day.append(dayHead,events);
+      content.appendChild(day);
+    });
+  }else{
+    content.className='project-png-empty';
+    content.textContent='선택한 주차에 배정된 일정이 없습니다.';
+  }
+
+  stage.append(head,content);
   document.body.appendChild(stage);
   return stage;
 }
@@ -2225,7 +2260,7 @@ function viewHelp(){
           <ul>
             <li><b>최종 시간표</b>: 결과 탭 아래에서 활동별 횟수와 총시간, 주간 캘린더를 확인합니다. 참여자 필터를 고르면 그 사람의 일정만 표시됩니다.</li>
             <li><b>상세 탭</b>: 활동 하나를 선택해 참여자별 가능 여부와 불가능 시간 비율을 확인합니다. 특정 활동의 가능한 시간이 적은 이유를 찾을 때 유용합니다.</li>
-            <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 이미지로 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
+            <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 날짜별로 압축해 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
             <li><b>.ics (캘린더 자동 연동)</b>: Google, Apple 또는 Outlook 캘린더에 가져올 수 있는 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
             <li><b>시트로 복사</b>: 결과 탭의 동방 일정을 시간과 요일 표로 복사합니다. 구글 시트의 빈 칸에 붙여넣으면 열과 행으로 나뉘며, 외부 일정은 제외됩니다.</li>
           </ul>
