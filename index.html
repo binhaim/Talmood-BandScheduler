@@ -949,6 +949,9 @@
   /* 보드는 실시간으로 자주 다시 그려지므로 모달 진입 애니메이션을 재생하지 않음 (깜빡임 방지) */
   .bd-backdrop{animation:none;}
   .bd-backdrop .modal{animation:none;}
+  /* 모달이 열려 있는 동안 뒤 페이지 스크롤 잠금 — 모달 내부 스크롤만 동작 */
+  body.no-scroll{position:fixed;left:0;right:0;width:100%;overflow:hidden;}
+  .modal-backdrop,.modal-body,.bd-scroll{overscroll-behavior:contain;}
   .bd-namebar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .bd-namebar label{font-size:12.5px;font-weight:700;color:var(--ink-2);flex-shrink:0;}
   .bd-namebar input{width:130px;height:34px;}
@@ -977,9 +980,15 @@
     .dayboard-head{padding:12px 10px;}
     .dayboard-body{padding:12px 8px 16px;}
     .dayboard-nav h2{font-size:14.5px;min-width:0;}
-    .bd-table{min-width:430px;}
-    .bd-reh{max-width:92px;font-size:9.5px;padding:2px 5px;}
-    .bd-cell{min-width:50px;}
+    /* 모든 열이 화면에 들어오게 — 가로 스크롤 없음, 합주 글씨는 잘림 허용 */
+    .bd-table{min-width:0;width:100%;table-layout:fixed;}
+    .bd-th-time{width:38px;}
+    .bd-th-reh{width:62px;}
+    .bd-time{padding:0 4px;font-size:9.5px;}
+    .bd-reh{max-width:none;font-size:9px;padding:2px 4px;}
+    .bd-cell{min-width:0;font-size:10.5px;}
+    .bd-cell.fill{max-width:none;}
+    .bd-namebar input{font-size:16px;}   /* iOS 포커스 자동 확대 방지 (16px 미만이면 줌됨) */
   }
 
   /* 터치 기기: 결과 탭 배정 그리드 터치 타깃 확대 (44px 권장 근사) */
@@ -1709,42 +1718,6 @@ async function exportAggPNG(){
 function escapeICS(s){
   return String(s||'').replace(/[\\;,]/g,m=>'\\'+m).replace(/\r?\n/g,'\\n');
 }
-function exportAggICS(){
-  const sel=aggregateSelection();
-  if(!sel.intervals.length){ toast('이달 합주 일정이 없습니다'); return; }
-  const pad=n=>String(n).padStart(2,'0');
-  const localStamp=ms=>{ const d=new Date(ms); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`; };
-  const now=new Date();
-  const dtstamp=`${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
-  const calName=`${state.aggMonth} ${sel.projectName||'전체 합주'}${sel.memberName?' · '+sel.memberName:''}`;
-  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//talmood//all-timetable//KO',
-    'CALSCALE:GREGORIAN',`X-WR-CALNAME:${escapeICS(calName)}`];
-  sel.intervals.slice().sort((a,b)=>a.s-b.s).forEach(o=>{
-    const cfg=sel.data[o.pid]?.config||{};
-    const song=itemName(cfg.songs?.[o.sid])||'활동';
-    const pname=itemName(cfg.name)||sel.idx[o.pid]?.name||o.pid;
-    const matrix=cfg.matrix?.[o.sid]||{};
-    const members=Object.keys(matrix).filter(uid=>matrix[uid]&&cfg.people?.[uid])
-      .map(uid=>itemName(cfg.people[uid])).join(', ');
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:all-${o.pid}-${o.sid}-${o.s}@talmood.app`);
-    lines.push(`DTSTAMP:${dtstamp}`);
-    lines.push(`DTSTART:${localStamp(o.s)}`);
-    lines.push(`DTEND:${localStamp(o.e)}`);
-    lines.push(`SUMMARY:${escapeICS(song+(o.ext?' (외부)':'')+' · '+pname)}`);
-    lines.push(`DESCRIPTION:${escapeICS('프로젝트: '+pname+'\n참여자: '+members)}`);
-    lines.push('END:VEVENT');
-  });
-  lines.push('END:VCALENDAR');
-  const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const scope=(sel.projectName||'전체합주').replace(/[\\/:*?"<>|]/g,'_');
-  const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
-  const link=document.createElement('a');
-  link.href=url; link.download=`${scope}-${state.aggMonth}-${who}.ics`; link.click();
-  setTimeout(()=>URL.revokeObjectURL(url),0);
-  toast('전체 합주 캘린더 파일을 받았습니다');
-}
 function memberCalendarKey(memberName){
   const normalized=String(memberName||'').normalize('NFC').trim().toLocaleLowerCase('ko-KR');
   const bytes=new TextEncoder().encode(normalized);
@@ -2395,6 +2368,22 @@ function doRender(){
     syncAggHint(aggSc);
   }
   window.scrollTo(0,ws);
+  syncScrollLock();
+}
+/* 모달 열림 동안 배경 페이지 스크롤 잠금 — 잠글 때 위치 기억, 풀 때 복원 */
+let _lockY=0;
+function syncScrollLock(){
+  const need=!!(state.dayBoard||state.showHelp||state.sheetExport||state.aggEdit||state.aggSubscribe);
+  const has=document.body.classList.contains('no-scroll');
+  if(need&&!has){
+    _lockY=window.scrollY||0;
+    document.body.classList.add('no-scroll');
+    document.body.style.top=(-_lockY)+'px';
+  }else if(!need&&has){
+    document.body.classList.remove('no-scroll');
+    document.body.style.top='';
+    window.scrollTo(0,_lockY);
+  }
 }
 
 function renderHeader(){
@@ -2469,12 +2458,12 @@ function viewHelp(){
         <div class="tut-section" id="tut-flow">
           <h3><span class="tut-num">1</span>전체 진행 순서</h3>
           <ol class="tut-flow">
-            <li><strong>프로젝트 만들기</strong><span>메인에서 <b>+ 새 프로젝트 만들기</b>를 누르면 6자리 코드가 자동 생성됩니다.</span></li>
+            <li><strong>프로젝트 만들기</strong><span>메인 아래쪽의 <b>+ 새 프로젝트 만들기</b>를 누르면 6자리 코드가 자동 생성됩니다.</span></li>
             <li><strong>기본 구조 설정</strong><span><b>설정</b> 탭에서 기간, 시간대, 활동, 참여자와 참여표를 정합니다.</span></li>
             <li><strong>설정 잠금 후 코드 공유</strong><span>설정이 끝나면 잠그고, 헤더의 코드나 현재 링크를 참여자에게 보냅니다.</span></li>
             <li><strong>불가능한 시간 수집</strong><span>각 참여자가 <b>내 시간</b> 탭에서 본인의 안 되는 시간만 표시하고 완료 체크합니다.</span></li>
             <li><strong>시간표 배정</strong><span>담당자가 <b>결과</b> 탭의 가능한 칸을 눌러 동방 또는 외부 일정으로 배정합니다.</span></li>
-            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, .ics, 개인 구독 링크 또는 시트 형식으로 공유합니다.</span></li>
+            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, 개인 구독 링크, 시트 형식으로 공유합니다.</span></li>
           </ol>
         </div>
 
@@ -2527,12 +2516,12 @@ function viewHelp(){
           <h3><span class="tut-num">5</span>메인: 전체 합주 시간표 관리</h3>
           <ul>
             <li><b>월간 캘린더</b>: 휴지통에 없는 모든 프로젝트의 배정 일정을 모아 보여줍니다. 일정에는 시간과 곡명만 표시되며, 누르면 프로젝트 정보와 수정 화면이 열립니다.</li>
-            <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG, .ics 내보내기도 같은 범위로 바뀝니다.</li>
+            <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG 내보내기도 같은 범위로 바뀝니다.</li>
             <li><b>멤버 필터</b>: 활성 프로젝트의 참여표에 연결된 멤버만 나오며, 선택한 멤버의 일정만 월간 캘린더와 내보내기에 반영됩니다.</li>
             <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
-            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(V·G·B·D·K)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
+            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(D·G·B·K·V)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
             <li><b>휴지통</b>: 메인의 휴지통 제목을 눌러 목록을 펼칠 수 있습니다. 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
           </ul>
@@ -2546,7 +2535,7 @@ function viewHelp(){
             <li><b>최종 시간표</b>: 결과 탭 아래에서 활동별 횟수와 총시간, 주간 캘린더를 확인합니다. 참여자 필터를 고르면 그 사람의 일정만 표시됩니다.</li>
             <li><b>가능 현황 탭</b>: 활동 하나를 선택해 참여자별 가능 여부와 불가능 시간 비율을 확인합니다. 특정 활동의 가능한 시간이 적은 이유를 찾을 때 유용합니다.</li>
             <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 날짜별로 압축해 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
-            <li><b>.ics (1회 가져오기)</b>: 현재 화면 범위의 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
+            <li><b>.ics (1회 가져오기)</b>: 프로젝트 결과 탭에서 현재 화면 범위의 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
             <li><b>개인 구독</b>: 메인에서 멤버를 선택해 고정 URL을 등록하면 Google, Apple 또는 Outlook 캘린더가 변경된 일정을 주기적으로 다시 읽습니다. 구독 파일 생성에는 약 10분이 걸릴 수 있고, 이후 반영 시점은 캘린더 서비스마다 다릅니다.</li>
             <li><b>시트로 복사</b>: 결과 탭의 동방 일정을 시간과 요일 표로 복사합니다. 구글 시트의 빈 칸에 붙여넣으면 열과 행으로 나뉘며, 외부 일정은 제외됩니다.</li>
           </ul>
@@ -2656,7 +2645,7 @@ function aggregateSelection(){
 
 /* 메인 페이지: 모든 프로젝트의 배정된 합주를 월간 캘린더로 */
 /* ---------------- 동방 사용 보드 — 프로젝트와 별개의 개인 연습 시트 ---------------- */
-const BOARD_COLS=[['v','V','보컬'],['g','G','기타'],['b','B','베이스'],['d','D','드럼'],['k','K','키보드']];
+const BOARD_COLS=[['d','D','드럼'],['g','G','기타'],['b','B','베이스'],['k','K','키보드'],['v','V','보컬']];
 const BOARD_HUES={v:6,g:36,b:140,d:210,k:275};
 const BOARD_SH=9, BOARD_EH=27, BOARD_SM=30;   // 9:00 ~ 다음날 3:00, 30분 칸
 const bdTimes=()=>timeList(BOARD_SH,BOARD_EH,BOARD_SM);
@@ -2859,9 +2848,7 @@ function viewAggSchedule(){
       <div class="agg-tools">
         <button class="btn sm" data-act="aggadd" ${canAdd?'':'disabled'}>+ 일정 추가</button>
         <button class="btn ghost sm" data-act="aggpng" ${monthCount?'':'disabled'}>📷 PNG</button>
-        <button class="btn ghost sm" data-act="aggics" ${monthCount?'':'disabled'}>📅 .ics (1회 가져오기)</button>
         <button class="btn ghost sm" data-act="aggsubscribe" ${sel.memberName?'':'disabled'} title="${sel.memberName?esc(sel.memberName)+' 전체 일정 구독':'멤버를 먼저 선택하세요'}">🔗 개인 구독</button>
-        <button class="btn ghost sm" data-act="aggtoday">오늘</button>
         <div class="agg-nav">
           <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
           <div class="agg-month-title">${year}년 ${month}월</div>
@@ -3683,7 +3670,6 @@ function bindEvents(){
     if(act==='restoreproject'){e.stopPropagation();restoreProject(t.dataset.pid);return;}
     if(act==='toggletrash'){state.trashOpen=!state.trashOpen;render();return;}
     if(act==='emptytrash'){emptyTrash();return;}
-    if(act==='aggtoday'){state.aggMonth=fmtDate(new Date()).slice(0,7);render();return;}
     if(act==='aggmonth'){
       const [y,m]=state.aggMonth.split('-').map(Number);
       const d=new Date(y,m-1+(+t.dataset.d||0),1);
@@ -3719,7 +3705,6 @@ function bindEvents(){
       render(); return;
     }
     if(act==='aggpng'){exportAggPNG();return;}
-    if(act==='aggics'){exportAggICS();return;}
     if(act==='exportpng'){exportPNG();return;}
     if(act==='exportics'){exportICS();return;}
     if(act==='sheetexport'){const tsv=buildSheetTSV();if(!tsv){toast('배정된 합주가 없습니다');return;}state.sheetExport=tsv;render();return;}
