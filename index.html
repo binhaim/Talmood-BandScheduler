@@ -903,10 +903,76 @@
     .tut-section{margin-bottom:19px;padding-bottom:15px;}
   }
 
+  /* 동방 사용 보드 */
+  .dayboard-modal{max-width:780px;width:calc(100vw - 32px);}
+  .dayboard-nav{display:flex;align-items:center;gap:6px;min-width:0;}
+  .dayboard-nav h2{font-size:16px;min-width:170px;text-align:center;white-space:nowrap;}
+  .dayboard-nav button{width:28px;height:28px;border:1px solid var(--line-2);border-radius:6px;
+    background:var(--surface);cursor:pointer;font-size:15px;color:var(--ink);flex-shrink:0;}
+  .dayboard-nav button:hover{border-color:var(--ink);}
+  .bd-scroll{max-height:62vh;}
+  .bd-table{border-collapse:collapse;width:100%;min-width:460px;}
+  .bd-th{position:sticky;top:0;z-index:2;background:var(--ink);color:var(--paper);
+    font-family:'Bricolage Grotesque',sans-serif;font-size:11.5px;font-weight:700;
+    padding:7px 4px;text-align:center;}
+  .bd-th-time{width:52px;}
+  .bd-th-col{box-shadow:inset 0 -3px 0 hsl(var(--bh,0),60%,55%);min-width:56px;}
+  .bd-time{position:sticky;left:0;z-index:1;background:var(--paper);
+    font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--muted);
+    padding:0 7px;text-align:right;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);white-space:nowrap;}
+  .bd-time.ov{opacity:.65;}
+  .bd-reh{width:22%;max-width:150px;border-right:1px solid var(--line-2);
+    border-bottom:1px solid var(--line);font-size:10.5px;padding:2px 7px;
+    color:var(--muted);background:var(--paper);}
+  .bd-reh.on{background:var(--accent-soft);color:var(--accent-d);font-weight:600;}
+  .bd-reh span{display:block;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bd-reh i{font-style:normal;font-size:9px;margin-left:3px;padding:0 4px;border-radius:999px;
+    background:rgba(0,0,0,.08);font-weight:500;}
+  .bd-cell{height:30px;min-width:56px;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);cursor:pointer;text-align:center;
+    font-size:11.5px;padding:0 3px;user-select:none;}
+  .bd-cell:hover{background:hsl(var(--bh,0),70%,95%);}
+  .bd-cell.fill{background:hsl(var(--bh,0),70%,90%);color:hsl(var(--bh,0),65%,26%);font-weight:600;}
+  .bd-cell.fill:hover{text-decoration:line-through;}
+  .bd-cell.bd-prev{background:hsl(var(--bh,0),70%,86%);}
+  .bd-cell.bd-prev-del{background:var(--accent-soft);text-decoration:line-through;color:var(--accent-d);}
+  /* 보드는 실시간으로 자주 다시 그려지므로 모달 진입 애니메이션을 재생하지 않음 (깜빡임 방지) */
+  .bd-backdrop{animation:none;}
+  .bd-backdrop .modal{animation:none;}
+  .bd-namebar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .bd-namebar label{font-size:12.5px;font-weight:700;color:var(--ink-2);flex-shrink:0;}
+  .bd-namebar input{width:130px;height:34px;}
+  .bd-namebar span{font-size:11.5px;color:var(--muted);}
+
+  /* 월간 캘린더 개인 연습 칩 — 합주 칩 아래 구분해서 쌓임 */
+  .agg-cell{cursor:pointer;}
+  .agg-personal{display:flex;flex-direction:column;gap:2px;margin-top:5px;
+    padding-top:5px;border-top:1px dashed var(--line-2);}
+  .agg-pev{display:flex;align-items:center;gap:4px;border:0;width:100%;
+    background:hsl(var(--bh,0),65%,94%);color:hsl(var(--bh,0),55%,30%);
+    border-left:3px solid hsl(var(--bh,0),60%,55%);border-radius:4px;
+    padding:2px 5px;font-size:10px;cursor:pointer;text-align:left;line-height:1.35;min-width:0;}
+  .agg-pev b{font-size:9px;background:hsl(var(--bh,0),60%,55%);color:#fff;
+    border-radius:3px;padding:0 3px;flex-shrink:0;}
+  .agg-pev span{margin-left:auto;font-family:ui-monospace,Menlo,monospace;
+    font-size:9px;color:hsl(var(--bh,0),40%,45%);flex-shrink:0;}
+  .agg-pev.more{justify-content:center;background:var(--paper);color:var(--muted);
+    border-left-color:var(--line-2);}
+
+  @media (max-width:640px){
+    .dayboard-modal{width:calc(100vw - 16px);}
+    .dayboard-nav h2{font-size:14.5px;min-width:0;}
+    .bd-table{min-width:430px;}
+    .bd-reh{max-width:92px;font-size:9.5px;padding:2px 5px;}
+    .bd-cell{min-width:50px;}
+  }
+
   /* 터치 기기: 결과 탭 배정 그리드 터치 타깃 확대 (44px 권장 근사) */
   @media(pointer:coarse){
     table.gantt th.gnt-sub{min-width:40px;}
     table.gantt td.gnt-cell{width:40px;height:36px;}
+    .bd-cell{height:38px;}
   }
 
   /* 키보드 포커스 표시 */
@@ -959,6 +1025,8 @@ let state={ screen:'loading', pid:null, tab:'setup',
   schedule:{}, hiddenSongs:{}, tool:null /* {kind:'paint',sid} | {kind:'erase'} */,
   activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null, aggEdit:null,
   aggSubscribe:null,
+  dayBoard:null,      // 동방 사용 보드 — 열려있는 날짜 'YYYY-MM-DD' | null
+  roomBoardData:{},   // roomBoard 실시간 데이터 {date:{col:{'HH:MM':{name,ts}}}}
   trashOpen:false,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
@@ -2274,6 +2342,7 @@ function shortNameMap(names){
 
 /* ---------------- 렌더 ---------------- */
 let deferRender=false, painting=false, gPainting=false;
+let bdDrag=null, bdSuppress=false;   // 동방 사용 보드 드래그 상태
 let aggScrolledMonth=null;
 /* 랜딩 캘린더 가로 스크롤 가능 여부를 좌우 그림자로 표시 */
 function syncAggHint(sc){
@@ -2352,6 +2421,7 @@ function renderBody(){
   if(state.sheetExport) html+=viewSheetExport();
   if(state.aggEdit) html+=viewAggregateEdit();
   if(state.aggSubscribe) html+=viewAggregateSubscribe();
+  if(state.dayBoard) html+=viewDayBoard();
   app.innerHTML=html;
 }
 
@@ -2448,6 +2518,7 @@ function viewHelp(){
             <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
+            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(V·G·B·D·K)로 개인 연습 시간을 자유롭게 적고 지울 수 있어요. 빈 칸을 누르면 이름을 적고, 채워진 칸을 누르면 지워집니다. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
             <li><b>휴지통</b>: 메인의 휴지통 제목을 눌러 목록을 펼칠 수 있습니다. 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
           </ul>
@@ -2570,6 +2641,114 @@ function aggregateSelection(){
 }
 
 /* 메인 페이지: 모든 프로젝트의 배정된 합주를 월간 캘린더로 */
+/* ---------------- 동방 사용 보드 — 프로젝트와 별개의 개인 연습 시트 ---------------- */
+const BOARD_COLS=[['v','V','보컬'],['g','G','기타'],['b','B','베이스'],['d','D','드럼'],['k','K','키보드']];
+const BOARD_HUES={v:6,g:36,b:140,d:210,k:275};
+const BOARD_SH=9, BOARD_EH=27, BOARD_SM=30;   // 9:00 ~ 다음날 3:00, 30분 칸
+const bdTimes=()=>timeList(BOARD_SH,BOARD_EH,BOARD_SM);
+let _bdRenderTimer=null;
+function subscribeRoomBoard(){
+  FB.onValue(R('roomBoard'),s=>{ state.roomBoardData=s.val()||{};
+    clearTimeout(_bdRenderTimer);   // 연속 에코를 한 번의 렌더로 합침
+    _bdRenderTimer=setTimeout(()=>{ if(state.screen==='landing') render(); },60);
+  });
+}
+function bdShiftDate(ds,d){ const t=new Date(ds+'T00:00:00'); t.setDate(t.getDate()+d); return fmtDate(t); }
+/* 그 날짜(9시~27시 창)의 30분 행별 합주 점유 — 전체 활성 프로젝트에서 파생 */
+function bdRehearsalRows(ds){
+  const base=new Date(ds+'T00:00:00').getTime();
+  const winS=base+BOARD_SH*3600000, winE=base+BOARD_EH*3600000;
+  const idx=state.index||{}, data={};
+  Object.keys(state.allSched||{}).forEach(pid=>{ if(!idx[pid]?.trashedAt) data[pid]=state.allSched[pid]; });
+  const rows=bdTimes().map(()=>[]);
+  buildScheduleIntervals(data).filter(o=>o.s<winE&&o.e>winS).forEach(o=>{
+    const cfg=data[o.pid]?.config||{};
+    const song=itemName(cfg.songs?.[o.sid])||'합주';
+    const from=Math.max(0,Math.floor((o.s-winS)/(BOARD_SM*60000)));
+    const to=Math.min(rows.length,Math.ceil((o.e-winS)/(BOARD_SM*60000)));
+    for(let i=from;i<to;i++) rows[i].push({song,ext:o.ext});
+  });
+  return rows;
+}
+/* 칸 쓰기/지우기 — 로컬 상태를 먼저 바꿔 즉시 그리고, 서버 저장은 뒤에서 (낙관적 업데이트) */
+function bdWrite(col,time,name){
+  const ds=state.dayBoard; if(!ds) return;
+  const d=state.roomBoardData;
+  ((d[ds]=d[ds]||{})[col]=d[ds][col]||{})[time]={name,ts:Date.now()};
+  FB.set(R(`roomBoard/${ds}/${col}/${time}`),{name,ts:Date.now()}).catch(wErr);
+  doRender();
+}
+function bdRemove(col,time){
+  const ds=state.dayBoard; if(!ds) return;
+  const slot=state.roomBoardData?.[ds]?.[col];
+  if(slot) delete slot[time];
+  FB.remove(R(`roomBoard/${ds}/${col}/${time}`)).catch(wErr);
+  doRender();
+}
+/* 월간 캘린더용 — 개인 연습을 (같은 이름 연속 칸 병합 후) 실제 달력 날짜별로 묶기 */
+function bdMonthPersonal(){
+  const out={}, data=state.roomBoardData||{}, times=bdTimes();
+  const push=(base,ds,r)=>{
+    const abs=base+r.startMin*60000, dd=fmtDate(new Date(abs));
+    (out[dd]=out[dd]||[]).push({...r,srcDate:ds,abs,absEnd:base+r.endMin*60000});
+  };
+  Object.keys(data).forEach(ds=>{
+    const base=new Date(ds+'T00:00:00').getTime(); if(isNaN(base)) return;
+    BOARD_COLS.forEach(([col,letter])=>{
+      const slots=data[ds]?.[col]||{}; let run=null;
+      times.forEach(t=>{
+        if(!slots[t]){ if(run){push(base,ds,run);run=null;} return; }
+        const m=parseTime(t), nm=String(slots[t].name||'').trim();
+        if(run&&run.name===nm&&m===run.endMin){ run.endMin=m+BOARD_SM; return; }
+        if(run) push(base,ds,run);
+        run={col,letter,name:nm,startMin:m,endMin:m+BOARD_SM};
+      });
+      if(run) push(base,ds,run);
+    });
+  });
+  Object.values(out).forEach(a=>a.sort((x,y)=>x.abs-y.abs||x.col.localeCompare(y.col)));
+  return out;
+}
+function viewDayBoard(){
+  const ds=state.dayBoard; if(!ds) return '';
+  const day=state.roomBoardData?.[ds]||{};
+  const reh=bdRehearsalRows(ds);
+  const myName=(lsGet('boardName')||'').trim();
+  const head=`<tr><th class="bd-th bd-th-time">시간</th><th class="bd-th bd-th-reh">합주</th>`
+    +BOARD_COLS.map(([c,L,full])=>`<th class="bd-th bd-th-col" style="--bh:${BOARD_HUES[c]}" title="${full}">${L}</th>`).join('')+'</tr>';
+  const rows=bdTimes().map((t,i)=>{
+    const rehCell=`<td class="bd-reh${reh[i].some(r=>!r.ext)?' on':''}">${reh[i].map(r=>
+      `<span>${esc(r.song)}${r.ext?'<i>외부</i>':''}</span>`).join('')}</td>`;
+    const cells=BOARD_COLS.map(([c])=>{
+      const ent=day[c]?.[t];
+      if(ent) return `<td class="bd-cell fill" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" title="누르면 삭제">${esc(ent.name||'')}</td>`;
+      return `<td class="bd-cell" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}"></td>`;
+    }).join('');
+    return `<tr><td class="bd-time${parseTime(t)>=1440?' ov':''}">${t}</td>${rehCell}${cells}</tr>`;
+  }).join('');
+  return `<div class="modal-backdrop bd-backdrop" data-act="dayboardclose">
+    <div class="modal dayboard-modal" data-act="modal-noop" role="dialog" aria-modal="true" aria-labelledby="dayBoardTitle">
+      <div class="modal-head dayboard-head">
+        <div class="dayboard-nav">
+          <button data-act="dayboardnav" data-d="-1" title="이전 날" aria-label="이전 날">‹</button>
+          <h2 id="dayBoardTitle">${mdLabel(ds)} (${WD[wdOf(ds)]}) 동방 사용표</h2>
+          <button data-act="dayboardnav" data-d="1" title="다음 날" aria-label="다음 날">›</button>
+        </div>
+        <button class="modal-x" data-act="dayboardclose" title="닫기" aria-label="동방 사용표 닫기">×</button>
+      </div>
+      <div class="modal-body dayboard-body">
+        <div class="bd-namebar">
+          <label for="bdName">내 이름</label>
+          <input id="bdName" type="text" value="${esc(myName)}" maxlength="12" placeholder="이름을 먼저 적어주세요">
+          <span>칸을 누르면 이 이름으로 적혀요</span>
+        </div>
+        <div class="bd-scroll scroll"><table class="bd-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+        <div class="note">빈 칸을 누르면 바로 적히고, 채워진 칸을 누르면 지워집니다. PC는 드래그로 여러 칸을 한 번에. <b>합주</b> 열은 프로젝트 배정에서 자동 표시됩니다.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function viewAggSchedule(){
   const idx=state.index||{};
   if(!Object.keys(idx).some(pid=>!idx[pid]?.trashedAt)) return '';
@@ -2591,6 +2770,7 @@ function viewAggSchedule(){
   const canAdd=state.aggProject?creatablePids.includes(state.aggProject):creatablePids.length>0;
 
   const cells=[];
+  const personalAll=bdMonthPersonal();
   const cursor=new Date(gridStart);
   for(let i=0;i<42;i++){
     const ds=fmtDate(cursor), inMonth=cursor.getMonth()===month-1;
@@ -2606,9 +2786,14 @@ function viewAggSchedule(){
         <span class="agg-event-song-row"><span class="agg-event-song">${esc(song)}</span>${o.ext?'<span class="agg-ext">외부</span>':''}</span>
       </button>`;
     }).join('');
-    cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}">
+    const pers=inMonth?(personalAll[ds]||[]):[];
+    const persHtml=pers.length?`<div class="agg-personal">${pers.slice(0,3).map(p=>{
+      const full=(BOARD_COLS.find(c=>c[0]===p.col)||[])[2]||'';
+      return `<button class="agg-pev" style="--bh:${BOARD_HUES[p.col]}" data-act="dayboard" data-date="${p.srcDate}" title="${esc(p.name)} · ${full} 개인 연습 · 누르면 동방 사용표 열기"><b>${p.letter}</b>${esc(p.name)}<span>${hm(p.abs)}~${hm(p.absEnd)}</span></button>`;
+    }).join('')}${pers.length>3?`<button class="agg-pev more" data-act="dayboard" data-date="${ds}">+${pers.length-3}</button>`:''}</div>`:'';
+    cells.push(`<div class="agg-cell${inMonth?'':' out'}${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}" data-act="dayboard" data-date="${ds}" title="누르면 ${mdLabel(ds)} 동방 사용표 열기">
       <div class="agg-date-num"><span>${cursor.getDate()}</span></div>
-      <div class="agg-events">${eventsHtml}</div>
+      <div class="agg-events">${eventsHtml}</div>${persHtml}
     </div>`);
     cursor.setDate(cursor.getDate()+1);
   }
@@ -3423,6 +3608,22 @@ function bindEvents(){
     if(act==='open'){location.href=location.pathname+'?p='+t.dataset.pid;return;}
     if(act==='aggadd'){openAggregateCreate();return;}
     if(act==='aggedit'){openAggregateEdit(t);return;}
+    if(act==='dayboard'){state.dayBoard=t.dataset.date;render();return;}
+    if(act==='dayboardclose'){state.dayBoard=null;render();return;}
+    if(act==='dayboardnav'){
+      if(state.dayBoard){state.dayBoard=bdShiftDate(state.dayBoard,Number(t.dataset.d)||0);render();}
+      return;
+    }
+    if(act==='bdcell'){
+      if(bdSuppress)return;   // 드래그 채우기 직후의 클릭 무시
+      const col=t.dataset.col,time=t.dataset.time;
+      if(t.classList.contains('fill')){bdRemove(col,time);return;}
+      const name=(($('bdName')||{}).value||'').trim();
+      if(!name){toast('위의 이름 칸을 먼저 채워주세요');const n=$('bdName');if(n)n.focus();return;}
+      lsSet('boardName',name);
+      bdWrite(col,time,name);
+      return;
+    }
     if(act==='aggsubscribe'){openAggregateSubscribe();return;}
     if(act==='aggsubclose'){state.aggSubscribe=null;render();return;}
     if(act==='aggsubcopy'){copyAggregateSubscribeLink();return;}
@@ -3513,6 +3714,7 @@ function bindEvents(){
   /* Escape로 열린 모달 닫기 */
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
+    if(state.dayBoard){state.dayBoard=null;render();return;}
     if(state.aggEdit){state.aggEdit=null;render();return;}
     if(state.aggSubscribe){state.aggSubscribe=null;render();return;}
     if(state.sheetExport){state.sheetExport=null;render();return;}
@@ -3523,6 +3725,50 @@ function bindEvents(){
   app.addEventListener('click',e=>{
     const th=e.target.closest('th.gnt-sub:not(.dtl-sub)');
     if(th&&th.title) toast(th.title);
+  });
+
+  /* 동방 사용 보드 — 이름 칸은 입력 즉시 기억 */
+  app.addEventListener('input',e=>{
+    if(e.target.id==='bdName') lsSet('boardName',e.target.value.trim());
+  });
+
+  /* 동방 사용 보드 — 마우스 드래그: 빈 칸에서 시작하면 채우기, 채워진 칸에서 시작하면 지우기 */
+  app.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='mouse'||e.button!==0)return;
+    const td=e.target.closest('td.bd-cell'); if(!td)return;
+    const erase=td.classList.contains('fill');
+    if(!erase&&!(($('bdName')||{}).value||'').trim())return;
+    bdDrag={col:td.dataset.col,erase,times:new Set([td.dataset.time])};
+    td.classList.add(erase?'bd-prev-del':'bd-prev');
+  });
+  window.addEventListener('pointermove',e=>{
+    if(!bdDrag)return;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const td=el&&el.closest?el.closest('td.bd-cell'):null;
+    if(!td||td.dataset.col!==bdDrag.col)return;
+    if(td.classList.contains('fill')!==bdDrag.erase)return;   // 모드에 맞는 칸만
+    if(!bdDrag.times.has(td.dataset.time)){bdDrag.times.add(td.dataset.time);td.classList.add(bdDrag.erase?'bd-prev-del':'bd-prev');}
+  });
+  window.addEventListener('pointerup',()=>{
+    if(!bdDrag)return;
+    const drag=bdDrag; bdDrag=null;
+    document.querySelectorAll('.bd-prev,.bd-prev-del').forEach(x=>x.classList.remove('bd-prev','bd-prev-del'));
+    if(drag.times.size<2)return;   // 한 칸이면 클릭(탭) 흐름이 처리
+    bdSuppress=true; setTimeout(()=>{bdSuppress=false;},300);
+    const ds=state.dayBoard; if(!ds)return;
+    const name=(($('bdName')||{}).value||'').trim();
+    if(!drag.erase&&!name)return;
+    if(!drag.erase) lsSet('boardName',name);
+    // 낙관적 반영 + 저장 모두 한 번에 (칸마다 반복 렌더·요청 없음)
+    const d=state.roomBoardData;
+    const dayCol=((d[ds]=d[ds]||{})[drag.col]=d[ds][drag.col]||{});
+    const upd={};
+    drag.times.forEach(tm=>{
+      if(drag.erase){ upd[tm]=null; delete dayCol[tm]; }
+      else { upd[tm]={name,ts:Date.now()}; dayCol[tm]=upd[tm]; }
+    });
+    FB.update(R(`roomBoard/${ds}/${drag.col}`),upd).catch(wErr);
+    doRender();
   });
 
   /* 랜딩 캘린더 가로 스크롤 그림자 동기화 (scroll 이벤트는 버블링하지 않으므로 capture) */
@@ -3999,7 +4245,7 @@ async function start(){
     subscribeProject(pid);
     subscribeIndex();
   }else{
-    state.screen='landing'; subscribeIndex();
+    state.screen='landing'; subscribeIndex(); subscribeRoomBoard();
   }
   render();
 }
