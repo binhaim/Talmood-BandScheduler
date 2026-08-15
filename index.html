@@ -981,6 +981,75 @@
   .agg-pev.more{flex-direction:row;justify-content:center;background:var(--paper);
     color:var(--muted);border-left-color:var(--line-2);}
 
+  /* 월간↔주간 보기 전환 */
+  .agg-viewtog{display:inline-flex;gap:2px;background:var(--paper);padding:3px;
+    border-radius:8px;border:1px solid var(--line);}
+  .agg-viewtog button{font-family:'Bricolage Grotesque',sans-serif;font-weight:600;
+    font-size:12.5px;padding:5px 13px;background:transparent;border:none;cursor:pointer;
+    color:var(--muted);border-radius:5px;
+    transition:color var(--t),background var(--t),box-shadow var(--t);}
+  .agg-viewtog button:hover{color:var(--ink);}
+  .agg-viewtog button.on{color:var(--ink);background:var(--surface);box-shadow:var(--shadow-sm);}
+
+  /* 주간 타임그리드 — 세로 시간축, 빈 칸 탭으로 일정 추가 */
+  .agg-cal.wk-mode{min-width:820px;}
+  .wk{background:var(--surface);}
+  .wk-row{display:flex;}
+  /* 가로 스크롤에도 시간 열은 왼쪽에 고정 */
+  .wk-corner{flex:0 0 48px;background:var(--ink);position:sticky;left:0;z-index:4;}
+  .wk-days{flex:1;display:flex;min-width:0;}
+  .wk-head{flex:1;min-width:0;background:var(--ink);color:var(--paper);border:0;
+    border-right:1px solid #000;padding:8px 4px;cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;
+    font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;
+    transition:opacity var(--t);}
+  .wk-head:last-child{border-right:0;}
+  .wk-head:hover{opacity:.82;}
+  .wk-head span{font-family:'Archivo',sans-serif;font-weight:500;font-size:10.5px;opacity:.8;}
+  .wk-head.sun{color:#e89c92;} .wk-head.sat{color:#9ac8e8;}
+  .wk-head.today{box-shadow:inset 0 -3px 0 var(--accent);}
+  .wk-time-col{flex:0 0 48px;border-right:1px solid var(--line-2);background:var(--surface);
+    position:sticky;left:0;z-index:3;}
+  /* 고정된 시간 열 위로 스크롤 그림자가 덮이지 않게 — 그림자를 열 자체에 붙임 */
+  .agg-cal-wrap.wk-wrap::before{display:none;}
+  .wk-wrap.can-l .wk-time-col,.wk-wrap.can-l .wk-corner{box-shadow:3px 0 7px rgba(31,26,18,.16);}
+  .wk-time{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;color:var(--muted);
+    text-align:right;padding-right:6px;box-sizing:border-box;transform:translateY(-5px);}
+  .wk-time.ov{color:var(--accent);}
+  .wk-day{flex:1;min-width:0;border-right:1px solid var(--line);}
+  .wk-day:last-child{border-right:0;}
+  .wk-day-body{position:relative;}
+  .wk-cell{box-sizing:border-box;cursor:pointer;border-bottom:1px dashed var(--line);}
+  .wk-cell:nth-child(even){border-bottom:1px solid var(--line-2);}   /* 정시 경계는 실선 */
+  .wk-cell:hover{background:var(--paper);}
+  .wk-ev{position:absolute;z-index:1;box-sizing:border-box;border:none;border-radius:5px;
+    background:var(--pc,var(--ink));color:#fff;text-align:left;padding:3px 6px;cursor:pointer;
+    overflow:hidden;font-family:inherit;display:flex;flex-direction:column;gap:1px;
+    box-shadow:0 1px 2px rgba(26,24,20,.18);transition:filter var(--t);}
+  .wk-ev:hover{filter:brightness(.9);}
+  .wk-ev .wk-ev-t{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9px;
+    opacity:.92;display:flex;gap:4px;align-items:center;white-space:nowrap;}
+  .wk-ev .wk-ev-t i{font-style:normal;background:rgba(255,255,255,.25);padding:0 4px;
+    border-radius:999px;font-size:8.5px;}
+  .wk-ev .wk-ev-t b{font-size:9px;background:hsl(var(--bh,0),60%,55%);color:#fff;
+    border-radius:3px;padding:0 3px;}
+  .wk-ev em{font-style:normal;font-weight:700;font-size:11px;line-height:1.25;
+    overflow:hidden;text-overflow:ellipsis;}
+  .wk-ev.per{background:hsl(var(--bh,0),65%,94%);color:hsl(var(--bh,0),55%,30%);
+    border:1px dashed hsl(var(--bh,0),45%,60%);box-shadow:none;}
+  .wk-ev.per em{font-weight:600;}
+  /* 30분 블록 — 두 줄이 안 들어가므로 이름만 한 줄로 (시각은 세로 위치·툴팁으로) */
+  .wk-ev.short{justify-content:center;padding:0 5px;}
+  .wk-ev.short em{font-size:10.5px;line-height:1.15;white-space:nowrap;}
+  .wk-ev.short em b{margin-right:3px;}
+  .wk-ev.short em i{margin-left:3px;}
+  .agg-week-hint{font-size:11.5px;color:var(--muted);margin-top:6px;padding:0 2px;}
+
+  /* 통합 일정 추가 시트 — 종류 토글 + 개인 연습 폼 */
+  .agg-kind-tog{display:flex;gap:8px;margin-bottom:16px;}
+  .mode-btn.per.on{background:var(--ok);border-color:var(--ok);}
+  .agg-edit-note{font-size:12px;color:var(--muted);line-height:1.5;background:var(--paper);
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px;}
+
   @media (max-width:640px){
     .bd-backdrop{padding:10px 4px;}
     .dayboard-modal{width:100%;}
@@ -1062,6 +1131,8 @@ let state={ screen:'loading', pid:null, tab:'setup',
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
   allSched:null,  // 활성 프로젝트 전체 배정 {pid:{config,schedule}} (로딩 전 null)
   aggMonth:'',    // 메인 월간 캘린더 기준 월 (YYYY-MM)
+  aggView:'',     // 메인 캘린더 보기: 'month' | 'week' (빈 값이면 저장된 설정/월간)
+  aggWeek:'',     // 주간 뷰 기준 일요일 (YYYY-MM-DD)
   aggMember:'',   // 메인 멤버 필터 (정규화된 이름)
   aggProject:''   // 메인 프로젝트 필터 (프로젝트 코드)
 };
@@ -1706,7 +1777,9 @@ async function exportPNG(){
 async function exportAggPNG(){
   const el=document.getElementById('agg-calendar-export');
   const sel=aggregateSelection();
-  if(!el||!sel.intervals.length){ toast('이달 합주 일정이 없습니다'); return; }
+  const isWeek=state.aggView==='week';
+  const hasContent=isWeek?!!el?.querySelector('.wk-ev'):sel.intervals.length>0;
+  if(!el||!hasContent){ toast(isWeek?'이번 주 일정이 없습니다':'이달 합주 일정이 없습니다'); return; }
   toast('전체 합주 PNG 생성 중...');
   try{
     const h2c=await ensureH2c();
@@ -1716,7 +1789,7 @@ async function exportAggPNG(){
     const scope=(sel.projectName||'전체합주').replace(/[\\/:*?"<>|]/g,'_');
     const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
     const link=document.createElement('a');
-    link.download=`${scope}-${state.aggMonth}-${who}.png`;
+    link.download=`${scope}-${isWeek?state.aggWeek+'-week':state.aggMonth}-${who}.png`;
     link.href=canvas.toDataURL('image/png');
     link.click();
     toast('전체 합주 PNG를 저장했습니다');
@@ -1902,26 +1975,43 @@ function aggregateCreatePids(){
     return Number(bIn)-Number(aIn)||itemName(state.allSched[a].config.name).localeCompare(itemName(state.allSched[b].config.name),'ko');
   });
 }
-function aggregateCreateDraft(pid){
+function aggregateCreateDraft(pid,prefMs){
   const cfg=state.allSched?.[pid]?.config; if(!cfg) return null;
   const songs=sortedIds(cfg.songs||{}), step=(Number(cfg.slotMinutes)||60)*60000;
   const starts=[...projectSlotMap(cfg).keys()].sort((a,b)=>a-b);
-  const inMonth=starts.find(ms=>dateTimeLocalValue(ms).slice(0,7)===state.aggMonth);
-  const start=inMonth??starts[0];
+  let start;
+  if(isFinite(prefMs)&&starts.length){   // 주간 뷰 빈 칸 탭 — 누른 시각에 가장 가까운 칸으로
+    start=starts.reduce((best,ms)=>Math.abs(ms-prefMs)<Math.abs(best-prefMs)?ms:best,starts[0]);
+  } else {
+    const inMonth=starts.find(ms=>dateTimeLocalValue(ms).slice(0,7)===state.aggMonth);
+    start=inMonth??starts[0];
+  }
   if(!songs.length||!isFinite(start)) return null;
   return {isNew:true,pid,sid:songs[0],start:dateTimeLocalValue(start),end:dateTimeLocalValue(start+step),ext:false};
 }
-function openAggregateCreate(){
+/* 통합 일정 추가 — 합주/개인 연습 한 시트. pref={date,min}: 주간 뷰 빈 칸 탭의 시각 프리필 */
+function openAggregateCreate(pref){
   const pids=aggregateCreatePids();
   const pid=state.aggProject&&pids.includes(state.aggProject)?state.aggProject:pids[0];
-  const draft=pid?aggregateCreateDraft(pid):null;
-  if(!draft){toast('일정을 추가할 수 있는 프로젝트가 없습니다');return;}
-  state.aggEdit=draft; render();
+  const prefMs=pref?new Date(pref.date+'T00:00:00').getTime()+(Number(pref.min)||0)*60000:NaN;
+  const draft=pid?aggregateCreateDraft(pid,prefMs):null;
+  const clamp=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
+  const pFrom=pref?clamp(Math.round((Number(pref.min)||0)/BOARD_SM)*BOARD_SM,BOARD_SH*60,BOARD_EH*60-BOARD_SM):18*60;
+  const personal={
+    pDate:pref?pref.date:fmtDate(new Date()),
+    pFrom, pTo:clamp(pFrom+60,pFrom+BOARD_SM,BOARD_EH*60),
+    pCol:BOARD_COLS.some(([c])=>c===lsGet('aggPCol'))?lsGet('aggPCol'):'d',
+    pName:(lsGet('boardName')||'').trim()
+  };
+  const kind=(!draft||lsGet('aggKind')==='personal')?'personal':'reh';
+  state.aggEdit={kind,...personal,...(draft||{}),isNew:true};
+  render();
 }
 function changeAggregateCreateProject(pid){
   const draft=aggregateCreateDraft(pid);
   if(!draft){toast('이 프로젝트에는 추가 가능한 시간 범위가 없습니다');return;}
-  state.aggEdit=draft; render();
+  state.aggEdit={...state.aggEdit,...draft};   // 개인 연습 프리필은 유지한 채 프로젝트 필드만 교체
+  render();
 }
 function openAggregateEdit(el){
   const pid=el.dataset.pid, sid=el.dataset.sid;
@@ -1935,9 +2025,58 @@ function openAggregateEdit(el){
     originalSid:sid,originalStart:start,originalEnd:end,originalExt:ext};
   render();
 }
+/* 통합 시트 공통 — 새 일정일 때만 종류(합주/개인 연습) 토글 노출 */
+function aggKindToggle(edit){
+  if(!edit.isNew) return '';
+  const kind=edit.kind||'reh';
+  return `<div class="agg-kind-tog">
+    <button class="mode-btn ${kind==='reh'?'on':''}" data-act="aggeditkind" data-kind="reh">🎸 합주</button>
+    <button class="mode-btn per ${kind==='personal'?'on':''}" data-act="aggeditkind" data-kind="personal">🎧 개인 연습</button>
+  </div>`;
+}
+/* 개인 연습 폼 — 저장하면 동방 사용표에 이름이 적힘 */
+function viewPersonalEdit(edit){
+  const timeOpts=(from,to,sel)=>{let o='';for(let m=from;m<=to;m+=BOARD_SM){
+    const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0');
+    const lbl=h<24?`${String(h).padStart(2,'0')}:${mm}`:`${h}:${mm} (다음날 ${h-24}:${mm})`;
+    o+=`<option value="${m}" ${m===sel?'selected':''}>${lbl}</option>`;}return o;};
+  const colOpts=BOARD_COLS.map(([c,L,full])=>`<option value="${c}" ${edit.pCol===c?'selected':''}>${L} · ${full}</option>`).join('');
+  return `<div class="modal-backdrop" data-act="aggeditclose">
+    <div class="modal" data-act="modal-noop" style="max-width:560px">
+      <div class="modal-head"><h2>일정 추가</h2><button class="modal-x" data-act="aggeditclose" title="닫기">×</button></div>
+      <div class="modal-body">
+        ${aggKindToggle(edit)}
+        <div class="agg-edit-grid">
+          <div class="agg-edit-field"><label for="aggPName">이름</label><input type="text" id="aggPName" maxlength="12" value="${esc(edit.pName||'')}" placeholder="사용표에 적힐 이름"></div>
+          <div class="agg-edit-field"><label for="aggPCol">세션</label><select id="aggPCol">${colOpts}</select></div>
+          <div class="agg-edit-field full"><label for="aggPDate">날짜</label><input type="date" id="aggPDate" value="${esc(edit.pDate||'')}"></div>
+          <div class="agg-edit-field"><label for="aggPFrom">시작</label><select id="aggPFrom" data-act="aggpdt">${timeOpts(BOARD_SH*60,BOARD_EH*60-BOARD_SM,edit.pFrom)}</select></div>
+          <div class="agg-edit-field"><label for="aggPTo">종료</label><select id="aggPTo" data-act="aggpdt">${timeOpts(BOARD_SH*60+BOARD_SM,BOARD_EH*60,edit.pTo)}</select></div>
+          <div class="agg-edit-field full agg-edit-note">저장하면 그 날 <b>동방 사용표</b>의 해당 세션 칸에 이름이 적혀요. 지울 땐 동방 사용표에서 칸을 눌러 빼면 됩니다.</div>
+        </div>
+        <div class="agg-edit-actions">
+          <div class="agg-edit-actions-right">
+            <button class="btn ghost sm" data-act="aggeditclose">취소</button>
+            <button class="btn sm" data-act="aggeditsave">일정 추가</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
 function viewAggregateEdit(){
   const edit=state.aggEdit; if(!edit) return '';
+  if(edit.isNew&&(edit.kind||'reh')==='personal') return viewPersonalEdit(edit);
   const data=state.allSched?.[edit.pid], cfg=data?.config;
+  if(!cfg&&edit.isNew) return `<div class="modal-backdrop" data-act="aggeditclose">
+    <div class="modal" data-act="modal-noop" style="max-width:560px">
+      <div class="modal-head"><h2>일정 추가</h2><button class="modal-x" data-act="aggeditclose" title="닫기">×</button></div>
+      <div class="modal-body">
+        ${aggKindToggle(edit)}
+        <div class="empty" style="padding:20px 8px">합주 일정을 추가할 수 있는 프로젝트가 없습니다.<br>위에서 <b>🎧 개인 연습</b>을 선택해 보세요.</div>
+      </div>
+    </div>
+  </div>`;
   if(!cfg) return '';
   const songs=sortedIds(cfg.songs||{});
   const project=itemName(cfg.name)||state.index?.[edit.pid]?.name||edit.pid;
@@ -1966,6 +2105,7 @@ function viewAggregateEdit(){
     <div class="modal" data-act="modal-noop" style="max-width:560px">
       <div class="modal-head"><h2>${edit.isNew?'일정 추가':'일정 수정'}</h2><button class="modal-x" data-act="aggeditclose" title="닫기">×</button></div>
       <div class="modal-body">
+        ${aggKindToggle(edit)}
         ${edit.isNew?'':`<div class="agg-edit-project">
           <div><strong>${esc(project)}</strong><span>${esc(edit.pid)}</span></div>
           <button class="btn ghost sm" data-act="aggeditopenproject">프로젝트 열기</button>
@@ -2004,9 +2144,36 @@ function syncAggregateEditDraft(){
     edit.start=dateTimeLocalValue(base+Number(f.value)*60000);
     edit.end=dateTimeLocalValue(base+Number(to.value)*60000);
   }
+  // 개인 연습 폼 필드
+  const pn=$('aggPName'); if(pn) edit.pName=pn.value;
+  const pc=$('aggPCol'); if(pc) edit.pCol=pc.value;
+  const pd=$('aggPDate'); if(pd&&pd.value) edit.pDate=pd.value;
+  const pf=$('aggPFrom'); if(pf) edit.pFrom=Number(pf.value);
+  const pt=$('aggPTo'); if(pt) edit.pTo=Number(pt.value);
+}
+/* 개인 연습 저장 — 선택한 시간 범위의 동방 사용표 칸에 이름 기입 */
+function savePersonalAdd(){
+  const edit=state.aggEdit; if(!edit) return;
+  syncAggregateEditDraft();
+  const name=(edit.pName||'').trim();
+  if(!name){toast('이름을 적어주세요');const n=$('aggPName');if(n)n.focus();return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(edit.pDate||'')){toast('날짜를 선택하세요');return;}
+  const from=Number(edit.pFrom), to=Number(edit.pTo);
+  if(!isFinite(from)||!isFinite(to)||from>=to){toast('시작과 종료 시각을 확인하세요');return;}
+  if(!BOARD_COLS.some(([c])=>c===edit.pCol)){toast('세션을 선택하세요');return;}
+  lsSet('boardName',name); lsSet('aggPCol',edit.pCol); lsSet('aggKind','personal');
+  let wrote=0;
+  for(let m=from;m<to;m+=BOARD_SM){
+    const t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+    if(bdApplyToggleAt(edit.pDate,edit.pCol,t,name,'add')) wrote++;
+  }
+  state.aggEdit=null; render();
+  toast(wrote?'동방 사용표에 적었습니다':'이미 그 시간에 적혀 있어요');
 }
 async function saveAggregateEdit(){
+  if(state.aggEdit?.isNew&&(state.aggEdit.kind||'reh')==='personal'){savePersonalAdd();return;}
   syncAggregateEditDraft();
+  lsSet('aggKind','reh');
   const edit=state.aggEdit, data=state.allSched?.[edit?.pid], cfg=data?.config;
   if(!edit||!cfg||state.index?.[edit.pid]?.trashedAt){toast('저장할 프로젝트를 찾을 수 없습니다');return;}
   if(!cfg.songs?.[edit.sid]){toast('활동을 선택하세요');return;}
@@ -2523,10 +2690,11 @@ function viewHelp(){
           <h3><span class="tut-num">5</span>메인: 전체 합주 시간표 관리</h3>
           <ul>
             <li><b>월간 캘린더</b>: 휴지통에 없는 모든 프로젝트의 배정 일정을 모아 보여줍니다. 일정에는 시간과 곡명만 표시되며, 누르면 프로젝트 정보와 수정 화면이 열립니다.</li>
+            <li><b>주간 타임라인</b>: 툴바의 <b>월간|주간</b> 토글로 전환합니다. 요일 7열 × 세로 시간축으로 합주와 개인 연습이 시간 위치에 표시되고, <b>빈 칸을 누르면 그 시간이 미리 채워진 일정 추가 시트</b>가 열립니다. 날짜 헤더를 누르면 그 날의 동방 사용표가 열려요.</li>
             <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG 내보내기도 같은 범위로 바뀝니다.</li>
             <li><b>멤버 필터</b>: 활성 프로젝트의 참여표에 연결된 멤버만 나오며, 선택한 멤버의 일정만 월간 캘린더와 내보내기에 반영됩니다.</li>
             <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
-            <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>에서 프로젝트, 활동, 시간과 장소를 고릅니다. 해당 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있습니다.</li>
+            <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>(또는 주간 뷰 빈 칸 탭)에서 <b>🎸 합주 / 🎧 개인 연습</b>을 골라 한 시트에서 추가합니다. 합주는 프로젝트·활동·시간·장소를 고르며 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있고, 개인 연습은 이름·세션·시간을 고르면 그 날 동방 사용표에 자동으로 적힙니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
             <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(D·G·B·K·V)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
@@ -2643,9 +2811,9 @@ function aggregateSelection(){
   const [year,month]=state.aggMonth.split('-').map(Number);
   const monthStart=new Date(year,month-1,1);
   const nextMonth=new Date(year,month,1);
-  const intervals=all.filter(o=>(!state.aggMember||o.memberKeys.includes(state.aggMember))&&
-    o.s>=monthStart.getTime()&&o.s<nextMonth.getTime());
-  return {idx,data,pids,scopePids,memberMap,memberKeys,intervals,now,year,month,monthStart,nextMonth,
+  const allFiltered=all.filter(o=>!state.aggMember||o.memberKeys.includes(state.aggMember));
+  const intervals=allFiltered.filter(o=>o.s>=monthStart.getTime()&&o.s<nextMonth.getTime());
+  return {idx,data,pids,scopePids,memberMap,memberKeys,intervals,allFiltered,now,year,month,monthStart,nextMonth,
     projectName:state.aggProject?projectLabel(state.aggProject):'',
     memberName:state.aggMember?memberMap[state.aggMember]||'':''};
 }
@@ -2694,8 +2862,9 @@ function bdEntries(cell){
 }
 const bdHasName=(cell,name)=>bdEntries(cell).some(e=>bdNameKey(e.name)===bdNameKey(name));
 /* 내 이름 넣기/빼기 토글 — 다른 사람 이름은 절대 건드리지 않음. 낙관적 반영 + 뒤에서 저장 */
-function bdApplyToggle(col,time,name,mode){   // mode: 'add' | 'remove'
-  const ds=state.dayBoard; if(!ds) return false;
+function bdApplyToggle(col,time,name,mode){ return bdApplyToggleAt(state.dayBoard,col,time,name,mode); }
+function bdApplyToggleAt(ds,col,time,name,mode){   // mode: 'add' | 'remove'
+  if(!ds) return false;
   const key=bdNameKey(name); if(!key) return false;
   const cell=state.roomBoardData?.[ds]?.[col]?.[time];
   const entries=bdEntries(cell);
@@ -2792,6 +2961,95 @@ function viewDayBoard(){
   </div>`;
 }
 
+/* ---- 주간 뷰: 요일 7열 × 세로 시간축 (9:00~, 30분 행) — 쓰기 중심 화면 ---- */
+const WK_SM=30, WK_CH=27;             // 30분 행, 행 높이 px (30분 블록도 이름이 들어가게)
+function wkSunday(ds){ const d=new Date(ds+'T00:00:00'); d.setDate(d.getDate()-d.getDay()); return fmtDate(d); }
+function wkEnsureAnchor(){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')){
+    const today=fmtDate(new Date());
+    state.aggWeek=(state.aggMonth&&state.aggMonth!==today.slice(0,7))?state.aggMonth+'-01':today;
+  }
+  state.aggWeek=wkSunday(state.aggWeek);
+}
+function renderAggWeek(sel,pColor){
+  const {data,idx}=sel;
+  const hm=ms=>{ const d=new Date(ms);
+    return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  wkEnsureAnchor();
+  const ws=state.aggWeek, today=fmtDate(new Date());
+  const days=[]; { const c=new Date(ws+'T00:00:00');
+    for(let i=0;i<7;i++){ days.push(fmtDate(c)); c.setDate(c.getDate()+1); } }
+  // 블록 수집 — 합주(멤버·프로젝트 필터 적용) + 동방 개인 연습. 새벽 시각은 전날 24+시로 붙임
+  const byDay={}; days.forEach(d=>byDay[d]=[]);
+  let ehMin=BOARD_EH*60;              // 기본 9:00~27:00, 늦게 끝나는 블록이 있으면 아래로 확장
+  let rehCount=0;
+  sel.allFiltered.forEach(o=>{
+    const d=new Date(o.s); const min=d.getHours()*60+d.getMinutes();
+    let anchor=fmtDate(d), relS=min;
+    if(min<BOARD_SH*60){ const p=new Date(o.s); p.setDate(p.getDate()-1); anchor=fmtDate(p); relS=min+1440; }
+    if(!byDay[anchor]) return;
+    const relE=relS+Math.round((o.e-o.s)/60000);
+    ehMin=Math.max(ehMin,relE);
+    const cfg=data[o.pid]?.config||{};
+    rehCount++;
+    byDay[anchor].push({kind:'reh',o,relS,relE,
+      song:itemName(cfg.songs?.[o.sid])||'활동',
+      pname:itemName(cfg.name)||idx[o.pid]?.name||o.pid});
+  });
+  const personalAll=bdMonthPersonal();
+  Object.values(personalAll).forEach(arr=>arr.forEach(p=>{
+    if(!byDay[p.srcDate]) return;
+    ehMin=Math.max(ehMin,p.endMin);
+    byDay[p.srcDate].push({kind:'per',p,relS:p.startMin,relE:p.endMin});
+  }));
+  ehMin=Math.min(Math.ceil(ehMin/60)*60,33*60);
+  const times=timeList(BOARD_SH,ehMin/60,WK_SM);
+  const colH=times.length*WK_CH;
+  // 같은 시간대에 겹치는 블록 → 가로 열 분배. 합주를 먼저 배치해 항상 맨 왼쪽에 정렬
+  days.forEach(dk=>{
+    const order=byDay[dk].sort((a,b)=>
+      (a.kind==='per')-(b.kind==='per')||a.relS-b.relS||a.relE-b.relE);
+    const placed=[];
+    order.forEach(b=>{ let c=0;
+      while(placed.some(p=>p._col===c&&p.relS<b.relE&&p.relE>b.relS)) c++;
+      b._col=c; placed.push(b); });
+    const cols=order.reduce((m,b)=>Math.max(m,b._col+1),1);
+    order.forEach(b=>b._cols=cols);
+  });
+  const timeCol=times.map(t=>`<div class="wk-time${parseTime(t)>=1440?' ov':''}" style="height:${WK_CH}px">${t.endsWith(':00')?t:''}</div>`).join('');
+  const heads=days.map(dk=>{
+    const w=wdOf(dk);
+    return `<button class="wk-head${w===0?' sun':w===6?' sat':''}${dk===today?' today':''}" data-act="dayboard" data-date="${dk}" title="${mdLabel(dk)} 동방 사용표 열기">${mdLabel(dk)} <span>${WD[w]}</span></button>`;
+  }).join('');
+  const daysHtml=days.map(dk=>{
+    const cells=times.map(t=>`<div class="wk-cell" style="height:${WK_CH}px" data-act="wkslot" data-date="${dk}" data-min="${parseTime(t)}" title="${mdLabel(dk)} ${t} — 누르면 일정 추가"></div>`).join('');
+    const blocks=byDay[dk].map(b=>{
+      const top=((b.relS-BOARD_SH*60)/WK_SM)*WK_CH, h=Math.max(((b.relE-b.relS)/WK_SM)*WK_CH-2,15);
+      const left=(b._col/b._cols)*100, wPct=(1/b._cols)*100;
+      const pos=`top:${top}px;height:${h}px;left:calc(${left.toFixed(2)}% + 1px);width:calc(${wPct.toFixed(2)}% - 2px)`;
+      const short=h<32;   // 30분 블록 — 두 줄이 안 들어가니 이름만 한 줄로
+      if(b.kind==='per'){
+        const p=b.p, full=(BOARD_COLS.find(c=>c[0]===p.col)||[])[2]||'';
+        const inner=short
+          ?`<em><b>${p.letter}</b>${esc(p.names.join(' · '))}</em>`
+          :`<span class="wk-ev-t"><b>${p.letter}</b>${hm(p.abs)}~${hm(p.absEnd)}</span><em>${esc(p.names.join(' · '))}</em>`;
+        return `<button class="wk-ev per${short?' short':''}" style="--bh:${BOARD_HUES[p.col]};${pos}" data-act="dayboard" data-date="${p.srcDate}" title="${esc(p.names.join(', '))} · ${full} 개인 연습 · ${hm(p.abs)}~${hm(p.absEnd)} · 누르면 동방 사용표 열기">${inner}</button>`;
+      }
+      const o=b.o;
+      const inner=short
+        ?`<em>${esc(b.song)}${o.ext?'<i>외부</i>':''}</em>`
+        :`<span class="wk-ev-t">${hm(o.s)}~${hm(o.e)}${o.ext?'<i>외부</i>':''}</span><em>${esc(b.song)}</em>`;
+      return `<button class="wk-ev${short?' short':''}" style="--pc:${pColor(o.pid)};${pos}" data-act="aggedit" data-pid="${esc(o.pid)}" data-sid="${esc(o.sid)}" data-start="${o.s}" data-end="${o.e}" data-ext="${o.ext?'1':'0'}" title="${esc(b.pname+' · '+b.song+' · '+hm(o.s)+'–'+hm(o.e)+(o.ext?' · 외부':'')+' · 클릭하여 수정')}">${inner}</button>`;
+    }).join('');
+    return `<div class="wk-day"><div class="wk-day-body" style="height:${colH}px">${cells}${blocks}</div></div>`;
+  }).join('');
+  const html=`<div class="wk">
+    <div class="wk-row wk-head-row"><div class="wk-corner"></div><div class="wk-days wk-heads">${heads}</div></div>
+    <div class="wk-row"><div class="wk-time-col">${timeCol}</div><div class="wk-days">${daysHtml}</div></div>
+  </div>`;
+  return {html,rehCount,ws,we:days[6]};
+}
+
 function viewAggSchedule(){
   const idx=state.index||{};
   if(!Object.keys(idx).some(pid=>!idx[pid]?.trashedAt)) return '';
@@ -2800,8 +3058,12 @@ function viewAggSchedule(){
     return `<div class="card">${label()}<div class="empty">시간표 불러오는 중…</div></div>`;
   const sel=aggregateSelection();
   const {data,pids,memberMap,memberKeys,intervals,now,year,month,monthStart}=sel;
+  if(state.aggView!=='month'&&state.aggView!=='week')
+    state.aggView=lsGet('aggView')==='week'?'week':'month';
+  const isWeek=state.aggView==='week';
   const pColor=pid=>{ const i=Math.max(pids.indexOf(pid),0);
     return `hsl(${Math.round(i/Math.max(pids.length,1)*360)},50%,42%)`; };
+  const wk=isWeek?renderAggWeek(sel,pColor):null;
   const hm=ms=>{ const d=new Date(ms);
     return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
   const gridStart=new Date(monthStart); gridStart.setDate(gridStart.getDate()-gridStart.getDay());
@@ -2809,8 +3071,6 @@ function viewAggSchedule(){
   intervals.forEach(o=>{ const ds=fmtDate(new Date(o.s)); (byDate[ds]=byDate[ds]||[]).push(o); });
   Object.values(byDate).forEach(arr=>arr.sort((a,b)=>a.s-b.s||a.pid.localeCompare(b.pid)));
   const monthCount=intervals.length;
-  const creatablePids=aggregateCreatePids();
-  const canAdd=state.aggProject?creatablePids.includes(state.aggProject):creatablePids.length>0;
 
   const cells=[];
   const personalAll=bdMonthPersonal();
@@ -2848,29 +3108,48 @@ function viewAggSchedule(){
   }).join('');
   const weekdays=['일','월','화','수','목','금','토'].map((d,i)=>
     `<div class="agg-weekday${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
+  const shownCount=isWeek?wk.rehCount:monthCount;
+  const navHtml=isWeek
+    ?`<div class="agg-nav">
+        <button data-act="aggweek" data-d="-1" title="이전 주" aria-label="이전 주">‹</button>
+        <div class="agg-month-title">${mdLabel(wk.ws)} ~ ${mdLabel(wk.we)}</div>
+        <button data-act="aggweek" data-d="1" title="다음 주" aria-label="다음 주">›</button>
+      </div>`
+    :`<div class="agg-nav">
+        <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
+        <div class="agg-month-title">${year}년 ${month}월</div>
+        <button data-act="aggmonth" data-d="1" title="다음 달" aria-label="다음 달">›</button>
+      </div>`;
+  const exportTitle=isWeek
+    ?`${mdLabel(wk.ws)} ~ ${mdLabel(wk.we)} 전체 합주 시간표`
+    :`${year}년 ${month}월 전체 합주 시간표`;
+  const bodyHtml=isWeek
+    ?wk.html
+    :`<div class="agg-weekdays">${weekdays}</div>
+      <div class="agg-month-grid">${cells.join('')}</div>`;
   return `<div class="card">
     <div class="agg-head">
-      ${label(` <span class="count">${monthCount}회</span>`)}
+      ${label(` <span class="count">${shownCount}회</span>`)}
       <div class="agg-tools">
-        <button class="btn sm" data-act="aggadd" ${canAdd?'':'disabled'}>+ 일정 추가</button>
-        <button class="btn ghost sm" data-act="aggpng" ${monthCount?'':'disabled'}>📷 PNG</button>
+        <button class="btn sm" data-act="aggadd">+ 일정 추가</button>
+        <button class="btn ghost sm" data-act="aggpng" ${shownCount?'':'disabled'}>📷 PNG</button>
         <button class="btn ghost sm" data-act="aggsubscribe" ${sel.memberName?'':'disabled'} title="${sel.memberName?esc(sel.memberName)+' 전체 일정 구독':'멤버를 먼저 선택하세요'}">🔗 개인 구독</button>
-        <div class="agg-nav">
-          <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
-          <div class="agg-month-title">${year}년 ${month}월</div>
-          <button data-act="aggmonth" data-d="1" title="다음 달" aria-label="다음 달">›</button>
+        <div class="agg-viewtog" role="group" aria-label="캘린더 보기 전환">
+          <button class="${isWeek?'':'on'}" data-act="aggview" data-v="month">월간</button>
+          <button class="${isWeek?'on':''}" data-act="aggview" data-v="week">주간</button>
         </div>
+        ${navHtml}
         <select class="agg-project" data-act="aggproject" aria-label="프로젝트 필터">${projectOpts}</select>
         <select class="agg-member" data-act="aggmember" aria-label="멤버 필터">${memberOpts}</select>
       </div>
     </div>
-    <div class="agg-cal-wrap"><div class="agg-cal-scroll scroll"><div class="agg-cal" id="agg-calendar-export">
-      <div class="agg-export-title">${year}년 ${month}월 전체 합주 시간표${sel.projectName?`<span>· ${esc(sel.projectName)}</span>`:''}${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
-      <div class="agg-weekdays">${weekdays}</div>
-      <div class="agg-month-grid">${cells.join('')}</div>
+    <div class="agg-cal-wrap${isWeek?' wk-wrap':''}"><div class="agg-cal-scroll scroll"><div class="agg-cal${isWeek?' wk-mode':''}" id="agg-calendar-export">
+      <div class="agg-export-title">${exportTitle}${sel.projectName?`<span>· ${esc(sel.projectName)}</span>`:''}${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
+      ${bodyHtml}
     </div></div></div>
     <div class="agg-swipe-hint">옆으로 밀어 나머지 요일 보기 →</div>
-    ${monthCount?'':`<div class="agg-month-empty">${sel.projectName||sel.memberName?'선택한 조건에 맞는 ':''}이달 합주 일정이 없습니다.</div>`}
+    ${isWeek?`<div class="agg-week-hint">빈 칸을 누르면 그 시간으로 일정을 추가하고, 날짜 헤더를 누르면 동방 사용표가 열려요.</div>`:''}
+    ${shownCount?'':`<div class="agg-month-empty">${sel.projectName||sel.memberName?'선택한 조건에 맞는 ':''}${isWeek?'이번 주':'이달'} 합주 일정이 없습니다.</div>`}
   </div>`;
 }
 
@@ -3681,6 +3960,29 @@ function bindEvents(){
       const d=new Date(y,m-1+(+t.dataset.d||0),1);
       state.aggMonth=fmtDate(d).slice(0,7); render(); return;
     }
+    if(act==='aggview'){
+      const v=t.dataset.v==='week'?'week':'month';
+      if(v==='week'&&state.aggView!=='week'){
+        // 보고 있던 달과 어긋난 주가 뜨지 않게 — 그 달(이번 달이면 오늘)이 낀 주로
+        const today=fmtDate(new Date());
+        const cur=/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')?wkSunday(state.aggWeek):'';
+        const inMonth=cur&&(cur.slice(0,7)===state.aggMonth||bdShiftDate(cur,6).slice(0,7)===state.aggMonth);
+        if(!inMonth) state.aggWeek=(state.aggMonth===today.slice(0,7))?today:state.aggMonth+'-01';
+      }
+      state.aggView=v; lsSet('aggView',v); render(); return;
+    }
+    if(act==='aggweek'){
+      wkEnsureAnchor();
+      state.aggWeek=wkSunday(bdShiftDate(state.aggWeek,7*(Number(t.dataset.d)||0)));
+      state.aggMonth=bdShiftDate(state.aggWeek,3).slice(0,7);   // 주 중간 날짜의 달을 기준 달로
+      render(); return;
+    }
+    if(act==='wkslot'){openAggregateCreate({date:t.dataset.date,min:Number(t.dataset.min)||0});return;}
+    if(act==='aggeditkind'){
+      syncAggregateEditDraft();
+      state.aggEdit.kind=t.dataset.kind==='personal'?'personal':'reh';
+      render(); return;
+    }
     if(act==='enter'){
       const v=($('codeIn').value||'').trim().toUpperCase();
       if(v)location.href=location.pathname+'?p='+v;return;}
@@ -3884,6 +4186,13 @@ function bindEvents(){
         const base=new Date(d.value+'T00:00:00').getTime();
         state.aggEdit.start=dateTimeLocalValue(base+fm*60000);
         state.aggEdit.end=dateTimeLocalValue(base+tm*60000);
+      }
+    }
+    else if(act==='aggpdt'&&state.aggEdit){   // 개인 연습: 종료가 시작보다 앞이면 자동 보정
+      syncAggregateEditDraft();
+      if(Number(state.aggEdit.pTo)<=Number(state.aggEdit.pFrom)){
+        state.aggEdit.pTo=Math.min(Number(state.aggEdit.pFrom)+BOARD_SM,BOARD_EH*60);
+        const pt=$('aggPTo'); if(pt) pt.value=String(state.aggEdit.pTo);
       }
     }
   });
