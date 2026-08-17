@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
 <title>TALENDER</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4033,8 +4033,20 @@ function viewResultsDetail(){
 }
 
 /* ---------------- 이벤트 ---------------- */
+/* 화면에 닿아 있는 손가락 수 — 2개 이상이면 핀치 줌으로 보고 칠하기 드래그를 양보한다.
+   (드래그 진입 콜백들이 이 값을 보고 스스로 취소) */
+let activeTouches=0;
+const isMultiTouch=()=>activeTouches>1;
+function trackTouches(){
+  const set=n=>{activeTouches=Math.max(0,n);};
+  document.addEventListener('touchstart',e=>{set(e.touches.length);
+    if(activeTouches>1) document.dispatchEvent(new Event('pinchstart'));},{passive:true});
+  document.addEventListener('touchend',e=>set(e.touches.length),{passive:true});
+  document.addEventListener('touchcancel',e=>set(e.touches.length),{passive:true});
+}
 function bindEvents(){
   const app=$('app'), hbar=$('hbar');
+  trackTouches();
 
   function handleClick(e){
     const helpLink=e.target.closest('.help-modal a[href^="#tut-"]');
@@ -4389,8 +4401,12 @@ function bindEvents(){
   let snapshot={}, dragGrid=null;
   let touchHoldTimer=null;
   const LONG_PRESS_MS=320;
-  /* 드래그 중에는 터치 스크롤 개입 자체를 차단 (touch-action과 달리 제스처 도중에도 유효) */
-  const stopTouchScroll=e=>{ if(e.cancelable) e.preventDefault(); };
+  /* 드래그 중에는 터치 스크롤 개입 자체를 차단 (touch-action과 달리 제스처 도중에도 유효).
+     단 손가락이 둘 이상이면 핀치 줌이므로 막지 않는다 */
+  const stopTouchScroll=e=>{
+    if(e.touches&&e.touches.length>1) return;
+    if(e.cancelable) e.preventDefault();
+  };
   const enterDrag=()=>{
     document.body.classList.add('dragging');
     document.addEventListener('touchmove',stopTouchScroll,{passive:false});
@@ -4456,16 +4472,23 @@ function bindEvents(){
       e.preventDefault();
       startParticipateDrag(td);
     } else {
-      // 터치: long-press로 드래그 진입
+      // 터치: long-press로 드래그 진입 (두 손가락이면 핀치 줌이므로 진입하지 않음)
       if(touchHoldTimer)clearTimeout(touchHoldTimer);
+      if(isMultiTouch()) return;
       const pid=e.pointerId;
       touchHoldTimer=setTimeout(()=>{
         touchHoldTimer=null;
+        if(isMultiTouch()) return;
         try{td.setPointerCapture(pid);}catch(_){}
         startParticipateDrag(td);
         if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
       },LONG_PRESS_MS);
     }
+  });
+  /* 핀치가 시작되면 대기 중인 롱프레스와 진행 중인 칠하기를 즉시 취소 — 줌 제스처 우선 */
+  document.addEventListener('pinchstart',()=>{
+    if(touchHoldTimer){clearTimeout(touchHoldTimer);touchHoldTimer=null;}
+    if(painting){painting=false;dragGrid=null;exitDrag();doRender();}
   });
   app.addEventListener('pointermove',e=>{
     if(touchHoldTimer){
@@ -4625,15 +4648,21 @@ function bindEvents(){
     } else {
       gTouchCell=td; gSx=e.clientX; gSy=e.clientY;
       if(gTouchHoldTimer)clearTimeout(gTouchHoldTimer);
+      if(isMultiTouch()) return;                 // 두 손가락 = 핀치 줌
       const pid=e.pointerId;
       gTouchHoldTimer=setTimeout(()=>{
         gTouchHoldTimer=null;
+        if(isMultiTouch()) return;
         try{td.setPointerCapture(pid);}catch(_){}
         if(startGanttDrag(td)){
           if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
         }
       },LONG_PRESS_MS);
     }
+  });
+  document.addEventListener('pinchstart',()=>{
+    if(gTouchHoldTimer){clearTimeout(gTouchHoldTimer);gTouchHoldTimer=null;}
+    if(gPainting){gPainting=false;gGrid=null;exitDrag();doRender();}
   });
   app.addEventListener('pointermove',e=>{
     if(gTouchHoldTimer){
