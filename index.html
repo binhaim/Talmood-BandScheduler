@@ -424,6 +424,16 @@
     font-size:11.5px;background:var(--paper);}
   .calendar-sub-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;
     margin-top:18px;}
+  /* 연동 버튼 줄 — 두 캘린더를 나란히 크게 */
+  .calendar-sub-link{margin:0 0 15px;}
+  .calendar-sub-link .btn{flex:1;justify-content:center;}
+  /* 모달 안에서 멤버 고르기 */
+  .calendar-sub-pick{margin-bottom:16px;}
+  .calendar-sub-pick label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+    margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase;}
+  .calendar-sub-pick select{width:100%;height:38px;}
+  .calendar-sub-hint{font-size:12.5px;color:var(--muted);background:var(--paper);
+    border:1px dashed var(--line-2);border-radius:var(--r-sm);padding:14px 12px;text-align:center;}
   @media(max-width:560px){
     .agg-tools{width:100%;}
     .agg-project,.agg-member{flex:1 1 150px;min-width:0;max-width:none;}
@@ -442,6 +452,7 @@
     .calendar-sub-url{align-items:stretch;flex-direction:column;}
     .calendar-sub-actions{display:grid;grid-template-columns:1fr 1fr;}
     .calendar-sub-actions .btn:last-child{grid-column:1/-1;justify-content:center;}
+    .calendar-sub-link{grid-template-columns:1fr;}   /* 연동 버튼은 모바일에서 위아래로 */
   }
 
   /* 최종 시간표 카드 */
@@ -993,12 +1004,20 @@
 
   /* 주간 타임그리드 — 세로 시간축, 빈 칸 탭으로 일정 추가 */
   .agg-cal.wk-mode{min-width:820px;}
+  /* 일간 — 합주 + 세션(D·G·B·K·V) 열. 가로 스크롤 없이 화면 폭에 맞추되,
+     넓은 화면에서는 열이 과하게 벌어지지 않도록 폭을 제한(PNG도 같은 폭으로 저장됨) */
+  .agg-cal.day-mode{min-width:0;max-width:720px;margin:0 auto;}
+  .wk-head.sub{font-size:12.5px;padding:9px 3px;
+    box-shadow:inset 0 -3px 0 hsl(var(--bh,0),60%,55%);}
+  .wk-head.sub.reh{box-shadow:inset 0 -3px 0 var(--accent);}
   .wk{background:var(--surface);}
   .wk-row{display:flex;}
   /* 가로 스크롤에도 시간 열은 왼쪽에 고정 */
+  /* 헤더 높이를 고정 — 안 그러면 행이 버튼보다 커져 검은 모서리만 아래로 삐져나옴 */
+  .wk-head-row{height:38px;}
   .wk-corner{flex:0 0 48px;background:var(--ink);position:sticky;left:0;z-index:4;}
-  .wk-days{flex:1;display:flex;min-width:0;}
-  .wk-head{flex:1;min-width:0;background:var(--ink);color:var(--paper);border:0;
+  .wk-days{flex:1;display:flex;min-width:0;align-items:stretch;}
+  .wk-head{flex:1;min-width:0;height:100%;background:var(--ink);color:var(--paper);border:0;
     border-right:1px solid #000;padding:8px 4px;cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;
     font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;
     transition:opacity var(--t);}
@@ -1014,6 +1033,8 @@
   .wk-wrap.can-l .wk-time-col,.wk-wrap.can-l .wk-corner{box-shadow:3px 0 7px rgba(31,26,18,.16);}
   .wk-time{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;color:var(--muted);
     text-align:right;padding-right:6px;box-sizing:border-box;transform:translateY(-5px);}
+  /* 첫 라벨은 위로 올리면 그리드 밖(헤더 아래)으로 나가 검은 헤더에 가려짐 — 제자리에 둔다 */
+  .wk-time:first-child{transform:none;}
   .wk-time.ov{color:var(--accent);}
   .wk-day{flex:1;min-width:0;border-right:1px solid var(--line);}
   .wk-day:last-child{border-right:0;}
@@ -1131,8 +1152,9 @@ let state={ screen:'loading', pid:null, tab:'setup',
   groupFilter:{}, // 결과 탭 그룹 필터 — 다중 선택 {gid:true,...}, 비어있으면 전체
   allSched:null,  // 활성 프로젝트 전체 배정 {pid:{config,schedule}} (로딩 전 null)
   aggMonth:'',    // 메인 월간 캘린더 기준 월 (YYYY-MM)
-  aggView:'',     // 메인 캘린더 보기: 'month' | 'week' (빈 값이면 저장된 설정/월간)
+  aggView:'',     // 메인 캘린더 보기: 'month' | 'week' | 'day' (빈 값이면 저장된 설정/월간)
   aggWeek:'',     // 주간 뷰 기준 일요일 (YYYY-MM-DD)
+  aggDay:'',      // 일간 뷰 기준 날짜 (YYYY-MM-DD)
   aggMember:'',   // 메인 멤버 필터 (정규화된 이름)
   aggProject:''   // 메인 프로젝트 필터 (프로젝트 코드)
 };
@@ -1777,9 +1799,10 @@ async function exportPNG(){
 async function exportAggPNG(){
   const el=document.getElementById('agg-calendar-export');
   const sel=aggregateSelection();
-  const isWeek=state.aggView==='week';
-  const hasContent=isWeek?!!el?.querySelector('.wk-ev'):sel.intervals.length>0;
-  if(!el||!hasContent){ toast(isWeek?'이번 주 일정이 없습니다':'이달 합주 일정이 없습니다'); return; }
+  const isTimeline=state.aggView==='week'||state.aggView==='day';
+  const hasContent=isTimeline?!!el?.querySelector('.wk-ev'):sel.intervals.length>0;
+  if(!el||!hasContent){
+    toast(state.aggView==='day'?'이 날 일정이 없습니다':isTimeline?'이번 주 일정이 없습니다':'이달 합주 일정이 없습니다'); return; }
   toast('전체 합주 PNG 생성 중...');
   try{
     const h2c=await ensureH2c();
@@ -1789,7 +1812,9 @@ async function exportAggPNG(){
     const scope=(sel.projectName||'전체합주').replace(/[\\/:*?"<>|]/g,'_');
     const who=(sel.memberName||'all').replace(/[\\/:*?"<>|]/g,'_');
     const link=document.createElement('a');
-    link.download=`${scope}-${isWeek?state.aggWeek+'-week':state.aggMonth}-${who}.png`;
+    const period=state.aggView==='day'?state.aggDay
+      :state.aggView==='week'?state.aggWeek+'-week':state.aggMonth;
+    link.download=`${scope}-${period}-${who}.png`;
     link.href=canvas.toDataURL('image/png');
     link.click();
     toast('전체 합주 PNG를 저장했습니다');
@@ -1809,39 +1834,75 @@ function memberCalendarUrl(memberName){
   return new URL(`calendars/${memberCalendarKey(memberName)}.ics`,MEMBER_CALENDAR_BASE).toString();
 }
 function openAggregateSubscribe(){
-  const sel=aggregateSelection();
-  if(!sel.memberName){toast('구독할 멤버를 먼저 선택해주세요');return;}
-  state.aggSubscribe={memberName:sel.memberName,url:memberCalendarUrl(sel.memberName)};
+  const {map}=subscribableMembers();
+  // 메인에서 멤버 필터를 이미 걸었으면 그 사람으로 미리 선택
+  state.aggSubscribe={member:map[state.aggMember]?state.aggMember:''};
   render();
 }
-async function copyAggregateSubscribeLink(){
-  const sub=state.aggSubscribe;
-  if(!sub) return;
-  toast(await copyText(sub.url)?`${sub.memberName} 구독 링크를 복사했습니다`:'구독 링크를 복사하지 못했습니다');
+/* 선택된 멤버 → {name,url}. 아직 안 골랐으면 null */
+function aggSubscribeTarget(){
+  const sub=state.aggSubscribe; if(!sub) return null;
+  const {map}=subscribableMembers();
+  const name=map[sub.member];
+  return name?{name,url:memberCalendarUrl(name)}:null;
 }
-function launchAggregateSubscribe(){
-  const sub=state.aggSubscribe;
-  if(!sub) return;
-  location.href=sub.url.replace(/^https:/,'webcal:');
+async function copyAggregateSubscribeLink(){
+  const t=aggSubscribeTarget();
+  if(!t){toast('먼저 멤버를 선택하세요');return;}
+  toast(await copyText(t.url)?`${t.name} 연동 링크를 복사했습니다`:'연동 링크를 복사하지 못했습니다');
+}
+/* iPadOS 13+는 UA가 Macintosh로 나와 Apple 계열로 함께 판정됨 */
+const isAppleDevice=()=>/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent||'');
+/* Google 캘린더는 webcal: 스킴을 받지 않고 앱에도 URL 추가 기능이 없어 웹 설정 화면으로 보낸다 */
+const googleCalendarAddUrl=icsUrl=>
+  'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?cid='+encodeURIComponent(icsUrl);
+function launchAggregateSubscribe(kind){
+  const t=aggSubscribeTarget();
+  if(!t){toast('먼저 멤버를 선택하세요');return;}
+  if(kind==='google'){
+    window.open(googleCalendarAddUrl(t.url),'_blank','noopener');
+    toast('열린 Google 캘린더 화면에서 [캘린더 추가]를 눌러 마무리하세요');
+    return;
+  }
+  location.href=t.url.replace(/^https:/,'webcal:');   // Apple 캘린더(iPhone·Mac)
 }
 function viewAggregateSubscribe(){
   const sub=state.aggSubscribe;
   if(!sub) return '';
+  const {map,keys}=subscribableMembers();
+  const target=aggSubscribeTarget();
+  const apple=isAppleDevice();
+  const gBtn=`<button class="btn ${apple?'ghost ':''}sm" data-act="aggsubopen" data-kind="google">📅 Google 캘린더에 추가</button>`;
+  const aBtn=`<button class="btn ${apple?'':'ghost '}sm" data-act="aggsubopen" data-kind="apple">🍎 Apple 캘린더에 추가</button>`;
+  const memberOpts='<option value="">이름을 선택하세요</option>'+keys.map(k=>
+    `<option value="${esc(k)}" ${sub.member===k?'selected':''}>${esc(map[k])}</option>`).join('');
+  const body=!keys.length
+    ?`<div class="empty" style="padding:22px 8px">연동할 멤버가 없습니다.<br>프로젝트에서 참여자를 먼저 등록해 주세요.</div>`
+    :`<div class="calendar-sub-pick">
+        <label for="calendarSubMember">누구의 일정을 연동할까요?</label>
+        <select id="calendarSubMember" data-act="aggsubmember">${memberOpts}</select>
+      </div>
+      ${target?`
+      <div class="calendar-sub-person">${esc(target.name)} 전체 합주 일정</div>
+      <div class="calendar-sub-scope">한 번 연동해두면 합주 일정이 바뀔 때마다 내 캘린더에 자동으로 반영돼요 · 휴지통에 없는 모든 프로젝트</div>
+      <div class="calendar-sub-actions calendar-sub-link">${apple?aBtn+gBtn:gBtn+aBtn}</div>
+      <div class="note">
+        <b>Android·PC(Google 캘린더)</b>는 위 버튼을 누르면 주소가 채워진 추가 화면이 열립니다 — 앱이 아닌 <b>웹에서만</b> 추가할 수 있어요.
+        <b>iPhone·Mac(Apple 캘린더)</b>은 버튼을 누르면 캘린더 앱이 바로 열립니다.
+        잘 안 되면 아래 링크를 복사해 캘린더의 <b>URL로 추가</b>에 붙여넣으세요.
+      </div>
+      <div class="calendar-sub-url">
+        <input id="calendarSubUrl" type="text" readonly value="${esc(target.url)}" aria-label="캘린더 연동 URL">
+        <button class="btn ghost sm" data-act="aggsubcopy">링크 복사</button>
+      </div>`
+      :`<div class="calendar-sub-hint">이름을 고르면 연동 버튼과 링크가 나타납니다.</div>`}`;
   return `<div class="modal-backdrop" data-act="aggsubclose">
     <div class="modal calendar-sub-modal" data-act="modal-noop" role="dialog" aria-modal="true" aria-labelledby="calendarSubTitle">
-      <div class="modal-head"><h2 id="calendarSubTitle">캘린더 구독</h2><button class="modal-x" data-act="aggsubclose" title="닫기" aria-label="캘린더 구독 닫기">×</button></div>
+      <div class="modal-head"><h2 id="calendarSubTitle">내 캘린더와 연동</h2><button class="modal-x" data-act="aggsubclose" title="닫기" aria-label="캘린더 연동 닫기">×</button></div>
       <div class="modal-body">
-        <div class="calendar-sub-person">${esc(sub.memberName)} 전체 합주 일정</div>
-        <div class="calendar-sub-scope">휴지통에 없는 모든 프로젝트 · 구독 파일은 약 10분마다 갱신</div>
-        <div class="calendar-sub-url">
-          <input id="calendarSubUrl" type="text" readonly value="${esc(sub.url)}" aria-label="캘린더 구독 URL">
-          <button class="btn ghost sm" data-act="aggsubcopy">링크 복사</button>
-        </div>
-        <div class="note">Google Calendar는 복사한 링크를 PC 웹의 <b>다른 캘린더 → URL로 추가</b>에 붙여넣으세요. 자동 갱신 시점은 캘린더 서비스마다 다릅니다.</div>
+        ${body}
         <div class="calendar-sub-actions">
           <button class="btn ghost sm" data-act="aggsubclose">닫기</button>
-          <button class="btn ghost sm" data-act="aggsubcopy">링크 복사</button>
-          <button class="btn sm" data-act="aggsubopen">캘린더 앱에서 열기</button>
         </div>
       </div>
     </div>
@@ -1989,7 +2050,8 @@ function aggregateCreateDraft(pid,prefMs){
   if(!songs.length||!isFinite(start)) return null;
   return {isNew:true,pid,sid:songs[0],start:dateTimeLocalValue(start),end:dateTimeLocalValue(start+step),ext:false};
 }
-/* 통합 일정 추가 — 합주/개인 연습 한 시트. pref={date,min}: 주간 뷰 빈 칸 탭의 시각 프리필 */
+/* 통합 일정 추가 — 합주/개인 연습 한 시트.
+   pref={date,min,col}: 타임라인 빈 칸 탭의 시각 프리필. col은 일간 뷰의 열('reh' | 세션 키) */
 function openAggregateCreate(pref){
   const pids=aggregateCreatePids();
   const pid=state.aggProject&&pids.includes(state.aggProject)?state.aggProject:pids[0];
@@ -1997,13 +2059,18 @@ function openAggregateCreate(pref){
   const draft=pid?aggregateCreateDraft(pid,prefMs):null;
   const clamp=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
   const pFrom=pref?clamp(Math.round((Number(pref.min)||0)/BOARD_SM)*BOARD_SM,BOARD_SH*60,BOARD_EH*60-BOARD_SM):18*60;
+  const prefCol=pref&&BOARD_COLS.some(([c])=>c===pref.col)?pref.col:'';   // 일간 뷰의 세션 열
   const personal={
     pDate:pref?pref.date:fmtDate(new Date()),
     pFrom, pTo:clamp(pFrom+60,pFrom+BOARD_SM,BOARD_EH*60),
-    pCol:BOARD_COLS.some(([c])=>c===lsGet('aggPCol'))?lsGet('aggPCol'):'d',
+    pCol:prefCol||(BOARD_COLS.some(([c])=>c===lsGet('aggPCol'))?lsGet('aggPCol'):'d'),
     pName:(lsGet('boardName')||'').trim()
   };
-  const kind=(!draft||lsGet('aggKind')==='personal')?'personal':'reh';
+  // 일간 뷰에서 누른 열이 종류를 정함 — 합주 열이면 합주, 세션 열이면 그 세션의 개인 연습
+  const kind=!draft?'personal'
+    :prefCol?'personal'
+    :pref?.col==='reh'?'reh'
+    :lsGet('aggKind')==='personal'?'personal':'reh';
   state.aggEdit={kind,...personal,...(draft||{}),isNew:true};
   render();
 }
@@ -2637,7 +2704,7 @@ function viewHelp(){
             <li><strong>설정 잠금 후 코드 공유</strong><span>설정이 끝나면 잠그고, 헤더의 코드나 현재 링크를 참여자에게 보냅니다.</span></li>
             <li><strong>불가능한 시간 수집</strong><span>각 참여자가 <b>내 시간</b> 탭에서 본인의 안 되는 시간만 표시하고 완료 체크합니다.</span></li>
             <li><strong>시간표 배정</strong><span>담당자가 <b>결과</b> 탭의 가능한 칸을 눌러 동방 또는 외부 일정으로 배정합니다.</span></li>
-            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, 개인 구독 링크, 시트 형식으로 공유합니다.</span></li>
+            <li><strong>통합 확인과 공유</strong><span>메인의 전체 합주 시간표에서 모든 프로젝트를 확인하고 PNG, 내 캘린더 연동, 시트 형식으로 공유합니다.</span></li>
           </ol>
         </div>
 
@@ -2690,10 +2757,10 @@ function viewHelp(){
           <h3><span class="tut-num">5</span>메인: 전체 합주 시간표 관리</h3>
           <ul>
             <li><b>월간 캘린더</b>: 휴지통에 없는 모든 프로젝트의 배정 일정을 모아 보여줍니다. 일정에는 시간과 곡명만 표시되며, 누르면 프로젝트 정보와 수정 화면이 열립니다.</li>
-            <li><b>주간 타임라인</b>: 툴바의 <b>월간|주간</b> 토글로 전환합니다. 요일 7열 × 세로 시간축으로 합주와 개인 연습이 시간 위치에 표시되고, <b>빈 칸을 누르면 그 시간이 미리 채워진 일정 추가 시트</b>가 열립니다. 날짜 헤더를 누르면 그 날의 동방 사용표가 열려요.</li>
+            <li><b>주간·일간 타임라인</b>: 툴바의 <b>월간|주간|일간</b> 토글로 전환합니다(보기를 바꿔도 보던 시기가 그대로 이어집니다). 세로 시간축으로 합주와 개인 연습이 시간 위치에 표시되고, <b>빈 칸을 누르면 그 시간이 미리 채워진 일정 추가 시트</b>가 열립니다. 날짜 헤더를 누르면 그 날의 동방 사용표가 열려요. 일간은 동방 사용표와 같은 <b>합주 · D · G · B · K · V</b> 열로 나뉘어, 그 날 합주와 세션별 개인 연습을 한눈에 봅니다. 빈 칸을 누르면 누른 열에 맞는 종류(합주 열이면 합주, 세션 열이면 그 세션의 개인 연습)로 추가 시트가 열려요.</li>
             <li><b>프로젝트 필터</b>: 전체 프로젝트를 함께 보거나 특정 프로젝트 하나만 골라 시간표를 확인할 수 있습니다. 프로젝트를 선택하면 멤버 필터와 PNG 내보내기도 같은 범위로 바뀝니다.</li>
             <li><b>멤버 필터</b>: 활성 프로젝트의 참여표에 연결된 멤버만 나오며, 선택한 멤버의 일정만 월간 캘린더와 내보내기에 반영됩니다.</li>
-            <li><b>개인 구독</b>: 멤버를 선택한 뒤 <b>개인 구독</b>을 누르면 그 사람의 구독 링크를 복사하거나 캘린더 앱에서 열 수 있습니다. 구독 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 구독 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
+            <li><b>내 캘린더와 연동</b>: <b>📅 내 캘린더와 연동</b>을 누르고 그 안에서 <b>이름을 고르면</b> Google·Apple 캘린더 연동 버튼과 링크가 나타납니다. 한 번 연동해두면 일정이 바뀔 때마다 캘린더에 자동 반영돼요. Android·PC는 Google 캘린더 <b>웹</b> 화면에서 추가해야 하고(앱에는 URL 추가 기능이 없습니다), iPhone·Mac은 버튼을 누르면 캘린더 앱이 바로 열립니다. 연동 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>(또는 주간 뷰 빈 칸 탭)에서 <b>🎸 합주 / 🎧 개인 연습</b>을 골라 한 시트에서 추가합니다. 합주는 프로젝트·활동·시간·장소를 고르며 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있고, 개인 연습은 이름·세션·시간을 고르면 그 날 동방 사용표에 자동으로 적힙니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
             <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(D·G·B·K·V)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
@@ -2711,7 +2778,7 @@ function viewHelp(){
             <li><b>가능 현황 탭</b>: 활동 하나를 선택해 참여자별 가능 여부와 불가능 시간 비율을 확인합니다. 특정 활동의 가능한 시간이 적은 이유를 찾을 때 유용합니다.</li>
             <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 날짜별로 압축해 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
             <li><b>.ics (1회 가져오기)</b>: 프로젝트 결과 탭에서 현재 화면 범위의 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
-            <li><b>개인 구독</b>: 메인에서 멤버를 선택해 고정 URL을 등록하면 Google, Apple 또는 Outlook 캘린더가 변경된 일정을 주기적으로 다시 읽습니다. 구독 파일 생성에는 약 10분이 걸릴 수 있고, 이후 반영 시점은 캘린더 서비스마다 다릅니다.</li>
+            <li><b>내 캘린더와 연동</b>: 메인의 연동 창에서 이름을 골라 고정 URL을 등록하면 Google, Apple 또는 Outlook 캘린더가 변경된 일정을 주기적으로 다시 읽습니다. 연동 파일 생성에는 약 10분이 걸릴 수 있고, 이후 반영 시점은 캘린더 서비스마다 다릅니다.</li>
             <li><b>시트로 복사</b>: 결과 탭의 동방 일정을 시간과 요일 표로 복사합니다. 구글 시트의 빈 칸에 붙여넣으면 열과 행으로 나뉘며, 외부 일정은 제외됩니다.</li>
           </ul>
           <a class="tut-top-link" href="#tut-top">맨 위로</a>
@@ -2725,7 +2792,7 @@ function viewHelp(){
             <li><b>코드나 링크를 다시 공유하고 싶어요</b>: 프로젝트 상단의 6자리 코드 버튼을 누르세요. 다른 기기에서도 같은 코드나 링크로 동일한 데이터를 볼 수 있습니다.</li>
             <li><b>설정 잠금 비밀번호를 잊었어요</b>: 앱에서 비밀번호를 복구할 수 없습니다. 프로젝트 담당자가 기억할 수 있는 값으로 정하고 별도로 보관하세요.</li>
             <li><b>휴지통 프로젝트 일정이 보여요</b>: 정상이라면 전체 합주 시간표에서 즉시 빠집니다. 화면을 새로고침한 뒤에도 보이면 프로젝트를 복원했다가 다시 휴지통으로 옮겨보세요.</li>
-            <li><b>구독 일정이 바로 안 바뀌어요</b>: 사이트에는 즉시 반영되고 구독 파일은 약 10분마다 갱신됩니다. 그 뒤에도 캘린더 앱이 링크를 다시 확인할 때까지 몇 시간이 걸릴 수 있으며, 링크를 다시 등록할 필요는 없습니다.</li>
+            <li><b>연동한 일정이 바로 안 바뀌어요</b>: 사이트에는 즉시 반영되고 연동 파일은 약 10분마다 갱신됩니다. 그 뒤에도 캘린더 앱이 링크를 다시 확인할 때까지 몇 시간이 걸릴 수 있으며, 링크를 다시 등록할 필요는 없습니다.</li>
           </ul>
           <a class="tut-top-link" href="#tut-top">맨 위로</a>
         </div>
@@ -2775,6 +2842,29 @@ function linkedProjectPeople(config){
   });
   return linked;
 }
+/* 참여표·그룹에 연결된 사람만 — 이름(정규화 키) → 표시 이름 */
+function buildMemberMap(data,pids){
+  const map={};
+  pids.forEach(pid=>{
+    const config=data[pid]?.config||{}, people=config.people||{};
+    const linked=linkedProjectPeople(config);
+    Object.keys(people).forEach(uid=>{
+      if(!linked.has(uid)) return;
+      const name=itemName(people[uid]).trim(); if(!name) return;
+      const key=name.toLocaleLowerCase('ko-KR');
+      if(!map[key]) map[key]=name;
+    });
+  });
+  return map;
+}
+const sortedMemberKeys=map=>Object.keys(map).sort((a,b)=>map[a].localeCompare(map[b],'ko'));
+/* 캘린더 연동 대상 — 피드가 모든 활성 프로젝트를 합치므로 프로젝트 필터와 무관하게 전체 멤버 */
+function subscribableMembers(){
+  const idx=state.index||{}, data={};
+  Object.keys(state.allSched||{}).forEach(pid=>{ if(!idx[pid]?.trashedAt) data[pid]=state.allSched[pid]; });
+  const map=buildMemberMap(data,Object.keys(data));
+  return {map,keys:sortedMemberKeys(map)};
+}
 function aggregateSelection(){
   const idx=state.index||{};
   const data={};
@@ -2785,18 +2875,8 @@ function aggregateSelection(){
   const pids=Object.keys(data).sort((a,b)=>projectLabel(a).localeCompare(projectLabel(b),'ko')||a.localeCompare(b));
   if(state.aggProject&&!data[state.aggProject]) state.aggProject='';
   const scopePids=state.aggProject?[state.aggProject]:pids;
-  const memberMap={};
-  scopePids.forEach(pid=>{
-    const config=data[pid]?.config||{}, people=config.people||{};
-    const linked=linkedProjectPeople(config);
-    Object.keys(people).forEach(uid=>{
-      if(!linked.has(uid)) return;
-      const name=itemName(people[uid]).trim(); if(!name) return;
-      const key=name.toLocaleLowerCase('ko-KR');
-      if(!memberMap[key]) memberMap[key]=name;
-    });
-  });
-  const memberKeys=Object.keys(memberMap).sort((a,b)=>memberMap[a].localeCompare(memberMap[b],'ko'));
+  const memberMap=buildMemberMap(data,scopePids);
+  const memberKeys=sortedMemberKeys(memberMap);
   if(state.aggMember&&!memberMap[state.aggMember]) state.aggMember='';
   const scopedData={}; scopePids.forEach(pid=>{scopedData[pid]=data[pid];});
   const all=buildScheduleIntervals(scopedData).map(o=>{
@@ -2964,21 +3044,49 @@ function viewDayBoard(){
 /* ---- 주간 뷰: 요일 7열 × 세로 시간축 (9:00~, 30분 행) — 쓰기 중심 화면 ---- */
 const WK_SM=30, WK_CH=27;             // 30분 행, 행 높이 px (30분 블록도 이름이 들어가게)
 function wkSunday(ds){ const d=new Date(ds+'T00:00:00'); d.setDate(d.getDate()-d.getDay()); return fmtDate(d); }
+/* 보고 있던 달과 어긋나지 않게 기준 날짜 잡기 — 그 달이 이번 달이면 오늘, 아니면 1일 */
+function aggAnchorDate(){
+  const today=fmtDate(new Date());
+  return (state.aggMonth&&state.aggMonth!==today.slice(0,7))?state.aggMonth+'-01':today;
+}
 function wkEnsureAnchor(){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')){
-    const today=fmtDate(new Date());
-    state.aggWeek=(state.aggMonth&&state.aggMonth!==today.slice(0,7))?state.aggMonth+'-01':today;
-  }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')) state.aggWeek=aggAnchorDate();
   state.aggWeek=wkSunday(state.aggWeek);
 }
-function renderAggWeek(sel,pColor){
+function dayEnsureAnchor(){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(state.aggDay||'')) state.aggDay=aggAnchorDate();
+}
+/* 지금 보고 있는 시점의 대표 날짜 — 보기를 바꿔도 같은 시기가 이어지게 */
+function aggCurrentFocus(){
+  const today=fmtDate(new Date());
+  if(state.aggView==='day'&&/^\d{4}-\d{2}-\d{2}$/.test(state.aggDay||'')) return state.aggDay;
+  if(state.aggView==='week'&&/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')){
+    const ws=wkSunday(state.aggWeek);
+    // 그 주에 오늘이 있으면 오늘, 아니면 주 중간(수요일) — 달이 걸친 주에서 달이 튀지 않게
+    return (today>=ws&&today<=bdShiftDate(ws,6))?today:bdShiftDate(ws,3);
+  }
+  return aggAnchorDate();
+}
+/* 한 날짜를 기준으로 월·주·일 앵커를 모두 맞춤 */
+function aggFocusDate(ds){
+  state.aggDay=ds;
+  state.aggWeek=wkSunday(ds);
+  state.aggMonth=ds.slice(0,7);
+}
+/* 타임라인에 그릴 날짜들 — 주간은 일~토 7일, 일간은 하루 */
+function timelineDays(){
+  if(state.aggView==='day'){ dayEnsureAnchor(); return [state.aggDay]; }
+  wkEnsureAnchor();
+  const out=[]; const c=new Date(state.aggWeek+'T00:00:00');
+  for(let i=0;i<7;i++){ out.push(fmtDate(c)); c.setDate(c.getDate()+1); }
+  return out;
+}
+/* 세로 시간축 타임라인 — 주간(7열)·일간(1열) 공용 */
+function renderAggTimeline(sel,pColor){
   const {data,idx}=sel;
   const hm=ms=>{ const d=new Date(ms);
     return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
-  wkEnsureAnchor();
-  const ws=state.aggWeek, today=fmtDate(new Date());
-  const days=[]; { const c=new Date(ws+'T00:00:00');
-    for(let i=0;i<7;i++){ days.push(fmtDate(c)); c.setDate(c.getDate()+1); } }
+  const days=timelineDays(), today=fmtDate(new Date());
   // 블록 수집 — 합주(멤버·프로젝트 필터 적용) + 동방 개인 연습. 새벽 시각은 전날 24+시로 붙임
   const byDay={}; days.forEach(d=>byDay[d]=[]);
   let ehMin=BOARD_EH*60;              // 기본 9:00~27:00, 늦게 끝나는 블록이 있으면 아래로 확장
@@ -3005,34 +3113,53 @@ function renderAggWeek(sel,pColor){
   ehMin=Math.min(Math.ceil(ehMin/60)*60,33*60);
   const times=timeList(BOARD_SH,ehMin/60,WK_SM);
   const colH=times.length*WK_CH;
-  // 같은 시간대에 겹치는 블록 → 가로 열 분배. 합주를 먼저 배치해 항상 맨 왼쪽에 정렬
-  days.forEach(dk=>{
-    const order=byDay[dk].sort((a,b)=>
+  /* 렌더할 열 — 주간은 날짜마다 한 열, 일간은 동방 사용표처럼 합주 + 세션(D·G·B·K·V) 열 */
+  const isDay=state.aggView==='day';
+  const cols=isDay
+    ?[{date:days[0],slot:'reh',label:'합주',
+       blocks:byDay[days[0]].filter(b=>b.kind==='reh')},
+      ...BOARD_COLS.map(([c,L,full])=>({date:days[0],slot:c,label:L,full,hue:BOARD_HUES[c],
+       blocks:byDay[days[0]].filter(b=>b.kind==='per'&&b.p.col===c)}))]
+    :days.map(dk=>({date:dk,slot:'',blocks:byDay[dk]}));
+  // 같은 열에서 시간이 겹치는 블록 → 가로로 분배. 합주를 먼저 배치해 항상 맨 왼쪽에 정렬
+  cols.forEach(col=>{
+    const order=col.blocks.sort((a,b)=>
       (a.kind==='per')-(b.kind==='per')||a.relS-b.relS||a.relE-b.relE);
     const placed=[];
     order.forEach(b=>{ let c=0;
       while(placed.some(p=>p._col===c&&p.relS<b.relE&&p.relE>b.relS)) c++;
       b._col=c; placed.push(b); });
-    const cols=order.reduce((m,b)=>Math.max(m,b._col+1),1);
-    order.forEach(b=>b._cols=cols);
+    const n=order.reduce((m,b)=>Math.max(m,b._col+1),1);
+    order.forEach(b=>b._cols=n);
   });
   const timeCol=times.map(t=>`<div class="wk-time${parseTime(t)>=1440?' ov':''}" style="height:${WK_CH}px">${t.endsWith(':00')?t:''}</div>`).join('');
-  const heads=days.map(dk=>{
-    const w=wdOf(dk);
-    return `<button class="wk-head${w===0?' sun':w===6?' sat':''}${dk===today?' today':''}" data-act="dayboard" data-date="${dk}" title="${mdLabel(dk)} 동방 사용표 열기">${mdLabel(dk)} <span>${WD[w]}</span></button>`;
-  }).join('');
-  const daysHtml=days.map(dk=>{
-    const cells=times.map(t=>`<div class="wk-cell" style="height:${WK_CH}px" data-act="wkslot" data-date="${dk}" data-min="${parseTime(t)}" title="${mdLabel(dk)} ${t} — 누르면 일정 추가"></div>`).join('');
-    const blocks=byDay[dk].map(b=>{
+  const heads=isDay
+    ?cols.map(col=>{
+      const isReh=col.slot==='reh';
+      const tip=isReh?`${mdLabel(col.date)} 합주 — 누르면 동방 사용표 열기`
+        :`${col.full} 개인 연습 — 누르면 동방 사용표 열기`;
+      return `<button class="wk-head sub${isReh?' reh':''}"${isReh?'':` style="--bh:${col.hue}"`} data-act="dayboard" data-date="${col.date}" title="${esc(tip)}">${esc(col.label)}</button>`;
+    }).join('')
+    :days.map(dk=>{
+      const w=wdOf(dk);
+      return `<button class="wk-head${w===0?' sun':w===6?' sat':''}${dk===today?' today':''}" data-act="dayboard" data-date="${dk}" title="${mdLabel(dk)} 동방 사용표 열기">${mdLabel(dk)} <span>${WD[w]}</span></button>`;
+    }).join('');
+  const daysHtml=cols.map(col=>{
+    const dk=col.date;
+    const slotAttr=col.slot?` data-col="${col.slot}"`:'';
+    const addLabel=col.slot==='reh'?' 합주':col.slot?` ${col.full} 개인 연습`:'';
+    const cells=times.map(t=>`<div class="wk-cell" style="height:${WK_CH}px" data-act="wkslot" data-date="${dk}" data-min="${parseTime(t)}"${slotAttr} title="${mdLabel(dk)} ${t} — 누르면${addLabel} 일정 추가"></div>`).join('');
+    const blocks=col.blocks.map(b=>{
       const top=((b.relS-BOARD_SH*60)/WK_SM)*WK_CH, h=Math.max(((b.relE-b.relS)/WK_SM)*WK_CH-2,15);
       const left=(b._col/b._cols)*100, wPct=(1/b._cols)*100;
       const pos=`top:${top}px;height:${h}px;left:calc(${left.toFixed(2)}% + 1px);width:calc(${wPct.toFixed(2)}% - 2px)`;
       const short=h<32;   // 30분 블록 — 두 줄이 안 들어가니 이름만 한 줄로
       if(b.kind==='per'){
         const p=b.p, full=(BOARD_COLS.find(c=>c[0]===p.col)||[])[2]||'';
+        const badge=isDay?'':`<b>${p.letter}</b>`;   // 일간은 열 이름이 이미 세션을 알려줌
         const inner=short
-          ?`<em><b>${p.letter}</b>${esc(p.names.join(' · '))}</em>`
-          :`<span class="wk-ev-t"><b>${p.letter}</b>${hm(p.abs)}~${hm(p.absEnd)}</span><em>${esc(p.names.join(' · '))}</em>`;
+          ?`<em>${badge}${esc(p.names.join(' · '))}</em>`
+          :`<span class="wk-ev-t">${badge}${hm(p.abs)}~${hm(p.absEnd)}</span><em>${esc(p.names.join(' · '))}</em>`;
         return `<button class="wk-ev per${short?' short':''}" style="--bh:${BOARD_HUES[p.col]};${pos}" data-act="dayboard" data-date="${p.srcDate}" title="${esc(p.names.join(', '))} · ${full} 개인 연습 · ${hm(p.abs)}~${hm(p.absEnd)} · 누르면 동방 사용표 열기">${inner}</button>`;
       }
       const o=b.o;
@@ -3047,7 +3174,7 @@ function renderAggWeek(sel,pColor){
     <div class="wk-row wk-head-row"><div class="wk-corner"></div><div class="wk-days wk-heads">${heads}</div></div>
     <div class="wk-row"><div class="wk-time-col">${timeCol}</div><div class="wk-days">${daysHtml}</div></div>
   </div>`;
-  return {html,rehCount,ws,we:days[6]};
+  return {html,rehCount,days,from:days[0],to:days[days.length-1]};
 }
 
 function viewAggSchedule(){
@@ -3058,12 +3185,14 @@ function viewAggSchedule(){
     return `<div class="card">${label()}<div class="empty">시간표 불러오는 중…</div></div>`;
   const sel=aggregateSelection();
   const {data,pids,memberMap,memberKeys,intervals,now,year,month,monthStart}=sel;
-  if(state.aggView!=='month'&&state.aggView!=='week')
-    state.aggView=lsGet('aggView')==='week'?'week':'month';
-  const isWeek=state.aggView==='week';
+  const VIEWS=['month','week','day'];
+  if(!VIEWS.includes(state.aggView))
+    state.aggView=VIEWS.includes(lsGet('aggView'))?lsGet('aggView'):'month';
+  const isWeek=state.aggView==='week', isDay=state.aggView==='day';
+  const isTimeline=isWeek||isDay;
   const pColor=pid=>{ const i=Math.max(pids.indexOf(pid),0);
     return `hsl(${Math.round(i/Math.max(pids.length,1)*360)},50%,42%)`; };
-  const wk=isWeek?renderAggWeek(sel,pColor):null;
+  const wk=isTimeline?renderAggTimeline(sel,pColor):null;
   const hm=ms=>{ const d=new Date(ms);
     return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
   const gridStart=new Date(monthStart); gridStart.setDate(gridStart.getDate()-gridStart.getDay());
@@ -3108,22 +3237,21 @@ function viewAggSchedule(){
   }).join('');
   const weekdays=['일','월','화','수','목','금','토'].map((d,i)=>
     `<div class="agg-weekday${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
-  const shownCount=isWeek?wk.rehCount:monthCount;
-  const navHtml=isWeek
-    ?`<div class="agg-nav">
-        <button data-act="aggweek" data-d="-1" title="이전 주" aria-label="이전 주">‹</button>
-        <div class="agg-month-title">${mdLabel(wk.ws)} ~ ${mdLabel(wk.we)}</div>
-        <button data-act="aggweek" data-d="1" title="다음 주" aria-label="다음 주">›</button>
-      </div>`
-    :`<div class="agg-nav">
-        <button data-act="aggmonth" data-d="-1" title="이전 달" aria-label="이전 달">‹</button>
-        <div class="agg-month-title">${year}년 ${month}월</div>
-        <button data-act="aggmonth" data-d="1" title="다음 달" aria-label="다음 달">›</button>
-      </div>`;
-  const exportTitle=isWeek
-    ?`${mdLabel(wk.ws)} ~ ${mdLabel(wk.we)} 전체 합주 시간표`
-    :`${year}년 ${month}월 전체 합주 시간표`;
-  const bodyHtml=isWeek
+  const shownCount=isTimeline?wk.rehCount:monthCount;
+  const navSpec=isDay
+    ?{act:'aggday',prev:'이전 날',next:'다음 날',
+      title:`${mdLabel(wk.from)} (${WD[wdOf(wk.from)]})`}
+    :isWeek
+    ?{act:'aggweek',prev:'이전 주',next:'다음 주',
+      title:`${mdLabel(wk.from)} ~ ${mdLabel(wk.to)}`}
+    :{act:'aggmonth',prev:'이전 달',next:'다음 달',title:`${year}년 ${month}월`};
+  const navHtml=`<div class="agg-nav">
+      <button data-act="${navSpec.act}" data-d="-1" title="${navSpec.prev}" aria-label="${navSpec.prev}">‹</button>
+      <div class="agg-month-title">${navSpec.title}</div>
+      <button data-act="${navSpec.act}" data-d="1" title="${navSpec.next}" aria-label="${navSpec.next}">›</button>
+    </div>`;
+  const exportTitle=`${navSpec.title} 전체 합주 시간표`;
+  const bodyHtml=isTimeline
     ?wk.html
     :`<div class="agg-weekdays">${weekdays}</div>
       <div class="agg-month-grid">${cells.join('')}</div>`;
@@ -3133,23 +3261,26 @@ function viewAggSchedule(){
       <div class="agg-tools">
         <button class="btn sm" data-act="aggadd">+ 일정 추가</button>
         <button class="btn ghost sm" data-act="aggpng" ${shownCount?'':'disabled'}>📷 PNG</button>
-        <button class="btn ghost sm" data-act="aggsubscribe" ${sel.memberName?'':'disabled'} title="${sel.memberName?esc(sel.memberName)+' 전체 일정 구독':'멤버를 먼저 선택하세요'}">🔗 개인 구독</button>
+        <button class="btn ghost sm" data-act="aggsubscribe" title="내 일정을 캘린더 앱에 연동">📅 내 캘린더와 연동</button>
         <div class="agg-viewtog" role="group" aria-label="캘린더 보기 전환">
-          <button class="${isWeek?'':'on'}" data-act="aggview" data-v="month">월간</button>
+          <button class="${state.aggView==='month'?'on':''}" data-act="aggview" data-v="month">월간</button>
           <button class="${isWeek?'on':''}" data-act="aggview" data-v="week">주간</button>
+          <button class="${isDay?'on':''}" data-act="aggview" data-v="day">일간</button>
         </div>
         ${navHtml}
         <select class="agg-project" data-act="aggproject" aria-label="프로젝트 필터">${projectOpts}</select>
         <select class="agg-member" data-act="aggmember" aria-label="멤버 필터">${memberOpts}</select>
       </div>
     </div>
-    <div class="agg-cal-wrap${isWeek?' wk-wrap':''}"><div class="agg-cal-scroll scroll"><div class="agg-cal${isWeek?' wk-mode':''}" id="agg-calendar-export">
+    <div class="agg-cal-wrap${isTimeline?' wk-wrap':''}"><div class="agg-cal-scroll scroll"><div class="agg-cal${isWeek?' wk-mode':''}${isDay?' day-mode':''}" id="agg-calendar-export">
       <div class="agg-export-title">${exportTitle}${sel.projectName?`<span>· ${esc(sel.projectName)}</span>`:''}${sel.memberName?`<span>· ${esc(sel.memberName)}</span>`:''}</div>
       ${bodyHtml}
     </div></div></div>
-    <div class="agg-swipe-hint">옆으로 밀어 나머지 요일 보기 →</div>
-    ${isWeek?`<div class="agg-week-hint">빈 칸을 누르면 그 시간으로 일정을 추가하고, 날짜 헤더를 누르면 동방 사용표가 열려요.</div>`:''}
-    ${shownCount?'':`<div class="agg-month-empty">${sel.projectName||sel.memberName?'선택한 조건에 맞는 ':''}${isWeek?'이번 주':'이달'} 합주 일정이 없습니다.</div>`}
+    ${isDay?'':'<div class="agg-swipe-hint">옆으로 밀어 나머지 요일 보기 →</div>'}
+    ${isTimeline?`<div class="agg-week-hint">${isDay
+      ?'빈 칸을 누르면 그 열(합주 또는 D·G·B·K·V 개인 연습)로 일정을 추가하고, 열 이름을 누르면 동방 사용표가 열려요.'
+      :'빈 칸을 누르면 그 시간으로 일정을 추가하고, 날짜 헤더를 누르면 동방 사용표가 열려요.'}</div>`:''}
+    ${shownCount?'':`<div class="agg-month-empty">${sel.projectName||sel.memberName?'선택한 조건에 맞는 ':''}${isDay?'이 날':isWeek?'이번 주':'이달'} 합주 일정이 없습니다.</div>`}
   </div>`;
 }
 
@@ -3945,7 +4076,7 @@ function bindEvents(){
     if(act==='aggsubscribe'){openAggregateSubscribe();return;}
     if(act==='aggsubclose'){state.aggSubscribe=null;render();return;}
     if(act==='aggsubcopy'){copyAggregateSubscribeLink();return;}
-    if(act==='aggsubopen'){launchAggregateSubscribe();return;}
+    if(act==='aggsubopen'){launchAggregateSubscribe(t.dataset.kind);return;}
     if(act==='aggeditclose'){state.aggEdit=null;render();return;}
     if(act==='aggeditopenproject'){location.href=location.pathname+'?p='+state.aggEdit.pid;return;}
     if(act==='aggeditroom'){syncAggregateEditDraft();state.aggEdit.ext=t.dataset.room==='ext';render();return;}
@@ -3961,23 +4092,21 @@ function bindEvents(){
       state.aggMonth=fmtDate(d).slice(0,7); render(); return;
     }
     if(act==='aggview'){
-      const v=t.dataset.v==='week'?'week':'month';
-      if(v==='week'&&state.aggView!=='week'){
-        // 보고 있던 달과 어긋난 주가 뜨지 않게 — 그 달(이번 달이면 오늘)이 낀 주로
-        const today=fmtDate(new Date());
-        const cur=/^\d{4}-\d{2}-\d{2}$/.test(state.aggWeek||'')?wkSunday(state.aggWeek):'';
-        const inMonth=cur&&(cur.slice(0,7)===state.aggMonth||bdShiftDate(cur,6).slice(0,7)===state.aggMonth);
-        if(!inMonth) state.aggWeek=(state.aggMonth===today.slice(0,7))?today:state.aggMonth+'-01';
-      }
+      const v=['month','week','day'].includes(t.dataset.v)?t.dataset.v:'month';
+      if(v!==state.aggView) aggFocusDate(aggCurrentFocus());   // 보던 시점을 새 보기로 그대로 이어감
       state.aggView=v; lsSet('aggView',v); render(); return;
     }
     if(act==='aggweek'){
       wkEnsureAnchor();
-      state.aggWeek=wkSunday(bdShiftDate(state.aggWeek,7*(Number(t.dataset.d)||0)));
-      state.aggMonth=bdShiftDate(state.aggWeek,3).slice(0,7);   // 주 중간 날짜의 달을 기준 달로
+      aggFocusDate(bdShiftDate(state.aggWeek,7*(Number(t.dataset.d)||0)));
       render(); return;
     }
-    if(act==='wkslot'){openAggregateCreate({date:t.dataset.date,min:Number(t.dataset.min)||0});return;}
+    if(act==='aggday'){
+      dayEnsureAnchor();
+      aggFocusDate(bdShiftDate(state.aggDay,Number(t.dataset.d)||0));
+      render(); return;
+    }
+    if(act==='wkslot'){openAggregateCreate({date:t.dataset.date,min:Number(t.dataset.min)||0,col:t.dataset.col||''});return;}
     if(act==='aggeditkind'){
       syncAggregateEditDraft();
       state.aggEdit.kind=t.dataset.kind==='personal'?'personal':'reh';
@@ -4163,6 +4292,10 @@ function bindEvents(){
     }
     else if(act==='aggmember'){
       state.aggMember=v||'';
+      render();
+    }
+    else if(act==='aggsubmember'&&state.aggSubscribe){
+      state.aggSubscribe.member=v||'';
       render();
     }
     else if(act==='aggcreateproject'){
