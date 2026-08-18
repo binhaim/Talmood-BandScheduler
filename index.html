@@ -964,6 +964,16 @@
   .bd-cell.fill.mine:hover{text-decoration:line-through;}
   .bd-cell.bd-prev{background:hsl(var(--bh,0),70%,86%);}
   .bd-cell.bd-prev-del{background:var(--accent-soft);text-decoration:line-through;color:var(--accent-d);}
+  /* 지우개 모드 */
+  .bd-erase-btn{font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+    border:1px solid var(--line-2);background:var(--surface);color:var(--muted);
+    padding:6px 12px;border-radius:999px;transition:all var(--t);flex-shrink:0;}
+  .bd-erase-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .bd-erase-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  body.bd-erasing .bd-cell{cursor:default;}
+  body.bd-erasing .bd-cell[data-has="1"]{cursor:crosshair;}
+  body.bd-erasing .bd-cell[data-has="1"]:hover{background:var(--accent-soft);
+    color:var(--accent-d);text-decoration:line-through;}
   /* 보드는 실시간으로 자주 다시 그려지므로 모달 진입 애니메이션을 재생하지 않음 (깜빡임 방지) */
   .bd-backdrop{animation:none;}
   .bd-backdrop .modal{animation:none;}
@@ -1146,6 +1156,7 @@ let state={ screen:'loading', pid:null, tab:'setup',
   activeWeek:0, done:{}, finalFilter:'', detailSong:null, showHelp:false, sheetExport:null, aggEdit:null,
   aggSubscribe:null,
   dayBoard:null,      // 동방 사용 보드 — 열려있는 날짜 'YYYY-MM-DD' | null
+  bdErase:false,      // 동방 사용표 지우개 모드 — 칸을 통째로 비움(남 이름 포함)
   roomBoardData:{},   // roomBoard 실시간 데이터 {date:{col:{'HH:MM':{name,ts}}}}
   trashOpen:false,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
@@ -2571,6 +2582,7 @@ function shortNameMap(names){
 /* ---------------- 렌더 ---------------- */
 let deferRender=false, painting=false, gPainting=false;
 let bdDrag=null, bdSuppress=false;   // 동방 사용 보드 드래그 상태
+let bdTouchHoldTimer=null, bdSx=0, bdSy=0;   // 터치 길게 눌러 훑기
 let aggScrolledMonth=null;
 /* 랜딩 캘린더 가로 스크롤 가능 여부를 좌우 그림자로 표시 */
 function syncAggHint(sc){
@@ -2614,6 +2626,7 @@ function doRender(){
 /* 모달 열림 동안 배경 페이지 스크롤 잠금 — 잠글 때 위치 기억, 풀 때 복원 */
 let _lockY=0;
 function syncScrollLock(){
+  document.body.classList.toggle('bd-erasing',!!(state.dayBoard&&state.bdErase));
   const need=!!(state.dayBoard||state.showHelp||state.sheetExport||state.aggEdit||state.aggSubscribe);
   const has=document.body.classList.contains('no-scroll');
   if(need&&!has){
@@ -2763,7 +2776,7 @@ function viewHelp(){
             <li><b>내 캘린더와 연동</b>: <b>📅 내 캘린더와 연동</b>을 누르고 그 안에서 <b>이름을 고르면</b> Google·Apple 캘린더 연동 버튼과 링크가 나타납니다. 한 번 연동해두면 일정이 바뀔 때마다 캘린더에 자동 반영돼요. Android·PC는 Google 캘린더 <b>웹</b> 화면에서 추가해야 하고(앱에는 URL 추가 기능이 없습니다), iPhone·Mac은 버튼을 누르면 캘린더 앱이 바로 열립니다. 연동 일정은 프로젝트 필터와 관계없이 휴지통에 없는 모든 프로젝트를 합치며, 파일은 약 10분마다 최신 데이터로 갱신됩니다.</li>
             <li><b>수동 일정 추가</b>: <b>+ 일정 추가</b>(또는 주간 뷰 빈 칸 탭)에서 <b>🎸 합주 / 🎧 개인 연습</b>을 골라 한 시트에서 추가합니다. 합주는 프로젝트·활동·시간·장소를 고르며 프로젝트의 설정 범위와 칸 단위 안에서만 추가할 수 있고, 개인 연습은 이름·세션·시간을 고르면 그 날 동방 사용표에 자동으로 적힙니다.</li>
             <li><b>수정과 삭제</b>: 기존 일정을 눌러 곡, 시간, 장소를 바꾸거나 삭제할 수 있습니다. 변경 내용은 해당 프로젝트의 결과 탭에도 즉시 반영됩니다.</li>
-            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(D·G·B·K·V)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 한 칸에 여러 명이 함께 적을 수도 있어요. 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
+            <li><b>동방 사용표 (개인 연습)</b>: 월간 캘린더에서 날짜 칸을 누르면 그 날의 동방 사용표가 열립니다. 프로젝트와 무관하게 세션별(D·G·B·K·V)로 개인 연습 시간을 자유롭게 적을 수 있어요. 위에 내 이름을 적어두고 칸을 누르면 이름이 들어가고, 다시 누르면 내 이름만 빠집니다. 여러 칸을 한 번에 적으려면 <b>PC는 드래그, 모바일은 길게 눌러 훑으면</b> 됩니다. 한 칸에 여러 명이 함께 적을 수도 있어요. <b>🧹 지우개</b>를 켜면 누르거나 훑은 칸이 <b>통째로</b> 비워집니다(남의 이름도 함께 지워지니 주의하세요). 합주 열은 프로젝트 배정에서 자동으로 표시되며, 적은 내용은 월간 캘린더에도 합주 아래에 따로 표시됩니다.</li>
             <li><b>충돌 처리</b>: 같은 멤버의 다른 일정 또는 동방 일정이 겹치면 저장되지 않습니다. 멤버가 입력한 불가능 시간과만 겹치면 경고를 보여주고, 확인 후 수동으로 저장할 수 있습니다.</li>
             <li><b>휴지통</b>: 메인의 휴지통 제목을 눌러 목록을 펼칠 수 있습니다. 프로젝트를 옮기는 데 비밀번호는 필요하지 않으며, 이동 즉시 전체 합주 시간표에서 제외됩니다. 복원하면 다시 반영됩니다.</li>
           </ul>
@@ -2964,6 +2977,16 @@ function bdApplyToggleAt(ds,col,time,name,mode){   // mode: 'add' | 'remove'
   else FB.set(R(`${cellPath}/${key}`),next[key]).catch(wErr);
   return true;
 }
+/* 칸 통째로 비우기 — 남의 이름까지 함께 지운다(지우개 모드 전용) */
+function bdWipe(col,time){
+  const ds=state.dayBoard; if(!ds) return false;
+  const cell=state.roomBoardData?.[ds]?.[col]?.[time];
+  if(!bdEntries(cell).length) return false;
+  const dayCol=state.roomBoardData?.[ds]?.[col];
+  if(dayCol) delete dayCol[time];                       // 낙관적 반영
+  FB.remove(R(`roomBoard/${ds}/${col}/${time}`)).catch(wErr);
+  return true;
+}
 function bdToggle(col,time,name){
   const cell=state.roomBoardData?.[state.dayBoard]?.[col]?.[time];
   bdApplyToggle(col,time,name,bdHasName(cell,name)?'remove':'add');
@@ -3013,9 +3036,10 @@ function viewDayBoard(){
         const mine=myName&&entries.some(e=>bdNameKey(e.name)===bdNameKey(myName));
         const names=entries.map(e=>e.name);
         const label=names.map(n=>`<span class="bd-nm">${esc(n)}</span>`).join('');
-        return `<td class="bd-cell fill${mine?' mine':''}" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="${mine?'1':'0'}" title="${esc(names.join(', '))} · ${mine?'누르면 내 이름 빼기':'누르면 내 이름 추가'}">${label}</td>`;
+        const act=state.bdErase?'누르면 이 칸 비우기':(mine?'누르면 내 이름 빼기':'누르면 내 이름 추가');
+        return `<td class="bd-cell fill${mine?' mine':''}" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="${mine?'1':'0'}" data-has="1" title="${esc(names.join(', '))} · ${act}">${label}</td>`;
       }
-      return `<td class="bd-cell" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="0"></td>`;
+      return `<td class="bd-cell" style="--bh:${BOARD_HUES[c]}" data-act="bdcell" data-col="${c}" data-time="${t}" data-mine="0" data-has="0"></td>`;
     }).join('');
     return `<tr><td class="bd-time${parseTime(t)>=1440?' ov':''}">${t}</td>${rehCell}${cells}</tr>`;
   }).join('');
@@ -3032,8 +3056,11 @@ function viewDayBoard(){
       <div class="modal-body dayboard-body">
         <div class="bd-namebar">
           <label for="bdName">내 이름</label>
-          <input id="bdName" type="text" value="${esc(myName)}" maxlength="12" placeholder="이름을 먼저 적어주세요">
-          <span>칸을 누르면 이 이름으로 적혀요</span>
+          <input id="bdName" type="text" value="${esc(myName)}" maxlength="12" placeholder="이름을 먼저 적어주세요" ${state.bdErase?'disabled':''}>
+          <button class="bd-erase-btn ${state.bdErase?'on':''}" data-act="bderase" aria-pressed="${state.bdErase?'true':'false'}" title="칸을 통째로 비웁니다 (남의 이름도 함께 지워져요)">🧹 지우개</button>
+          <span>${state.bdErase
+            ?'<b>지우개 켜짐</b> — 누르거나 훑으면 그 칸이 통째로 비워져요'
+            :'칸을 누르거나 길게 눌러 훑으면 이 이름으로 적혀요'}</span>
         </div>
         <div class="bd-scroll scroll"><table class="bd-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
       </div>
@@ -4072,19 +4099,25 @@ function bindEvents(){
     if(act==='aggadd'){openAggregateCreate();return;}
     if(act==='aggedit'){openAggregateEdit(t);return;}
     if(act==='dayboard'){state.dayBoard=t.dataset.date;render();return;}
-    if(act==='dayboardclose'){state.dayBoard=null;render();return;}
+    if(act==='dayboardclose'){state.dayBoard=null;state.bdErase=false;render();return;}
     if(act==='dayboardnav'){
       if(state.dayBoard){state.dayBoard=bdShiftDate(state.dayBoard,Number(t.dataset.d)||0);render();}
       return;
     }
     if(act==='bdcell'){
       if(bdSuppress)return;   // 드래그 직후의 클릭 무시
+      if(state.bdErase){      // 지우개: 남의 이름까지 통째로
+        if(t.dataset.has!=='1')return;
+        bdWipe(t.dataset.col,t.dataset.time); doRender(); return;
+      }
       const name=(($('bdName')||{}).value||'').trim();
       if(!name){toast('위의 이름 칸을 먼저 채워주세요');const n=$('bdName');if(n)n.focus();return;}
       lsSet('boardName',name);
       bdToggle(t.dataset.col,t.dataset.time,name);   // 내 이름 넣기/빼기 — 남 이름은 그대로
       return;
     }
+    if(act==='bderase'){state.bdErase=!state.bdErase;doRender();
+      toast(state.bdErase?'지우개 켜짐 — 누른 칸이 통째로 비워집니다':'지우개 껐습니다');return;}
     if(act==='aggsubscribe'){openAggregateSubscribe();return;}
     if(act==='aggsubclose'){state.aggSubscribe=null;render();return;}
     if(act==='aggsubcopy'){copyAggregateSubscribeLink();return;}
@@ -4194,7 +4227,7 @@ function bindEvents(){
   /* Escape로 열린 모달 닫기 */
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
-    if(state.dayBoard){state.dayBoard=null;render();return;}
+    if(state.dayBoard){state.dayBoard=null;state.bdErase=false;render();return;}
     if(state.aggEdit){state.aggEdit=null;render();return;}
     if(state.aggSubscribe){state.aggSubscribe=null;render();return;}
     if(state.sheetExport){state.sheetExport=null;render();return;}
@@ -4217,33 +4250,83 @@ function bindEvents(){
     const name=(($('bdName')||{}).value||'').trim(); if(!name)return null;
     return bdHasName(state.roomBoardData?.[state.dayBoard]?.[td.dataset.col]?.[td.dataset.time],name);
   };
+  /* 드래그 시작 — mode: 'wipe'(칸 비우기) | 'remove'(내 이름 빼기) | 'add'(내 이름 넣기) */
+  function bdStartDrag(td){
+    let mode;
+    if(state.bdErase){
+      if(td.dataset.has!=='1') return false;            // 빈 칸에서 시작하면 지울 게 없음
+      mode='wipe';
+    } else {
+      const mine=bdCellMine(td); if(mine===null) return false;  // 이름 미입력 → 탭 흐름의 토스트가 안내
+      mode=mine?'remove':'add';
+    }
+    bdDrag={col:td.dataset.col,mode,times:new Set([td.dataset.time])};
+    td.classList.add(mode==='add'?'bd-prev':'bd-prev-del');
+    return true;
+  }
+  const bdCellFits=td=>bdDrag.mode==='wipe'
+    ? td.dataset.has==='1'                    // 내용이 있는 칸만
+    : bdCellMine(td)===(bdDrag.mode==='remove');
   app.addEventListener('pointerdown',e=>{
-    if(e.pointerType!=='mouse'||e.button!==0)return;
     const td=e.target.closest('td.bd-cell'); if(!td)return;
-    const mine=bdCellMine(td); if(mine===null)return;   // 이름 미입력 시 클릭 흐름의 토스트가 안내
-    bdDrag={col:td.dataset.col,erase:mine,times:new Set([td.dataset.time])};
-    td.classList.add(mine?'bd-prev-del':'bd-prev');
+    if(e.pointerType==='mouse'){
+      if(e.button!==0)return;
+      bdStartDrag(td);
+    } else {
+      // 터치: 길게 눌러 드래그 진입 (두 손가락은 핀치 줌이므로 양보)
+      if(bdTouchHoldTimer)clearTimeout(bdTouchHoldTimer);
+      if(isMultiTouch())return;
+      bdSx=e.clientX; bdSy=e.clientY;
+      const pid=e.pointerId;
+      bdTouchHoldTimer=setTimeout(()=>{
+        bdTouchHoldTimer=null;
+        if(isMultiTouch())return;
+        if(!bdStartDrag(td))return;
+        try{td.setPointerCapture(pid);}catch(_){}
+        enterDrag();                            // 훑는 동안 표가 스크롤되지 않게
+        if(navigator.vibrate)try{navigator.vibrate(15);}catch(_){}
+      },LONG_PRESS_MS);
+    }
+  });
+  document.addEventListener('pinchstart',()=>{
+    if(bdTouchHoldTimer){clearTimeout(bdTouchHoldTimer);bdTouchHoldTimer=null;}
+    if(bdDrag){bdDrag=null;exitDrag();
+      document.querySelectorAll('.bd-prev,.bd-prev-del').forEach(x=>x.classList.remove('bd-prev','bd-prev-del'));}
   });
   window.addEventListener('pointermove',e=>{
+    if(bdTouchHoldTimer&&Math.abs(e.clientX-bdSx)+Math.abs(e.clientY-bdSy)>10){
+      clearTimeout(bdTouchHoldTimer);bdTouchHoldTimer=null;   // 길게 누르기 전에 움직이면 스크롤로 넘김
+    }
     if(!bdDrag)return;
     const el=document.elementFromPoint(e.clientX,e.clientY);
     const td=el&&el.closest?el.closest('td.bd-cell'):null;
     if(!td||td.dataset.col!==bdDrag.col)return;
-    if(bdCellMine(td)!==bdDrag.erase)return;   // 모드에 맞는 칸만 (넣기: 내 이름 없는 칸 / 빼기: 있는 칸)
-    if(!bdDrag.times.has(td.dataset.time)){bdDrag.times.add(td.dataset.time);td.classList.add(bdDrag.erase?'bd-prev-del':'bd-prev');}
+    if(!bdCellFits(td))return;
+    if(!bdDrag.times.has(td.dataset.time)){bdDrag.times.add(td.dataset.time);
+      td.classList.add(bdDrag.mode==='add'?'bd-prev':'bd-prev-del');}
   });
-  window.addEventListener('pointerup',()=>{
+  const bdEndDrag=()=>{
+    if(bdTouchHoldTimer){clearTimeout(bdTouchHoldTimer);bdTouchHoldTimer=null;}
     if(!bdDrag)return;
     const drag=bdDrag; bdDrag=null;
+    exitDrag();
     document.querySelectorAll('.bd-prev,.bd-prev-del').forEach(x=>x.classList.remove('bd-prev','bd-prev-del'));
     if(drag.times.size<2)return;   // 한 칸이면 클릭(탭) 흐름이 처리
     bdSuppress=true; setTimeout(()=>{bdSuppress=false;},300);
+    if(!state.dayBoard)return;
+    if(drag.mode==='wipe'){
+      let n=0; drag.times.forEach(tm=>{ if(bdWipe(drag.col,tm)) n++; });
+      doRender(); if(n) toast(`${n}칸을 비웠습니다`);
+      return;
+    }
     const name=(($('bdName')||{}).value||'').trim();
-    if(!state.dayBoard||!name)return;
+    if(!name)return;
     lsSet('boardName',name);
-    drag.times.forEach(tm=>bdApplyToggle(drag.col,tm,name,drag.erase?'remove':'add'));
+    drag.times.forEach(tm=>bdApplyToggle(drag.col,tm,name,drag.mode));
     doRender();
-  });
+  };
+  window.addEventListener('pointerup',bdEndDrag);
+  window.addEventListener('pointercancel',bdEndDrag);
 
   /* 랜딩 캘린더 가로 스크롤 그림자 동기화 (scroll 이벤트는 버블링하지 않으므로 capture) */
   app.addEventListener('scroll',e=>{
