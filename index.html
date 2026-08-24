@@ -158,6 +158,18 @@
   .grp-tog.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   .grp-tog-n{font-size:10.5px;opacity:.75;font-family:ui-monospace,Menlo,monospace;}
   .grp-tog.on .grp-tog-n{opacity:.85;}
+  /* 계산 제외 멤버 칩 */
+  .ign-tog{border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
+    font-family:inherit;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px;
+    color:var(--ink-2);transition:all var(--t);}
+  .ign-tog:hover{border-color:var(--accent);color:var(--accent);}
+  .ign-tog.on{background:var(--warn-soft);border-color:var(--accent);color:var(--accent-d);
+    text-decoration:line-through;text-decoration-thickness:1.5px;}
+  .ignore-row .mode-hint b{color:var(--accent-d);}
+  .dtl-sub.ign{text-decoration:line-through;opacity:.55;}
+  .dtl-mbar.ign .dtl-mn{text-decoration:line-through;opacity:.6;}
+  .ign-tag{font-style:normal;font-size:9px;font-weight:700;margin-left:5px;
+    background:var(--accent);color:#fff;border-radius:999px;padding:1px 5px;vertical-align:middle;}
   /* 설정 탭 — 그룹 카드 (활동/참여자/참여표 묶음) */
   .grp-card{border-left:4px solid var(--accent);}
   .grp-card .grp-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;
@@ -1157,6 +1169,7 @@ let state={ screen:'loading', pid:null, tab:'setup',
   aggSubscribe:null,
   dayBoard:null,      // 동방 사용 보드 — 열려있는 날짜 'YYYY-MM-DD' | null
   bdErase:false,      // 동방 사용표 지우개 모드 — 칸을 통째로 비움(남 이름 포함)
+  ignored:{},         // 시간표 계산에서 제외한 멤버 {uid:true} — 프로젝트 전체 공유
   roomBoardData:{},   // roomBoard 실시간 데이터 {date:{col:{'HH:MM':{name,ts}}}}
   trashOpen:false,
   roomMode:'in', // 배정 장소 모드: 'in'=동방 | 'ext'=외부
@@ -1345,15 +1358,15 @@ function slotConflicts(sid,slotKey,asExt){
   // asExt = 지금 배정하려는 장소가 외부인지. 충돌: 멤버가 겹치거나(한 사람이 두 곳 불가),
   //         둘 다 동방이면(동방은 한 방뿐) 같은 시간 불가. 외부끼리/외부-동방은 방 충돌 없음.
   const out=[];
-  const mine=new Set(songMembers(sid));
+  const mine=new Set(songMembersConsidered(sid));
   for(const other in state.schedule){
     if(other===sid) continue;
     const v=state.schedule[other][slotKey]; if(!v) continue;
-    const shared=songMembers(other).filter(u=>mine.has(u));
+    const shared=songMembersConsidered(other).filter(u=>mine.has(u));
     const roomClash=!asExt && v!=='e';   // 둘 다 동방 → 한 방 충돌
     if(shared.length||roomClash) out.push({sid:other,shared,roomClash});
   }
-  const mineNames=new Set(songMembers(sid).map(uid=>memberNameKey(state.config.people?.[uid])).filter(Boolean));
+  const mineNames=new Set(songMembersConsidered(sid).map(uid=>memberNameKey(state.config.people?.[uid])).filter(Boolean));
   for(const ref of referencesAt(slotKey)){
     const sharedNames=ref.memberKeys.filter(name=>mineNames.has(name));
     const roomClash=!asExt&&!ref.ext;
@@ -1534,6 +1547,8 @@ function subscribeProject(pid){
     if(state.screen==='project') render(); });
   FB.onValue(R('projects/'+pid+'/done'),s=>{ state.done=s.val()||{};
     if(state.screen==='project') render(); });
+  FB.onValue(R('projects/'+pid+'/ignored'),s=>{ state.ignored=s.val()||{};
+    if(state.screen==='project') render(); });
 }
 
 /* ---------------- 쓰기 동작 ---------------- */
@@ -1661,6 +1676,7 @@ function delPerson(uid){
   FB.remove(R('projects/'+state.pid+'/config/people/'+uid));
   FB.remove(R('projects/'+state.pid+'/avail/'+uid));
   FB.remove(R('projects/'+state.pid+'/done/'+uid));
+  FB.remove(R('projects/'+state.pid+'/ignored/'+uid));
   const mx=state.config.matrix||{};
   for(const sid in mx) if(mx[sid][uid])
     FB.remove(R('projects/'+state.pid+'/config/matrix/'+sid+'/'+uid));
@@ -2553,13 +2569,29 @@ async function emptyTrash(){
   }catch(e){ console.error(e); toast('휴지통을 비우지 못했습니다'); }
 }
 
+/* 시간표 계산에서 멤버 빼기/되돌리기 — 설정 잠금과 무관(배정 과정의 조정) */
+function toggleIgnoreMember(uid){
+  if(!uid||!state.pid) return;
+  const p='projects/'+state.pid+'/ignored/'+uid;
+  const on=isIgnored(uid);
+  state.ignored=state.ignored||{};
+  if(on) delete state.ignored[uid]; else state.ignored[uid]=true;   // 낙관적 반영
+  (on?FB.remove(R(p)):FB.set(R(p),true)).catch(wErr);
+  doRender();
+}
+
 /* ---------------- 계산 ---------------- */
 function songMembers(sid){
   const m=state.config.matrix?.[sid]||{};
   return Object.keys(m).filter(u=>m[u]&&state.config.people?.[u]);
 }
+/* 제외 멤버 — 시간표를 짤 때 이 사람의 불가능 시간은 없는 셈 친다.
+   활동 구성원에서 빼는 게 아니라 '가능 시간·충돌 계산'에서만 뺀다. */
+const isIgnored=uid=>!!(state.ignored&&state.ignored[uid]);
+const ignoredUids=()=>Object.keys(state.ignored||{}).filter(u=>state.ignored[u]&&state.config?.people?.[u]);
+function songMembersConsidered(sid){ return songMembers(sid).filter(u=>!isIgnored(u)); }
 function slotOkForSong(sid,key){
-  return songMembers(sid).every(u=>!(state.avail[u]&&state.avail[u][key]));
+  return songMembersConsidered(sid).every(u=>!(state.avail[u]&&state.avail[u][key]));
 }
 function unavailCount(key){
   let n=0;for(const u in state.avail) if(state.avail[u][key]) n++;return n;
@@ -2788,6 +2820,7 @@ function viewHelp(){
           <h3><span class="tut-num">6</span>결과 확인과 내보내기</h3>
           <ul>
             <li><b>최종 시간표</b>: 결과 탭 아래에서 활동별 횟수와 총시간, 주간 캘린더를 확인합니다. 참여자 필터를 고르면 그 사람의 일정만 표시됩니다.</li>
+            <li><b>계산 제외</b>: 결과 탭의 <b>계산 제외</b>에서 멤버를 누르면 그 사람의 불가능 시간을 <b>무시하고</b> 가능 시간을 계산합니다. 한 명 때문에 시간이 안 나올 때, 못 오는 사람을 빼고 짜는 용도예요. 활동 구성원에서 빼는 것이 아니라 계산에서만 빠지므로 최종 시간표에는 그대로 남고, 다시 누르면 원래대로 돌아옵니다. 제외 상태는 프로젝트를 함께 보는 모두에게 적용됩니다.</li>
             <li><b>가능 현황 탭</b>: 활동 하나를 선택해 참여자별 가능 여부와 불가능 시간 비율을 확인합니다. 특정 활동의 가능한 시간이 적은 이유를 찾을 때 유용합니다.</li>
             <li><b>PNG</b>: 현재 선택한 주차와 참여자 필터가 적용된 시간표를 날짜별로 압축해 저장합니다. 이미지에는 멤버명을 빼고 시간과 곡명을 크게 표시합니다.</li>
             <li><b>.ics (1회 가져오기)</b>: 프로젝트 결과 탭에서 현재 화면 범위의 파일을 내려받습니다. 지속 구독 방식은 아니므로 일정이 바뀌면 최신 파일을 다시 받아야 합니다.</li>
@@ -3734,6 +3767,21 @@ function viewResults(){
     <button class="mode-btn ext ${ext?'on':''}" data-act="roommode" data-m="ext">🌐 외부</button>
     <span class="mode-hint">${ext?'외부 합주실로 배정 — 같은 시간에 겹쳐 잡을 수 있어요':'동방으로 배정 — 같은 시간엔 한 활동만'}</span>
   </div>`;
+  // 제외 멤버 — 이 사람들의 불가능 시간은 무시하고 가능 시간을 계산
+  const pAll=sortedIds(c.people||{});
+  const ignorable=pAll.filter(u=>activeSongs.some(sd=>c.matrix?.[sd]?.[u])||isIgnored(u));
+  const ignoredNow=ignorable.filter(isIgnored);
+  const ignoreRow=ignorable.length?`<div class="mode-row ignore-row">
+    <span class="mode-lbl">계산 제외</span>
+    <div class="grp-tog-row">
+      ${ignorable.map(u=>{const on=isIgnored(u);
+        return `<button class="ign-tog ${on?'on':''}" data-act="ignoremember" data-uid="${u}" title="${on?'다시 계산에 넣기':'이 멤버의 불가능 시간을 무시하고 짜기'}">${esc(itemName(c.people[u]))}</button>`;
+      }).join('')}
+    </div>
+    <span class="mode-hint">${ignoredNow.length
+      ? `<b>${ignoredNow.length}명 제외 중</b> — 이 멤버의 불가능 시간은 무시하고 계산합니다`
+      : '못 오는 멤버를 눌러 빼면 그 사람 시간은 빼고 계산해요'}</span>
+  </div>`:'';
   const gridCard=(dates.length&&times.length)
     ? `<div class="card">
         <h2>시간표 — 가능 시간 & 배정</h2>
@@ -3742,6 +3790,7 @@ function viewResults(){
           <p>실제 <b>일정 시간표를 짜는 곳</b>입니다. 참여자 입력이 종합되어 활동별 가능 시간이 자동 계산되고, 클릭/드래그로 배정·해제합니다. 칸 색: <b>옅은 색</b>=가능, <b>짙은 색</b>=배정됨(외부는 빗금), 빗금 회색=참여자 안 됨. 메인 시간표의 다른 프로젝트 일정도 자동으로 확인해 같은 멤버나 동방 시간이 겹치지 않게 합니다.</p>
         </div>
         ${modeRow}
+        ${ignoreRow}
         ${groupFilterRow}
         ${tabsHtml}
         ${toggleHtml}
@@ -3990,7 +4039,8 @@ function viewResultsDetail(){
       members.forEach((uid,mi)=>{
         const last=mi===N-1?'day-end':'';
         const mnm=itemName(c.people[uid]);
-        memHead+=`<th class="gnt-sub dtl-sub ${last}" title="${esc(mnm)}">${esc(mnm)}</th>`;
+        const ign=isIgnored(uid);
+        memHead+=`<th class="gnt-sub dtl-sub ${last}${ign?' ign':''}" title="${esc(mnm)}${ign?' — 계산 제외됨':''}">${esc(mnm)}</th>`;
       });
     });
 
@@ -4027,8 +4077,8 @@ function viewResultsDetail(){
   // 참여자 막대 (얼마나 안 되는지 시각화)
   const memberBars=memberStats.map(m=>{
     const ratio=totalSlots?Math.round((m.busy/totalSlots)*100):0;
-    return `<div class="dtl-mbar">
-      <span class="dtl-mn">${esc(itemName(c.people[m.uid]))}</span>
+    return `<div class="dtl-mbar${isIgnored(m.uid)?' ign':''}">
+      <span class="dtl-mn">${esc(itemName(c.people[m.uid]))}${isIgnored(m.uid)?'<i class="ign-tag">제외</i>':''}</span>
       <div class="dtl-mb"><div class="dtl-mf" style="width:${ratio}%"></div></div>
       <span class="dtl-mc">${m.busy}칸 (${ratio}%)</span>
     </div>`;
@@ -4179,6 +4229,7 @@ function bindEvents(){
     if(act==='pickweek'){state.activeWeek=+t.dataset.w;render();return;}
     if(act==='pickdetailsong'){state.detailSong=t.dataset.sid;render();return;}
     if(act==='roommode'){state.roomMode=t.dataset.m==='ext'?'ext':'in';render();return;}
+    if(act==='ignoremember'){toggleIgnoreMember(t.dataset.uid);return;}
     if(act==='grouptoggle'){
       state.groupFilter=state.groupFilter||{};
       const gid=t.dataset.gid;
